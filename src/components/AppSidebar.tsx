@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -15,6 +15,7 @@ const adminItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Users", url: "/users", icon: Users },
   { title: "Learning Areas", url: "/learning-areas", icon: BookOpen },
+  { title: "Streams", url: "/streams", icon: Columns },
   { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Reports", url: "/reports", icon: FileText },
