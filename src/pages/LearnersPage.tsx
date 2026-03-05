@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
-import { GRADES, STREAMS } from '@/lib/cbc-utils';
+import { GRADES } from '@/lib/cbc-utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function LearnersPage() {
@@ -34,6 +34,15 @@ export default function LearnersPage() {
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  const { data: streams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('streams').select('name').order('name');
+      if (error) throw error;
+      return (data || []).map((s: any) => s.name);
     },
   });
 
@@ -125,7 +134,7 @@ export default function LearnersPage() {
                     <Label>Stream</Label>
                     <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
+                      <SelectContent>{streams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
