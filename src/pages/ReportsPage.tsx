@@ -36,7 +36,7 @@ export default function ReportsPage() {
     },
   });
 
-  const { data: schoolName = 'My School' } = useQuery({
+  const { data: schoolName = 'TAKAYE SCHOOL' } = useQuery({
     queryKey: ['school-name'],
     queryFn: async () => {
       const { data } = await supabase.from('school_settings').select('value').eq('key', 'school_name').single();
