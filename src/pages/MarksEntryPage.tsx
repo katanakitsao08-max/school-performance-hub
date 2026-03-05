@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ export default function MarksEntryPage() {
   });
 
   // Initialize scores from existing data
-  useMemo(() => {
+  useEffect(() => {
     const scoreMap: Record<string, Record<string, string>> = {};
     existingScores.forEach(s => {
       if (!scoreMap[s.learner_id]) scoreMap[s.learner_id] = {};
