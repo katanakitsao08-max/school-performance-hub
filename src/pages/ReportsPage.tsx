@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown } from 'lucide-react';
-import { GRADES, STREAMS, TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -27,6 +27,22 @@ export default function ReportsPage() {
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const reportRef = useRef<HTMLDivElement>(null);
+
+  const { data: dbStreams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data } = await supabase.from('streams').select('*').order('name');
+      return data || [];
+    },
+  });
+
+  const { data: schoolName = 'My School' } = useQuery({
+    queryKey: ['school-name'],
+    queryFn: async () => {
+      const { data } = await supabase.from('school_settings').select('value').eq('key', 'school_name').single();
+      return data?.value || 'My School';
+    },
+  });
 
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', selectedGrade, selectedStream],
@@ -109,8 +125,10 @@ export default function ReportsPage() {
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFontSize(16);
-    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, 14, 15);
+    doc.setFontSize(18);
+    doc.text(schoolName, doc.internal.pageSize.getWidth() / 2, 12, { align: 'center' });
+    doc.setFontSize(14);
+    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
 
     const headers = ['#', 'Name', ...subjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
     const body = reportData.map(l => [
@@ -119,7 +137,7 @@ export default function ReportsPage() {
       l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
     ]);
 
-    autoTable(doc, { head: [headers], body, startY: 25, styles: { fontSize: 8 } });
+    autoTable(doc, { head: [headers], body, startY: 28, styles: { fontSize: 8 } });
     doc.save(`Report_G${selectedGrade}${selectedStream}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
@@ -160,7 +178,7 @@ export default function ReportsPage() {
           </Select>
           <Select value={selectedStream} onValueChange={setSelectedStream}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            <SelectContent>{dbStreams.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -184,7 +202,8 @@ export default function ReportsPage() {
         <div ref={reportRef}>
           {viewMode === 'class' ? (
             <Card>
-              <CardHeader>
+              <CardHeader className="text-center">
+                <p className="text-lg font-bold uppercase">{schoolName}</p>
                 <CardTitle className="font-display">
                   Grade {selectedGrade}{selectedStream} — Term {selectedTerm}, {selectedYear}
                 </CardTitle>
@@ -244,7 +263,8 @@ export default function ReportsPage() {
             </Card>
           ) : selectedLearnerData ? (
             <Card>
-              <CardHeader>
+              <CardHeader className="text-center">
+                <p className="text-lg font-bold uppercase">{schoolName}</p>
                 <CardTitle className="font-display">Report Card — {selectedLearnerData.full_name}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Grade {selectedGrade}{selectedStream} • Term {selectedTerm}, {selectedYear} •
