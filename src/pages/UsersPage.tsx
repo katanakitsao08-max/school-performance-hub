@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Edit } from 'lucide-react';
-import { GRADES, STREAMS } from '@/lib/cbc-utils';
+import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export default function UsersPage() {
