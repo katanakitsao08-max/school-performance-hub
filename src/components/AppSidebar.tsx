@@ -22,6 +22,7 @@ const adminItems = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const teacherItems = [
