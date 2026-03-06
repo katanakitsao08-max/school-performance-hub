@@ -26,6 +26,7 @@ const adminItems = [
 
 const teacherItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Reports", url: "/reports", icon: FileText },
 ];
