@@ -42,6 +42,14 @@ export default function UsersPage() {
     },
   });
 
+  const { data: dbStreams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data } = await supabase.from('streams').select('name').order('name');
+      return (data || []).map((s: any) => s.name);
+    },
+  });
+
   const createUser = useMutation({
     mutationFn: async () => {
       // Sign up user via Supabase Auth
