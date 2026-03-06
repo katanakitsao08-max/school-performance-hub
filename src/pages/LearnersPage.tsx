@@ -20,6 +20,7 @@ export default function LearnersPage() {
   const queryClient = useQueryClient();
   const { role, profile } = useAuth();
   const assignedGrades = profile?.assigned_grades || [];
+  const assignedStreams = profile?.assigned_streams || [];
   const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
   const isAdmin = role === 'admin';
 
@@ -27,23 +28,25 @@ export default function LearnersPage() {
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
+  const [filterStream, setFilterStream] = useState('all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
   const { data: learners = [] } = useQuery({
-    queryKey: ['learners', filterGrade],
+    queryKey: ['learners', filterGrade, filterStream],
     queryFn: async () => {
       let q = supabase.from('learners').select('*').eq('is_active', true).order('grade').order('full_name');
       if (filterGrade !== 'all') q = q.eq('grade', filterGrade);
+      if (filterStream !== 'all') q = q.eq('stream', filterStream);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
   });
 
-  const { data: streams = [] } = useQuery({
+  const { data: allStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
       const { data, error } = await supabase.from('streams').select('name').order('name');
@@ -51,6 +54,8 @@ export default function LearnersPage() {
       return (data || []).map((s: any) => s.name);
     },
   });
+
+  const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
   const filtered = learners.filter(l =>
     l.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -90,7 +95,7 @@ export default function LearnersPage() {
   });
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: availableStreams[0] || 'A',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
@@ -140,7 +145,7 @@ export default function LearnersPage() {
                     <Label>Stream</Label>
                     <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{streams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableStreams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
@@ -163,11 +168,18 @@ export default function LearnersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search learners..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <Select value={filterGrade} onValueChange={setFilterGrade}>
+          <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v); setFilterStream('all'); }}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Grades</SelectItem>
               {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterStream} onValueChange={setFilterStream}>
+            <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Streams" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Streams</SelectItem>
+              {availableStreams.map(s => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Edit } from 'lucide-react';
-import { GRADES, STREAMS } from '@/lib/cbc-utils';
+import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 
 export default function UsersPage() {
@@ -39,6 +39,14 @@ export default function UsersPage() {
         ...p,
         role: roles?.find(r => r.user_id === p.user_id)?.role || 'unknown',
       }));
+    },
+  });
+
+  const { data: dbStreams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data } = await supabase.from('streams').select('name').order('name');
+      return (data || []).map((s: any) => s.name);
     },
   });
 
@@ -197,7 +205,7 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label>Assigned Streams</Label>
                   <div className="flex flex-wrap gap-2">
-                    {STREAMS.map(s => (
+                    {dbStreams.map(s => (
                       <label key={s} className="flex items-center gap-1.5 text-sm">
                         <Checkbox checked={form.assigned_streams.includes(s)} onCheckedChange={() => toggleStream(s)} />
                         Stream {s}
