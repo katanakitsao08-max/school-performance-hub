@@ -90,7 +90,7 @@ export default function LearnersPage() {
   });
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
