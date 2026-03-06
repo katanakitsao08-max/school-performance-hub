@@ -35,10 +35,11 @@ export default function LearnersPage() {
   });
 
   const { data: learners = [] } = useQuery({
-    queryKey: ['learners', filterGrade],
+    queryKey: ['learners', filterGrade, filterStream],
     queryFn: async () => {
       let q = supabase.from('learners').select('*').eq('is_active', true).order('grade').order('full_name');
       if (filterGrade !== 'all') q = q.eq('grade', filterGrade);
+      if (filterStream !== 'all') q = q.eq('stream', filterStream);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];

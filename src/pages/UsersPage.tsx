@@ -205,7 +205,7 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label>Assigned Streams</Label>
                   <div className="flex flex-wrap gap-2">
-                    {STREAMS.map(s => (
+                    {dbStreams.map(s => (
                       <label key={s} className="flex items-center gap-1.5 text-sm">
                         <Checkbox checked={form.assigned_streams.includes(s)} onCheckedChange={() => toggleStream(s)} />
                         Stream {s}
