@@ -26,6 +26,7 @@ const adminItems = [
 
 const teacherItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Reports", url: "/reports", icon: FileText },
 ];
@@ -54,7 +55,7 @@ export function AppSidebar() {
           <SidebarGroupLabel className="text-sidebar-foreground/70">
             {!collapsed && (
               <div className="flex flex-col gap-0.5 py-2">
-                <span className="font-display text-lg font-bold text-sidebar-primary">CBC School</span>
+                <span className="font-display text-lg font-bold text-sidebar-primary">TAKAYE SCHOOL</span>
                 <span className="text-xs text-sidebar-foreground/50">Performance Manager</span>
               </div>
             )}

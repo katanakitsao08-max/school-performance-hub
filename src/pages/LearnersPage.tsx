@@ -12,17 +12,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { GRADES } from '@/lib/cbc-utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function LearnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role, profile } = useAuth();
+  const assignedGrades = profile?.assigned_grades || [];
+  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
+  const isAdmin = role === 'admin';
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [filterGrade, setFilterGrade] = useState('all');
+  const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
@@ -84,7 +90,7 @@ export default function LearnersPage() {
   });
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
@@ -127,7 +133,7 @@ export default function LearnersPage() {
                     <Label>Grade</Label>
                     <Select value={form.grade} onValueChange={v => setForm(f => ({ ...f, grade: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
@@ -161,7 +167,7 @@ export default function LearnersPage() {
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Grades</SelectItem>
-              {GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+              {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -191,21 +197,23 @@ export default function LearnersPage() {
                     <TableCell>{l.parent_phone || '-'}</TableCell>
                     <TableCell className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(l)}><Edit className="h-4 w-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete {l.full_name}?</AlertDialogTitle>
-                            <AlertDialogDescription>This will also delete all their scores.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteMutation.mutate(l.id)}>Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete {l.full_name}?</AlertDialogTitle>
+                              <AlertDialogDescription>This will also delete all their scores.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteMutation.mutate(l.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

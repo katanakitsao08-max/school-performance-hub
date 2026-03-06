@@ -1,0 +1,1 @@
+UPDATE public.school_settings SET value = 'TAKAYE SCHOOL' WHERE key = 'school_name';

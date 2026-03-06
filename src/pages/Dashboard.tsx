@@ -8,18 +8,28 @@ import { supabase } from '@/integrations/supabase/client';
 export default function Dashboard() {
   const { profile, role } = useAuth();
 
+  const assignedGrades = profile?.assigned_grades || [];
+
   const { data: learnerCount } = useQuery({
-    queryKey: ['learner-count'],
+    queryKey: ['learner-count', role, assignedGrades],
     queryFn: async () => {
-      const { count } = await supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      let q = supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      if (role === 'teacher' && assignedGrades.length > 0) {
+        q = q.in('grade', assignedGrades);
+      }
+      const { count } = await q;
       return count || 0;
     },
   });
 
   const { data: subjectCount } = useQuery({
-    queryKey: ['subject-count'],
+    queryKey: ['subject-count', role, assignedGrades],
     queryFn: async () => {
-      const { count } = await supabase.from('learning_areas').select('*', { count: 'exact', head: true });
+      let q = supabase.from('learning_areas').select('*', { count: 'exact', head: true });
+      if (role === 'teacher' && assignedGrades.length > 0) {
+        q = q.in('grade', assignedGrades);
+      }
+      const { count } = await q;
       return count || 0;
     },
   });
