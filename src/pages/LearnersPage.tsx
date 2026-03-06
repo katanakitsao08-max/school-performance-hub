@@ -145,7 +145,7 @@ export default function LearnersPage() {
                     <Label>Stream</Label>
                     <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{streams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableStreams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
