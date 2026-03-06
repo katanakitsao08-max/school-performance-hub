@@ -133,7 +133,7 @@ export default function LearnersPage() {
                     <Label>Grade</Label>
                     <Select value={form.grade} onValueChange={v => setForm(f => ({ ...f, grade: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
