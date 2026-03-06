@@ -46,7 +46,7 @@ export default function LearnersPage() {
     },
   });
 
-  const { data: streams = [] } = useQuery({
+  const { data: allStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
       const { data, error } = await supabase.from('streams').select('name').order('name');
@@ -54,6 +54,8 @@ export default function LearnersPage() {
       return (data || []).map((s: any) => s.name);
     },
   });
+
+  const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
   const filtered = learners.filter(l =>
     l.full_name.toLowerCase().includes(search.toLowerCase()) ||
