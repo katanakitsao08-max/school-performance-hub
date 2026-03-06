@@ -168,11 +168,18 @@ export default function LearnersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search learners..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <Select value={filterGrade} onValueChange={setFilterGrade}>
+          <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v); setFilterStream('all'); }}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Grades</SelectItem>
               {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterStream} onValueChange={setFilterStream}>
+            <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Streams" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Streams</SelectItem>
+              {availableStreams.map(s => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
