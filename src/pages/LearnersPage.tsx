@@ -167,7 +167,7 @@ export default function LearnersPage() {
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Grades</SelectItem>
-              {GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+              {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
