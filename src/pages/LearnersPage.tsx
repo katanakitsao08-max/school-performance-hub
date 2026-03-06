@@ -20,6 +20,7 @@ export default function LearnersPage() {
   const queryClient = useQueryClient();
   const { role, profile } = useAuth();
   const assignedGrades = profile?.assigned_grades || [];
+  const assignedStreams = profile?.assigned_streams || [];
   const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
   const isAdmin = role === 'admin';
 
@@ -27,8 +28,9 @@ export default function LearnersPage() {
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
+  const [filterStream, setFilterStream] = useState('all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
