@@ -19,12 +19,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function LearnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role, profile } = useAuth();
+  const assignedGrades = profile?.assigned_grades || [];
+  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
+  const isAdmin = role === 'admin';
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [filterGrade, setFilterGrade] = useState('all');
+  const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: '1', stream: 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: 'A',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
