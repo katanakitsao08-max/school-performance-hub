@@ -178,7 +178,7 @@ export default function LearnersPage() {
           <Select value={filterStream} onValueChange={setFilterStream}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Streams" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Streams</SelectItem>
+              {role !== 'teacher' && <SelectItem value="all">All Streams</SelectItem>}
               {availableStreams.map(s => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}
             </SelectContent>
           </Select>
