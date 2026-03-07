@@ -36,13 +36,19 @@ export default function ReportsPage() {
     },
   });
 
-  const { data: schoolName = 'TAKAYE SCHOOL' } = useQuery({
-    queryKey: ['school-name'],
+  const { data: schoolSettings = {} } = useQuery({
+    queryKey: ['school-settings'],
     queryFn: async () => {
-      const { data } = await supabase.from('school_settings').select('value').eq('key', 'school_name').single();
-      return data?.value || 'My School';
+      const { data } = await supabase.from('school_settings').select('*');
+      const map: Record<string, string> = {};
+      (data || []).forEach(s => { map[s.key] = s.value; });
+      return map;
     },
   });
+
+  const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
+  const schoolMotto = schoolSettings['school_motto'] || '';
+  const schoolAddress = schoolSettings['school_address'] || '';
 
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', selectedGrade, selectedStream],
