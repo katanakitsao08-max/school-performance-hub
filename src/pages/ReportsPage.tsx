@@ -189,7 +189,7 @@ export default function ReportsPage() {
           </Select>
           <Select value={selectedStream} onValueChange={setSelectedStream}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{dbStreams.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent>
+            <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
