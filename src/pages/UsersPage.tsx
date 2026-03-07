@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +21,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [deletingUser, setDeletingUser] = useState<any>(null);
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -46,34 +48,23 @@ export default function UsersPage() {
     queryKey: ['streams'],
     queryFn: async () => {
       const { data } = await supabase.from('streams').select('name').order('name');
-      return (data || []).map((s: any) => s.name);
+      return (data || []).map((s: any) => s.name as string);
     },
   });
 
   const createUser = useMutation({
     mutationFn: async () => {
-      // Sign up user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { full_name: form.full_name } },
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email: form.email, password: form.password, full_name: form.full_name, role: form.role },
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('User creation failed');
-
-      // Assign role
-      const { error: roleError } = await supabase.from('user_roles').insert({
-        user_id: authData.user.id,
-        role: form.role,
-      });
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
 
       // Update profile with assigned grades/streams
-      const { error: profileError } = await supabase.from('profiles').update({
+      await supabase.from('profiles').update({
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
-      }).eq('user_id', authData.user.id);
-      if (profileError) throw profileError;
+      }).eq('user_id', data.user_id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-profiles'] });
@@ -89,11 +80,19 @@ export default function UsersPage() {
   const updateUser = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;
+      // Update profile
       await supabase.from('profiles').update({
         full_name: form.full_name,
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
       }).eq('user_id', editingUser.user_id);
+
+      // Update role if changed
+      if (form.role !== editingUser.role) {
+        await supabase.from('user_roles').update({
+          role: form.role,
+        }).eq('user_id', editingUser.user_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-profiles'] });
@@ -104,6 +103,25 @@ export default function UsersPage() {
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: userId },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-profiles'] });
+      toast({ title: 'User deleted successfully' });
+      setDeletingUser(null);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setDeletingUser(null);
     },
   });
 
@@ -178,19 +196,17 @@ export default function UsersPage() {
                   <Label>Full Name</Label>
                   <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} required />
                 </div>
-                {!editingUser && (
-                  <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as any }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
-                        <SelectItem value="headteacher">Headteacher</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="headteacher">Headteacher</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Assigned Grades</Label>
                   <div className="flex flex-wrap gap-2">
@@ -213,7 +229,7 @@ export default function UsersPage() {
                     ))}
                   </div>
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>
                   {editingUser ? 'Update User' : 'Create User'}
                 </Button>
               </form>
@@ -230,7 +246,7 @@ export default function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Assigned Grades</TableHead>
                   <TableHead>Streams</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -238,12 +254,17 @@ export default function UsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.full_name}</TableCell>
                     <TableCell><Badge variant="secondary" className="capitalize">{user.role}</Badge></TableCell>
-                    <TableCell>{(user.assigned_grades || []).map(g => `G${g}`).join(', ') || '-'}</TableCell>
+                    <TableCell>{(user.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
                     <TableCell>{(user.assigned_streams || []).join(', ') || '-'}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeletingUser(user)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -254,6 +275,26 @@ export default function UsersPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <AlertDialog open={!!deletingUser} onOpenChange={(v) => { if (!v) setDeletingUser(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deletingUser?.full_name}</strong>? This action cannot be undone and will remove all their data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletingUser && deleteUser.mutate(deletingUser.user_id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteUser.isPending ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
