@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Save } from 'lucide-react';
-import { GRADES, STREAMS, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { GRADES, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MarksEntryPage() {
@@ -21,9 +21,22 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
 
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const assignedStreams = profile?.assigned_streams || [];
+
+  const { data: dbStreams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data } = await supabase.from('streams').select('name').order('name');
+      return (data || []).map((s: any) => s.name);
+    },
+  });
+
+  const availableStreams = role === 'teacher' && assignedStreams.length > 0
+    ? dbStreams.filter(s => assignedStreams.includes(s))
+    : dbStreams;
 
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
-  const [selectedStream, setSelectedStream] = useState('A');
+  const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
