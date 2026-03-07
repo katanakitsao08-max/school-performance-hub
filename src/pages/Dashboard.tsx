@@ -1,7 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, BookOpen, ClipboardList } from 'lucide-react';
+import { GraduationCap, BookOpen, ClipboardList } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -9,6 +10,7 @@ export default function Dashboard() {
   const { profile, role } = useAuth();
 
   const assignedGrades = profile?.assigned_grades || [];
+  const assignedStreams = profile?.assigned_streams || [];
 
   const { data: learnerCount } = useQuery({
     queryKey: ['learner-count', role, assignedGrades],
@@ -55,6 +57,28 @@ export default function Dashboard() {
           <h1 className="text-2xl font-display font-bold">Welcome, {profile?.full_name}</h1>
           <p className="text-muted-foreground capitalize">{role} Dashboard</p>
         </div>
+
+        {role === 'teacher' && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Your Assignments</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm text-muted-foreground">Grades:</span>
+                {assignedGrades.length > 0 ? assignedGrades.map(g => (
+                  <Badge key={g} variant="secondary">Grade {g}</Badge>
+                )) : <span className="text-sm text-muted-foreground italic">None assigned</span>}
+              </div>
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm text-muted-foreground">Streams:</span>
+                {assignedStreams.length > 0 ? assignedStreams.map(s => (
+                  <Badge key={s} variant="outline">{s}</Badge>
+                )) : <span className="text-sm text-muted-foreground italic">None assigned</span>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {stats.map((stat) => (

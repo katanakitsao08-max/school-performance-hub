@@ -27,8 +27,8 @@ export default function LearnersPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
-  const [filterStream, setFilterStream] = useState('all');
+  const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
+  const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
     admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
@@ -171,14 +171,14 @@ export default function LearnersPage() {
           <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v); setFilterStream('all'); }}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
+              {role !== 'teacher' && <SelectItem value="all">All Grades</SelectItem>}
               {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterStream} onValueChange={setFilterStream}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Streams" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Streams</SelectItem>
+              {role !== 'teacher' && <SelectItem value="all">All Streams</SelectItem>}
               {availableStreams.map(s => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}
             </SelectContent>
           </Select>
