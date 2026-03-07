@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Save } from 'lucide-react';
-import { GRADES, STREAMS, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { GRADES, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MarksEntryPage() {
@@ -21,12 +21,32 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
 
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const assignedStreams = profile?.assigned_streams || [];
+
+  const { data: dbStreams = [] } = useQuery({
+    queryKey: ['streams'],
+    queryFn: async () => {
+      const { data } = await supabase.from('streams').select('name').order('name');
+      return (data || []).map((s: any) => s.name);
+    },
+  });
+
+  const availableStreams = role === 'teacher' && assignedStreams.length > 0
+    ? dbStreams.filter(s => assignedStreams.includes(s))
+    : dbStreams;
 
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
-  const [selectedStream, setSelectedStream] = useState('A');
+  const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
+
+  // Set initial stream when streams load
+  useEffect(() => {
+    if (availableStreams.length > 0 && !selectedStream) {
+      setSelectedStream(availableStreams[0]);
+    }
+  }, [availableStreams]);
 
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', selectedGrade, selectedStream],
@@ -159,8 +179,8 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Stream</Label>
             <Select value={selectedStream} onValueChange={setSelectedStream}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Stream" /></SelectTrigger>
+              <SelectContent>{availableStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">

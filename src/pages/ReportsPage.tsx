@@ -36,13 +36,19 @@ export default function ReportsPage() {
     },
   });
 
-  const { data: schoolName = 'TAKAYE SCHOOL' } = useQuery({
-    queryKey: ['school-name'],
+  const { data: schoolSettings = {} } = useQuery({
+    queryKey: ['school-settings'],
     queryFn: async () => {
-      const { data } = await supabase.from('school_settings').select('value').eq('key', 'school_name').single();
-      return data?.value || 'My School';
+      const { data } = await supabase.from('school_settings').select('*');
+      const map: Record<string, string> = {};
+      (data || []).forEach(s => { map[s.key] = s.value; });
+      return map;
     },
   });
+
+  const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
+  const schoolMotto = schoolSettings['school_motto'] || '';
+  const schoolAddress = schoolSettings['school_address'] || '';
 
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', selectedGrade, selectedStream],
@@ -125,10 +131,15 @@ export default function ReportsPage() {
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
+    const cx = doc.internal.pageSize.getWidth() / 2;
+    let y = 12;
     doc.setFontSize(18);
-    doc.text(schoolName, doc.internal.pageSize.getWidth() / 2, 12, { align: 'center' });
+    doc.text(schoolName, cx, y, { align: 'center' });
+    if (schoolMotto) { y += 7; doc.setFontSize(10); doc.text(schoolMotto, cx, y, { align: 'center' }); }
+    if (schoolAddress) { y += 5; doc.setFontSize(9); doc.text(schoolAddress, cx, y, { align: 'center' }); }
+    y += 8;
     doc.setFontSize(14);
-    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const headers = ['#', 'Name', ...subjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
     const body = reportData.map(l => [
@@ -204,6 +215,8 @@ export default function ReportsPage() {
             <Card>
               <CardHeader className="text-center">
                 <p className="text-lg font-bold uppercase">{schoolName}</p>
+                {schoolMotto && <p className="text-sm italic text-muted-foreground">{schoolMotto}</p>}
+                {schoolAddress && <p className="text-xs text-muted-foreground">{schoolAddress}</p>}
                 <CardTitle className="font-display">
                   Grade {selectedGrade}{selectedStream} — Term {selectedTerm}, {selectedYear}
                 </CardTitle>
@@ -265,6 +278,8 @@ export default function ReportsPage() {
             <Card>
               <CardHeader className="text-center">
                 <p className="text-lg font-bold uppercase">{schoolName}</p>
+                {schoolMotto && <p className="text-sm italic text-muted-foreground">{schoolMotto}</p>}
+                {schoolAddress && <p className="text-xs text-muted-foreground">{schoolAddress}</p>}
                 <CardTitle className="font-display">Report Card — {selectedLearnerData.full_name}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Grade {selectedGrade}{selectedStream} • Term {selectedTerm}, {selectedYear} •
