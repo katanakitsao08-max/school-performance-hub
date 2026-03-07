@@ -171,7 +171,7 @@ export default function LearnersPage() {
           <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v); setFilterStream('all'); }}>
             <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
+              {role !== 'teacher' && <SelectItem value="all">All Grades</SelectItem>}
               {availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
             </SelectContent>
           </Select>
