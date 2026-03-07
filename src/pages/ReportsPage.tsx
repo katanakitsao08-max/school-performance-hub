@@ -131,10 +131,15 @@ export default function ReportsPage() {
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
+    const cx = doc.internal.pageSize.getWidth() / 2;
+    let y = 12;
     doc.setFontSize(18);
-    doc.text(schoolName, doc.internal.pageSize.getWidth() / 2, 12, { align: 'center' });
+    doc.text(schoolName, cx, y, { align: 'center' });
+    if (schoolMotto) { y += 7; doc.setFontSize(10); doc.text(schoolMotto, cx, y, { align: 'center' }); }
+    if (schoolAddress) { y += 5; doc.setFontSize(9); doc.text(schoolAddress, cx, y, { align: 'center' }); }
+    y += 8;
     doc.setFontSize(14);
-    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const headers = ['#', 'Name', ...subjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
     const body = reportData.map(l => [

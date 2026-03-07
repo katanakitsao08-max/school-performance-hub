@@ -172,8 +172,8 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Stream</Label>
             <Select value={selectedStream} onValueChange={setSelectedStream}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Stream" /></SelectTrigger>
+              <SelectContent>{availableStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
