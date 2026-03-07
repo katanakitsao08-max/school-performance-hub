@@ -31,8 +31,8 @@ export default function ReportsPage() {
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('*').order('name');
-      return data || [];
+      const { data } = await supabase.from('streams').select('name').order('name');
+      return (data || []).map((s: any) => s.name as string);
     },
   });
 
