@@ -51,7 +51,7 @@ export default function LearnersPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from('streams').select('name').order('name');
       if (error) throw error;
-      return (data || []).map((s: any) => s.name);
+      return (data || []).map((s: any) => s.name as string);
     },
   });
 
