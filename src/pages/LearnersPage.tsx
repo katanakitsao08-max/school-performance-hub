@@ -27,7 +27,7 @@ export default function LearnersPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [filterGrade, setFilterGrade] = useState(role === 'teacher' && availableGrades.length === 1 ? availableGrades[0] : 'all');
+  const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
   const [filterStream, setFilterStream] = useState('all');
   const [form, setForm] = useState({
     admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
