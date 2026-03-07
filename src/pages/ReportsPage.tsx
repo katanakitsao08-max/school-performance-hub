@@ -37,7 +37,7 @@ export default function ReportsPage() {
   });
 
   const { data: schoolSettings = {} } = useQuery({
-    queryKey: ['school-settings'],
+    queryKey: ['school-settings-map'],
     queryFn: async () => {
       const { data } = await supabase.from('school_settings').select('*');
       const map: Record<string, string> = {};
