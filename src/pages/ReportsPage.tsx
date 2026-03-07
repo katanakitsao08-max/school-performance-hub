@@ -273,6 +273,8 @@ export default function ReportsPage() {
             <Card>
               <CardHeader className="text-center">
                 <p className="text-lg font-bold uppercase">{schoolName}</p>
+                {schoolMotto && <p className="text-sm italic text-muted-foreground">{schoolMotto}</p>}
+                {schoolAddress && <p className="text-xs text-muted-foreground">{schoolAddress}</p>}
                 <CardTitle className="font-display">Report Card — {selectedLearnerData.full_name}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Grade {selectedGrade}{selectedStream} • Term {selectedTerm}, {selectedYear} •
