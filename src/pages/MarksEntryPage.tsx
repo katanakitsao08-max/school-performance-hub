@@ -41,6 +41,13 @@ export default function MarksEntryPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
 
+  // Set initial stream when streams load
+  useEffect(() => {
+    if (availableStreams.length > 0 && !selectedStream) {
+      setSelectedStream(availableStreams[0]);
+    }
+  }, [availableStreams]);
+
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', selectedGrade, selectedStream],
     queryFn: async () => {
