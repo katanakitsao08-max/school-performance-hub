@@ -92,6 +92,7 @@ export default function UsersPage() {
         full_name: form.full_name,
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
+        assigned_learning_areas: form.assigned_learning_areas,
       }).eq('user_id', editingUser.user_id);
 
       if (form.role !== editingUser.role) {
