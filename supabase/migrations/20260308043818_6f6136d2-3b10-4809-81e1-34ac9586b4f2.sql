@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS assigned_learning_areas text[] DEFAULT '{}'::text[];
