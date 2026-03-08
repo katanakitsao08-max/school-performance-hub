@@ -71,6 +71,7 @@ export default function UsersPage() {
       await supabase.from('profiles').update({
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
+        assigned_learning_areas: form.assigned_learning_areas,
       }).eq('user_id', data.user_id);
     },
     onSuccess: () => {
