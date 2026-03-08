@@ -61,7 +61,7 @@ export default function MarksEntryPage() {
     },
   });
 
-  const { data: subjects = [] } = useQuery({
+  const { data: allSubjects = [] } = useQuery({
     queryKey: ['learning-areas', selectedGrade],
     queryFn: async () => {
       const { data, error } = await supabase.from('learning_areas').select('*')
@@ -70,6 +70,11 @@ export default function MarksEntryPage() {
       return data || [];
     },
   });
+
+  // Subject teachers only see their assigned subjects; class teachers see all
+  const subjects = isSubjectTeacher
+    ? allSubjects.filter(s => assignedLearningAreas.includes(s.name))
+    : allSubjects;
 
   const { data: existingScores = [] } = useQuery({
     queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
