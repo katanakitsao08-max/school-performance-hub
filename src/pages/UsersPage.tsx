@@ -133,7 +133,7 @@ export default function UsersPage() {
   });
 
   const resetForm = () => {
-    setForm({ username: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [] });
+    setForm({ username: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [], assigned_learning_areas: [] });
   };
 
   const handleEdit = (user: any) => {
