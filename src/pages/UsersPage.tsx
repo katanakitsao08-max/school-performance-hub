@@ -177,6 +177,15 @@ export default function UsersPage() {
     }));
   };
 
+  const toggleLearningArea = (area: string) => {
+    setForm(f => ({
+      ...f,
+      assigned_learning_areas: f.assigned_learning_areas.includes(area)
+        ? f.assigned_learning_areas.filter(a => a !== area)
+        : [...f.assigned_learning_areas, area],
+    }));
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
