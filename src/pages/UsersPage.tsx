@@ -145,6 +145,7 @@ export default function UsersPage() {
       role: user.role,
       assigned_grades: user.assigned_grades || [],
       assigned_streams: user.assigned_streams || [],
+      assigned_learning_areas: user.assigned_learning_areas || [],
     });
     setOpen(true);
   };
