@@ -308,6 +308,11 @@ export default function UsersPage() {
                     <TableCell>{(user.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
                     <TableCell>{(user.assigned_streams || []).join(', ') || '-'}</TableCell>
                     <TableCell>
+                      {(user.assigned_learning_areas || []).length > 0
+                        ? (user.assigned_learning_areas || []).join(', ')
+                        : user.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
                           <Edit className="h-4 w-4" />
@@ -320,7 +325,7 @@ export default function UsersPage() {
                   </TableRow>
                 ))}
                 {users.length === 0 && !isLoading && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

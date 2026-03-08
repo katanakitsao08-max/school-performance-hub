@@ -22,6 +22,8 @@ export default function MarksEntryPage() {
 
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
   const assignedStreams = profile?.assigned_streams || [];
+  const assignedLearningAreas = profile?.assigned_learning_areas || [];
+  const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
