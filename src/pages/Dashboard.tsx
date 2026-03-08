@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
-  const { profile, role } = useAuth();
+  const { user, profile, role } = useAuth();
 
   const assignedGrades = profile?.assigned_grades || [];
   const assignedStreams = profile?.assigned_streams || [];
@@ -22,6 +22,7 @@ export default function Dashboard() {
       const { count } = await q;
       return count || 0;
     },
+    enabled: !!user,
   });
 
   const { data: subjectCount } = useQuery({
@@ -34,6 +35,7 @@ export default function Dashboard() {
       const { count } = await q;
       return count || 0;
     },
+    enabled: !!user,
   });
 
   const { data: scoreCount } = useQuery({
@@ -42,6 +44,7 @@ export default function Dashboard() {
       const { count } = await supabase.from('scores').select('*', { count: 'exact', head: true });
       return count || 0;
     },
+    enabled: !!user,
   });
 
   const stats = [
