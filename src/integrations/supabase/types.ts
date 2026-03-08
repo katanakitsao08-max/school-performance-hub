@@ -83,6 +83,7 @@ export type Database = {
       profiles: {
         Row: {
           assigned_grades: string[] | null
+          assigned_learning_areas: string[] | null
           assigned_streams: string[] | null
           created_at: string
           full_name: string
@@ -92,6 +93,7 @@ export type Database = {
         }
         Insert: {
           assigned_grades?: string[] | null
+          assigned_learning_areas?: string[] | null
           assigned_streams?: string[] | null
           created_at?: string
           full_name: string
@@ -101,6 +103,7 @@ export type Database = {
         }
         Update: {
           assigned_grades?: string[] | null
+          assigned_learning_areas?: string[] | null
           assigned_streams?: string[] | null
           created_at?: string
           full_name?: string

@@ -31,6 +31,7 @@ export default function UsersPage() {
     role: 'teacher' as 'admin' | 'teacher' | 'headteacher',
     assigned_grades: [] as string[],
     assigned_streams: [] as string[],
+    assigned_learning_areas: [] as string[],
   });
 
   const { data: users = [], isLoading } = useQuery({
@@ -55,6 +56,15 @@ export default function UsersPage() {
     },
   });
 
+  const { data: allLearningAreas = [] } = useQuery({
+    queryKey: ['all-learning-areas'],
+    queryFn: async () => {
+      const { data } = await supabase.from('learning_areas').select('name').order('name');
+      const unique = [...new Set((data || []).map((s: any) => s.name as string))];
+      return unique;
+    },
+  });
+
   const createUser = useMutation({
     mutationFn: async () => {
       const email = form.username.includes('@')
@@ -70,6 +80,7 @@ export default function UsersPage() {
       await supabase.from('profiles').update({
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
+        assigned_learning_areas: form.assigned_learning_areas,
       }).eq('user_id', data.user_id);
     },
     onSuccess: () => {
@@ -90,6 +101,7 @@ export default function UsersPage() {
         full_name: form.full_name,
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
+        assigned_learning_areas: form.assigned_learning_areas,
       }).eq('user_id', editingUser.user_id);
 
       if (form.role !== editingUser.role) {
@@ -130,7 +142,7 @@ export default function UsersPage() {
   });
 
   const resetForm = () => {
-    setForm({ username: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [] });
+    setForm({ username: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [], assigned_learning_areas: [] });
   };
 
   const handleEdit = (user: any) => {
@@ -142,6 +154,7 @@ export default function UsersPage() {
       role: user.role,
       assigned_grades: user.assigned_grades || [],
       assigned_streams: user.assigned_streams || [],
+      assigned_learning_areas: user.assigned_learning_areas || [],
     });
     setOpen(true);
   };
@@ -161,6 +174,15 @@ export default function UsersPage() {
       assigned_streams: f.assigned_streams.includes(stream)
         ? f.assigned_streams.filter(s => s !== stream)
         : [...f.assigned_streams, stream],
+    }));
+  };
+
+  const toggleLearningArea = (area: string) => {
+    setForm(f => ({
+      ...f,
+      assigned_learning_areas: f.assigned_learning_areas.includes(area)
+        ? f.assigned_learning_areas.filter(a => a !== area)
+        : [...f.assigned_learning_areas, area],
     }));
   };
 
@@ -241,6 +263,22 @@ export default function UsersPage() {
                     ))}
                   </div>
                 </div>
+                {form.role === 'teacher' && (
+                  <div className="space-y-2">
+                    <Label>Assigned Subjects</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty for class teacher (all subjects). Select specific subjects for subject teacher.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {allLearningAreas.map(a => (
+                        <label key={a} className="flex items-center gap-1.5 text-sm">
+                          <Checkbox checked={form.assigned_learning_areas.includes(a)} onCheckedChange={() => toggleLearningArea(a)} />
+                          {a}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>
                   {editingUser ? 'Update User' : 'Create User'}
                 </Button>
@@ -258,6 +296,7 @@ export default function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Assigned Grades</TableHead>
                   <TableHead>Streams</TableHead>
+                  <TableHead>Subjects</TableHead>
                   <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -268,6 +307,11 @@ export default function UsersPage() {
                     <TableCell><Badge variant="secondary" className="capitalize">{user.role}</Badge></TableCell>
                     <TableCell>{(user.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
                     <TableCell>{(user.assigned_streams || []).join(', ') || '-'}</TableCell>
+                    <TableCell>
+                      {(user.assigned_learning_areas || []).length > 0
+                        ? (user.assigned_learning_areas || []).join(', ')
+                        : user.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
@@ -281,7 +325,7 @@ export default function UsersPage() {
                   </TableRow>
                 ))}
                 {users.length === 0 && !isLoading && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
