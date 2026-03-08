@@ -263,6 +263,22 @@ export default function UsersPage() {
                     ))}
                   </div>
                 </div>
+                {form.role === 'teacher' && (
+                  <div className="space-y-2">
+                    <Label>Assigned Subjects</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty for class teacher (all subjects). Select specific subjects for subject teacher.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {allLearningAreas.map(a => (
+                        <label key={a} className="flex items-center gap-1.5 text-sm">
+                          <Checkbox checked={form.assigned_learning_areas.includes(a)} onCheckedChange={() => toggleLearningArea(a)} />
+                          {a}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>
                   {editingUser ? 'Update User' : 'Create User'}
                 </Button>
