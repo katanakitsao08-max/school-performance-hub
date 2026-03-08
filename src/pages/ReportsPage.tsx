@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, FileDown } from 'lucide-react';
+import { Printer, FileDown, User } from 'lucide-react';
 import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import jsPDF from 'jspdf';
@@ -17,7 +17,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export default function ReportsPage() {
-  const { role, profile } = useAuth();
+  const { user, role, profile } = useAuth();
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
   const [selectedStream, setSelectedStream] = useState('A');
@@ -44,6 +44,7 @@ export default function ReportsPage() {
       (data || []).forEach(s => { map[s.key] = s.value; });
       return map;
     },
+    enabled: !!user,
   });
 
   const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
@@ -57,6 +58,7 @@ export default function ReportsPage() {
         .eq('grade', selectedGrade).eq('stream', selectedStream).eq('is_active', true).order('full_name');
       return data || [];
     },
+    enabled: !!user,
   });
 
   const { data: subjects = [] } = useQuery({
@@ -65,6 +67,7 @@ export default function ReportsPage() {
       const { data } = await supabase.from('learning_areas').select('*').eq('grade', selectedGrade).order('name');
       return data || [];
     },
+    enabled: !!user,
   });
 
   const { data: allScores = [] } = useQuery({
@@ -76,7 +79,7 @@ export default function ReportsPage() {
         .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
       return data || [];
     },
-    enabled: learners.length > 0,
+    enabled: learners.length > 0 && !!user,
   });
 
   const reportData = useMemo(() => {
@@ -129,17 +132,29 @@ export default function ReportsPage() {
 
   const handlePrint = () => window.print();
 
-  const exportPDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
+  const addPdfHeader = (doc: jsPDF, y: number) => {
     const cx = doc.internal.pageSize.getWidth() / 2;
-    let y = 12;
     doc.setFontSize(18);
-    doc.text(schoolName, cx, y, { align: 'center' });
-    if (schoolMotto) { y += 7; doc.setFontSize(10); doc.text(schoolMotto, cx, y, { align: 'center' }); }
-    if (schoolAddress) { y += 5; doc.setFontSize(9); doc.text(schoolAddress, cx, y, { align: 'center' }); }
-    y += 8;
-    doc.setFontSize(14);
-    doc.text(`Grade ${selectedGrade}${selectedStream} - Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
+    if (schoolMotto) { y += 7; doc.setFontSize(10); doc.setFont('helvetica', 'italic'); doc.text(schoolMotto, cx, y, { align: 'center' }); }
+    if (schoolAddress) { y += 5; doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text(schoolAddress, cx, y, { align: 'center' }); }
+    y += 3;
+    doc.setDrawColor(0); doc.setLineWidth(0.5);
+    doc.line(14, y, doc.internal.pageSize.getWidth() - 14, y);
+    return y + 5;
+  };
+
+  const exportClassPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    let y = 12;
+    y = addPdfHeader(doc, y);
+    const cx = doc.internal.pageSize.getWidth() / 2;
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text(`CLASS REPORT — Grade ${selectedGrade}${selectedStream}`, cx, y, { align: 'center' });
+    y += 6;
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text(`Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const headers = ['#', 'Name', ...subjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
     const body = reportData.map(l => [
@@ -148,8 +163,88 @@ export default function ReportsPage() {
       l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
     ]);
 
-    autoTable(doc, { head: [headers], body, startY: 28, styles: { fontSize: 8 } });
-    doc.save(`Report_G${selectedGrade}${selectedStream}_T${selectedTerm}_${selectedYear}.pdf`);
+    autoTable(doc, { head: [headers], body, startY: y + 4, styles: { fontSize: 8 } });
+    doc.save(`ClassReport_G${selectedGrade}${selectedStream}_T${selectedTerm}_${selectedYear}.pdf`);
+  };
+
+  const exportIndividualPDF = (learnerData?: any) => {
+    const ld = learnerData || selectedLearnerData;
+    if (!ld) return;
+
+    const doc = new jsPDF();
+    let y = 15;
+    y = addPdfHeader(doc, y);
+    const cx = doc.internal.pageSize.getWidth() / 2;
+
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('LEARNER REPORT CARD', cx, y, { align: 'center' });
+    y += 10;
+
+    // Learner info
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text(`Name: ${ld.full_name}`, 14, y);
+    doc.text(`Adm No: ${ld.admission_number}`, 120, y);
+    y += 6;
+    doc.text(`Grade: ${selectedGrade}${selectedStream}`, 14, y);
+    doc.text(`Term: ${selectedTerm}, ${selectedYear}`, 120, y);
+    y += 8;
+
+    // Subject table
+    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark'];
+    const body = ld.subjectData.map((s: any) => [
+      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-'
+    ]);
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      startY: y,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Summary
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('SUMMARY', 14, y);
+    y += 7;
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text(`Total Score: ${ld.total}`, 14, y);
+    doc.text(`Mean Score: ${ld.mean.toFixed(1)}`, 80, y);
+    y += 6;
+    doc.text(`Overall Grade: ${ld.overallGrade}`, 14, y);
+    doc.text(`Position: ${ld.rank} out of ${reportData.length}`, 80, y);
+    y += 10;
+
+    // Comment
+    const comment = comments[ld.id];
+    if (comment) {
+      doc.setFont('helvetica', 'bold');
+      doc.text("Teacher's Comment:", 14, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(comment, 180);
+      doc.text(lines, 14, y);
+      y += lines.length * 5 + 5;
+    }
+
+    // Signatures
+    y += 10;
+    doc.setDrawColor(0); doc.setLineWidth(0.3);
+    doc.line(14, y, 80, y);
+    doc.line(110, y, 196, y);
+    y += 5;
+    doc.setFontSize(9);
+    doc.text("Class Teacher's Signature", 14, y);
+    doc.text("Head Teacher's Signature", 110, y);
+    y += 6;
+    doc.line(14, y + 8, 80, y + 8);
+    doc.line(110, y + 8, 196, y + 8);
+    doc.text("Date", 14, y + 13);
+    doc.text("Date", 110, y + 13);
+
+    doc.save(`Report_${ld.full_name.replace(/\s+/g, '_')}_G${selectedGrade}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
   const exportExcel = () => {
@@ -175,10 +270,18 @@ export default function ReportsPage() {
             <h1 className="text-2xl font-display font-bold">Reports</h1>
             <p className="text-muted-foreground">Class & individual performance reports</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
-            <Button variant="outline" onClick={exportPDF}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
-            <Button variant="outline" onClick={exportExcel}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
+            {viewMode === 'class' ? (
+              <>
+                <Button variant="outline" onClick={exportClassPDF}><FileDown className="mr-2 h-4 w-4" /> Class PDF</Button>
+                <Button variant="outline" onClick={exportExcel}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
+              </>
+            ) : selectedLearnerData && (
+              <Button variant="outline" onClick={() => exportIndividualPDF()}>
+                <User className="mr-2 h-4 w-4" /> Download Report Card
+              </Button>
+            )}
           </div>
         </div>
 

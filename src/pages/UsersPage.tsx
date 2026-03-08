@@ -15,15 +15,17 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [form, setForm] = useState({
-    email: '',
+    username: '',
     password: '',
     full_name: '',
     role: 'teacher' as 'admin' | 'teacher' | 'headteacher',
@@ -42,6 +44,7 @@ export default function UsersPage() {
         role: roles?.find(r => r.user_id === p.user_id)?.role || 'unknown',
       }));
     },
+    enabled: !!user,
   });
 
   const { data: dbStreams = [] } = useQuery({
@@ -54,13 +57,16 @@ export default function UsersPage() {
 
   const createUser = useMutation({
     mutationFn: async () => {
+      const email = form.username.includes('@')
+        ? form.username
+        : `${form.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email: form.email, password: form.password, full_name: form.full_name, role: form.role },
+        body: { email, password: form.password, full_name: form.full_name, role: form.role },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      // Update profile with assigned grades/streams
       await supabase.from('profiles').update({
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
@@ -80,14 +86,12 @@ export default function UsersPage() {
   const updateUser = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;
-      // Update profile
       await supabase.from('profiles').update({
         full_name: form.full_name,
         assigned_grades: form.assigned_grades,
         assigned_streams: form.assigned_streams,
       }).eq('user_id', editingUser.user_id);
 
-      // Update role if changed
       if (form.role !== editingUser.role) {
         await supabase.from('user_roles').update({
           role: form.role,
@@ -126,13 +130,13 @@ export default function UsersPage() {
   });
 
   const resetForm = () => {
-    setForm({ email: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [] });
+    setForm({ username: '', password: '', full_name: '', role: 'teacher', assigned_grades: [], assigned_streams: [] });
   };
 
   const handleEdit = (user: any) => {
     setEditingUser(user);
     setForm({
-      email: '',
+      username: '',
       password: '',
       full_name: user.full_name,
       role: user.role,
@@ -183,8 +187,16 @@ export default function UsersPage() {
                 {!editingUser && (
                   <>
                     <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+                      <Label>Username or Email</Label>
+                      <Input
+                        value={form.username}
+                        onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                        placeholder="e.g. jdoe or user@email.com"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter a simple username (no email needed) or a full email address
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Password</Label>
