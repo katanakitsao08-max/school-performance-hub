@@ -296,6 +296,7 @@ export default function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Assigned Grades</TableHead>
                   <TableHead>Streams</TableHead>
+                  <TableHead>Subjects</TableHead>
                   <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
