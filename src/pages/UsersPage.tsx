@@ -56,6 +56,15 @@ export default function UsersPage() {
     },
   });
 
+  const { data: allLearningAreas = [] } = useQuery({
+    queryKey: ['all-learning-areas'],
+    queryFn: async () => {
+      const { data } = await supabase.from('learning_areas').select('name').order('name');
+      const unique = [...new Set((data || []).map((s: any) => s.name as string))];
+      return unique;
+    },
+  });
+
   const createUser = useMutation({
     mutationFn: async () => {
       const email = form.username.includes('@')
