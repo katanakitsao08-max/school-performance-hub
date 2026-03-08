@@ -31,6 +31,7 @@ export default function UsersPage() {
     role: 'teacher' as 'admin' | 'teacher' | 'headteacher',
     assigned_grades: [] as string[],
     assigned_streams: [] as string[],
+    assigned_learning_areas: [] as string[],
   });
 
   const { data: users = [], isLoading } = useQuery({
