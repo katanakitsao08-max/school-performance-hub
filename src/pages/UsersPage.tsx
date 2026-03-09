@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, KeyRound } from 'lucide-react';
 import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,8 @@ export default function UsersPage() {
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -138,6 +140,25 @@ export default function UsersPage() {
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       setDeletingUser(null);
+    },
+  });
+
+  const resetUserPassword = useMutation({
+    mutationFn: async () => {
+      if (!resetPasswordUser || !newPassword) return;
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: { user_id: resetPasswordUser.user_id, new_password: newPassword },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      toast({ title: 'Password reset successfully' });
+      setResetPasswordUser(null);
+      setNewPassword('');
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -297,27 +318,30 @@ export default function UsersPage() {
                   <TableHead>Assigned Grades</TableHead>
                   <TableHead>Streams</TableHead>
                   <TableHead>Subjects</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead className="w-[150px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name}</TableCell>
-                    <TableCell><Badge variant="secondary" className="capitalize">{user.role}</Badge></TableCell>
-                    <TableCell>{(user.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
-                    <TableCell>{(user.assigned_streams || []).join(', ') || '-'}</TableCell>
+                {users.map(u => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.full_name}</TableCell>
+                    <TableCell><Badge variant="secondary" className="capitalize">{u.role}</Badge></TableCell>
+                    <TableCell>{(u.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
+                    <TableCell>{(u.assigned_streams || []).join(', ') || '-'}</TableCell>
                     <TableCell>
-                      {(user.assigned_learning_areas || []).length > 0
-                        ? (user.assigned_learning_areas || []).join(', ')
-                        : user.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
+                      {(u.assigned_learning_areas || []).length > 0
+                        ? (u.assigned_learning_areas || []).join(', ')
+                        : u.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(u)} title="Edit">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeletingUser(user)} className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(u); setNewPassword(''); }} title="Reset Password">
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeletingUser(u)} className="text-destructive hover:text-destructive" title="Delete">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -332,6 +356,7 @@ export default function UsersPage() {
           </CardContent>
         </Card>
 
+        {/* Delete User Dialog */}
         <AlertDialog open={!!deletingUser} onOpenChange={(v) => { if (!v) setDeletingUser(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -351,6 +376,31 @@ export default function UsersPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={!!resetPasswordUser} onOpenChange={(v) => { if (!v) { setResetPasswordUser(null); setNewPassword(''); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password for {resetPasswordUser?.full_name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); resetUserPassword.mutate(); }} className="space-y-4">
+              <div className="space-y-2">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  placeholder="Enter new password (min 6 chars)"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={resetUserPassword.isPending}>
+                {resetUserPassword.isPending ? 'Resetting...' : 'Reset Password'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
