@@ -96,7 +96,7 @@ export function generateTeacherComment(
 }
 
 export const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-export const STREAMS = ['A', 'B', 'C', 'D'];
+export const STREAMS: string[] = [];
 export const TERMS = [1, 2, 3];
 
 export function getNextGrade(currentGrade: string): string | null {
