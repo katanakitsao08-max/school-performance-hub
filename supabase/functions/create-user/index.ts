@@ -41,7 +41,7 @@ serve(async (req) => {
     if (role === 'admin') {
       await supabaseAdmin.from('profiles').update({
         assigned_grades: ['1','2','3','4','5','6','7','8','9'],
-        assigned_streams: ['A','B','C','D'],
+        assigned_streams: [],
       }).eq('user_id', authData.user.id);
     }
 
