@@ -17,6 +17,7 @@
 
     --primary: 142 64% 28%;
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 64% 42%;
 
     --secondary: 210 30% 95%;
     --secondary-foreground: 220 25% 10%;
@@ -59,6 +60,10 @@
 
     --font-display: 'Plus Jakarta Sans', sans-serif;
     --font-body: 'DM Sans', sans-serif;
+
+    --gradient-primary: linear-gradient(135deg, hsl(142 64% 28%), hsl(142 64% 42%));
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+    --shadow-card-hover: 0 4px 12px -2px hsl(0 0% 0% / 0.08), 0 2px 4px -2px hsl(0 0% 0% / 0.04);
   }
 
   .dark {
@@ -70,6 +75,7 @@
     --popover-foreground: 210 20% 96%;
     --primary: 142 64% 40%;
     --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 64% 52%;
     --secondary: 220 20% 16%;
     --secondary-foreground: 210 20% 96%;
     --muted: 220 15% 18%;
@@ -110,6 +116,15 @@
   }
   .font-body {
     font-family: var(--font-body);
+  }
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
   }
 }
 
