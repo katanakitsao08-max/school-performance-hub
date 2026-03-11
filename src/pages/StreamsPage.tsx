@@ -36,7 +36,7 @@ export default function StreamsPage() {
         const { error } = await supabase.from('streams').update({ name }).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('streams').insert({ name });
+        const { error } = await supabase.from('streams').insert({ name, school_id: schoolId });
         if (error) throw error;
       }
     },

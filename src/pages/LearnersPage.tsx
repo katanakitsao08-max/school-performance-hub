@@ -68,7 +68,7 @@ export default function LearnersPage() {
         const { error } = await supabase.from('learners').update(form).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('learners').insert(form);
+        const { error } = await supabase.from('learners').insert({ ...form, school_id: schoolId });
         if (error) throw error;
       }
     },

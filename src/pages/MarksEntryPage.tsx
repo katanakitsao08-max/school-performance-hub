@@ -116,6 +116,7 @@ export default function MarksEntryPage() {
               term: selectedTerm,
               year: selectedYear,
               score: Number(score),
+              school_id: schoolId,
             });
           }
         });

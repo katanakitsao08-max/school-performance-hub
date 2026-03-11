@@ -51,7 +51,7 @@ export default function SettingsPage() {
         if (existing) {
           await supabase.from('school_settings').update({ value }).eq('id', existing.id);
         } else if (value) {
-          await supabase.from('school_settings').insert({ key, value });
+          await supabase.from('school_settings').insert({ key, value, school_id: schoolId });
         }
       }
     },

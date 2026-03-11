@@ -116,6 +116,7 @@ export default function AttendancePage() {
         status: data.status,
         remarks: data.remarks || null,
         marked_by: user?.id,
+        school_id: schoolId,
       }));
       if (upserts.length === 0) return;
       const { error } = await supabase.from('attendance').upsert(upserts as any, {

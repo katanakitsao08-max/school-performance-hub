@@ -44,6 +44,7 @@ export default function PromotionPage() {
           from_grade: selectedGrade,
           to_grade: toGrade,
           year: selectedYear,
+          school_id: schoolId,
         });
 
         if (selectedGrade === '9') {

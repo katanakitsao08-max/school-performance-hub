@@ -38,7 +38,7 @@ export default function LearningAreasPage() {
         const { error } = await supabase.from('learning_areas').update(form).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('learning_areas').insert(form);
+        const { error } = await supabase.from('learning_areas').insert({ ...form, school_id: schoolId });
         if (error) throw error;
       }
     },
