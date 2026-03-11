@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Save, School, Phone, MapPin, Mail } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
