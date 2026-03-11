@@ -22,6 +22,7 @@ const SETTING_KEYS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [form, setForm] = useState<Record<string, string>>({});
 
   const { data: settings = [], isLoading } = useQuery({
