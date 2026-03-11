@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function PromotionPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [selectedGrade, setSelectedGrade] = useState('1');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
