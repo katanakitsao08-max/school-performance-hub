@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Save } from 'lucide-react';
-import { GRADES, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { Save, TrendingUp, TrendingDown, Award, AlertTriangle } from 'lucide-react';
+import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MarksEntryPage() {
@@ -43,7 +43,6 @@ export default function MarksEntryPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
 
-  // Set initial stream when streams load
   useEffect(() => {
     if (availableStreams.length > 0 && !selectedStream) {
       setSelectedStream(availableStreams[0]);
@@ -71,7 +70,6 @@ export default function MarksEntryPage() {
     },
   });
 
-  // Subject teachers only see their assigned subjects; class teachers see all
   const subjects = isSubjectTeacher
     ? allSubjects.filter(s => assignedLearningAreas.includes(s.name))
     : allSubjects;
@@ -90,7 +88,6 @@ export default function MarksEntryPage() {
     enabled: learners.length > 0,
   });
 
-  // Initialize scores from existing data
   useEffect(() => {
     const scoreMap: Record<string, Record<string, string>> = {};
     existingScores.forEach(s => {
@@ -148,7 +145,6 @@ export default function MarksEntryPage() {
 
   const getTotalMaxScore = () => subjects.reduce((sum, s) => sum + s.max_score, 0);
 
-  // Rankings
   const rankings = useMemo(() => {
     const totals = learners.map(l => ({ id: l.id, total: getTotal(l.id) }));
     totals.sort((a, b) => b.total - a.total);
@@ -162,19 +158,54 @@ export default function MarksEntryPage() {
 
   const getRank = (id: string) => rankings.find(r => r.id === id)?.rank || '-';
 
+  // Class summary stats
+  const classSummary = useMemo(() => {
+    if (learners.length === 0 || subjects.length === 0) return null;
+    const maxPerSubject = getTotalMaxScore() / subjects.length;
+    const grades = learners.map(l => {
+      const mean = getMean(l.id);
+      return getGrade(mean, maxPerSubject);
+    });
+    return {
+      ee: grades.filter(g => g === 'EE').length,
+      me: grades.filter(g => g === 'ME').length,
+      ae: grades.filter(g => g === 'AE').length,
+      be: grades.filter(g => g === 'BE').length,
+      classMean: learners.length > 0
+        ? (learners.reduce((sum, l) => sum + getMean(l.id), 0) / learners.length).toFixed(1)
+        : '0',
+    };
+  }, [learners, scores, subjects]);
+
+  const getGradeBadge = (grade: CBCGrade | '-') => {
+    if (grade === '-') return null;
+    const colorMap: Record<CBCGrade, string> = {
+      EE: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400',
+      ME: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400',
+      AE: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400',
+      BE: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400',
+    };
+    return (
+      <Badge className={`${colorMap[grade]} border font-semibold`} variant="outline">
+        {grade}
+      </Badge>
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-display font-bold">Marks Entry</h1>
-            <p className="text-muted-foreground">KNEC-style score entry</p>
+            <p className="text-muted-foreground text-sm">CBC Assessment — KNEC-style score entry with automatic grading</p>
           </div>
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
             <Save className="mr-2 h-4 w-4" /> Save Scores
           </Button>
         </div>
 
+        {/* Filters */}
         <div className="flex gap-4 flex-wrap">
           <div className="space-y-1">
             <Label className="text-xs">Grade</Label>
@@ -203,22 +234,80 @@ export default function MarksEntryPage() {
           </div>
         </div>
 
+        {/* CBC Grade Summary */}
+        {classSummary && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Card className="border-emerald-200 dark:border-emerald-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Award className="h-7 w-7 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <p className="text-xl font-bold">{classSummary.ee}</p>
+                  <p className="text-[11px] text-muted-foreground">Exceeding (EE)</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <TrendingUp className="h-7 w-7 text-blue-600 flex-shrink-0" />
+                <div>
+                  <p className="text-xl font-bold">{classSummary.me}</p>
+                  <p className="text-[11px] text-muted-foreground">Meeting (ME)</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200 dark:border-amber-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <TrendingDown className="h-7 w-7 text-amber-600 flex-shrink-0" />
+                <div>
+                  <p className="text-xl font-bold">{classSummary.ae}</p>
+                  <p className="text-[11px] text-muted-foreground">Approaching (AE)</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-red-200 dark:border-red-800">
+              <CardContent className="p-4 flex items-center gap-3">
+                <AlertTriangle className="h-7 w-7 text-red-600 flex-shrink-0" />
+                <div>
+                  <p className="text-xl font-bold">{classSummary.be}</p>
+                  <p className="text-[11px] text-muted-foreground">Below (BE)</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-xl font-bold text-primary">{classSummary.classMean}</p>
+                <p className="text-[11px] text-muted-foreground">Class Mean</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* CBC Grade Legend */}
+        <div className="flex gap-3 flex-wrap text-xs">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500" /> EE: 75–100% (Exceeding)</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500" /> ME: 50–74% (Meeting)</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-500" /> AE: 25–49% (Approaching)</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500" /> BE: 0–24% (Below)</span>
+        </div>
+
+        {/* Marks Table */}
         <Card>
           <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="sticky left-0 bg-card z-10 min-w-[50px]">#</TableHead>
-                  <TableHead className="sticky left-[50px] bg-card z-10 min-w-[180px]">Name</TableHead>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="sticky left-0 bg-muted/50 z-10 min-w-[50px]">#</TableHead>
+                  <TableHead className="sticky left-[50px] bg-muted/50 z-10 min-w-[180px]">Learner Name</TableHead>
                   {subjects.map(s => (
                     <TableHead key={s.id} className="text-center min-w-[80px]">
-                      {s.name}<br /><span className="text-xs text-muted-foreground">/{s.max_score}</span>
+                      <div className="font-semibold">{s.name}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">out of {s.max_score}</div>
                     </TableHead>
                   ))}
-                  <TableHead className="text-center">Total</TableHead>
-                  <TableHead className="text-center">Mean</TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Rank</TableHead>
+                  <TableHead className="text-center bg-muted font-bold">Total</TableHead>
+                  <TableHead className="text-center bg-muted font-bold">Mean</TableHead>
+                  <TableHead className="text-center bg-muted font-bold">Grade</TableHead>
+                  <TableHead className="text-center bg-muted font-bold">Rank</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,33 +316,52 @@ export default function MarksEntryPage() {
                   const mean = getMean(learner.id);
                   const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
                   const grade = subjects.length > 0 ? getGrade(mean, maxPerSubject) : '-';
+                  const rank = getRank(learner.id);
                   return (
-                    <TableRow key={learner.id}>
-                      <TableCell className="sticky left-0 bg-card">{idx + 1}</TableCell>
-                      <TableCell className="sticky left-[50px] bg-card font-medium">{learner.full_name}</TableCell>
-                      {subjects.map(sub => (
-                        <TableCell key={sub.id} className="p-1">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={sub.max_score}
-                            value={scores[learner.id]?.[sub.id] || ''}
-                            onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
-                            className="w-[70px] text-center mx-auto"
-                          />
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-center font-bold">{total}</TableCell>
-                      <TableCell className="text-center">{mean.toFixed(1)}</TableCell>
+                    <TableRow key={learner.id} className="hover:bg-muted/30">
+                      <TableCell className="sticky left-0 bg-card z-10 font-medium text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className="sticky left-[50px] bg-card z-10 font-semibold">{learner.full_name}</TableCell>
+                      {subjects.map(sub => {
+                        const val = scores[learner.id]?.[sub.id] || '';
+                        const numVal = Number(val);
+                        const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
+                        let inputBorder = '';
+                        if (pct !== null) {
+                          if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
+                          else if (pct >= 50) inputBorder = 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20';
+                          else if (pct >= 25) inputBorder = 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/20';
+                          else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
+                        }
+                        return (
+                          <TableCell key={sub.id} className="p-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={sub.max_score}
+                              value={val}
+                              onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
+                              className={`w-[70px] text-center mx-auto h-9 ${inputBorder}`}
+                            />
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-center font-bold text-base">{total}</TableCell>
+                      <TableCell className="text-center font-medium">{mean.toFixed(1)}</TableCell>
+                      <TableCell className="text-center">{getGradeBadge(grade as CBCGrade | '-')}</TableCell>
                       <TableCell className="text-center">
-                        {grade !== '-' && <Badge className={`${getGradeColor(grade as any)}`} variant="outline">{grade}</Badge>}
+                        <span className={`font-bold text-base ${rank === 1 ? 'text-amber-600' : rank === 2 ? 'text-slate-500' : rank === 3 ? 'text-orange-600' : ''}`}>
+                          {rank}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-center font-bold">{getRank(learner.id)}</TableCell>
                     </TableRow>
                   );
                 })}
                 {learners.length === 0 && (
-                  <TableRow><TableCell colSpan={subjects.length + 6} className="text-center py-8 text-muted-foreground">No learners in this class</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
+                      No learners in this class. Select a different grade or stream.
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
