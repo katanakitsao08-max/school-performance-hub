@@ -12,12 +12,31 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, full_name, role } = await req.json();
+    const { email, password, full_name, role, school_id } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // If no school_id passed, try to get it from the caller's profile
+    let resolvedSchoolId = school_id || null;
+    if (!resolvedSchoolId && role !== 'super_admin') {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        const { data: { user: caller } } = await supabaseAdmin.auth.getUser(
+          authHeader.replace('Bearer ', '')
+        );
+        if (caller) {
+          const { data: callerProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('school_id')
+            .eq('user_id', caller.id)
+            .single();
+          resolvedSchoolId = callerProfile?.school_id || null;
+        }
+      }
+    }
 
     // Create user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -37,13 +56,14 @@ serve(async (req) => {
 
     if (roleError) throw roleError;
 
-    // Update profile with all grades for admin
+    // Update profile with school_id and grades for admin
+    const profileUpdate: any = { school_id: resolvedSchoolId };
     if (role === 'admin') {
-      await supabaseAdmin.from('profiles').update({
-        assigned_grades: ['1','2','3','4','5','6','7','8','9'],
-        assigned_streams: [],
-      }).eq('user_id', authData.user.id);
+      profileUpdate.assigned_grades = ['1','2','3','4','5','6','7','8','9'];
+      profileUpdate.assigned_streams = [];
     }
+
+    await supabaseAdmin.from('profiles').update(profileUpdate).eq('user_id', authData.user.id);
 
     return new Response(JSON.stringify({ success: true, user_id: authData.user.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
