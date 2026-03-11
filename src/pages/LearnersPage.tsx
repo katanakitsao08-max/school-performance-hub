@@ -18,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function LearnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { role, profile } = useAuth();
+  const { role, profile, schoolId } = useAuth();
   const assignedGrades = profile?.assigned_grades || [];
   const assignedStreams = profile?.assigned_streams || [];
   const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
