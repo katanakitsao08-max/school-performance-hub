@@ -10,11 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowUpCircle, AlertTriangle } from 'lucide-react';
 import { GRADES, getNextGrade } from '@/lib/cbc-utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function PromotionPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [selectedGrade, setSelectedGrade] = useState('1');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -42,6 +44,7 @@ export default function PromotionPage() {
           from_grade: selectedGrade,
           to_grade: toGrade,
           year: selectedYear,
+          school_id: schoolId,
         });
 
         if (selectedGrade === '9') {

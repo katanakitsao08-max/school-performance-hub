@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { GRADES } from '@/lib/cbc-utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -17,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function LearningAreasPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: '', grade: '1', max_score: 100 });
@@ -36,7 +38,7 @@ export default function LearningAreasPage() {
         const { error } = await supabase.from('learning_areas').update(form).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('learning_areas').insert(form);
+        const { error } = await supabase.from('learning_areas').insert({ ...form, school_id: schoolId });
         if (error) throw error;
       }
     },

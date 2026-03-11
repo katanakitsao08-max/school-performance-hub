@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+
+const superAdminItems = [
+  { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
+  { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+];
 
 const adminItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -47,7 +52,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { role, profile, signOut } = useAuth();
 
-  const items = role === 'admin' ? adminItems 
+  const items = role === 'super_admin' ? superAdminItems
+    : role === 'admin' ? adminItems 
     : role === 'teacher' ? teacherItems 
     : headteacherItems;
 
@@ -61,7 +67,6 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {/* Brand Header */}
         <div className={`px-4 py-5 ${collapsed ? 'px-2 py-3' : ''}`}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
@@ -69,8 +74,12 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <h2 className="font-display text-sm font-bold text-sidebar-foreground truncate">CBC Smart School</h2>
-                <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider">Performance Manager</p>
+                <h2 className="font-display text-sm font-bold text-sidebar-foreground truncate">
+                  {role === 'super_admin' ? 'CBC Platform' : 'CBC Smart School'}
+                </h2>
+                <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider">
+                  {role === 'super_admin' ? 'Super Admin' : 'Performance Manager'}
+                </p>
               </div>
             )}
           </div>
@@ -78,7 +87,6 @@ export function AppSidebar() {
 
         <Separator className="bg-sidebar-border mx-3 w-auto" />
 
-        {/* Navigation */}
         <SidebarGroup className="mt-2">
           <SidebarGroupContent>
             <SidebarMenu>
@@ -87,7 +95,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === '/dashboard'}
+                      end={item.url === '/dashboard' || item.url === '/super-admin'}
                       className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground/70 transition-all hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                     >
@@ -117,7 +125,7 @@ export function AppSidebar() {
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-              <p className="text-[11px] text-sidebar-foreground/50 capitalize">{role}</p>
+              <p className="text-[11px] text-sidebar-foreground/50 capitalize">{role?.replace('_', ' ')}</p>
             </div>
           </div>
         )}

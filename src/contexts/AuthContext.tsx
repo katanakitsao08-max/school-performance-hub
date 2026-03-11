@@ -2,12 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'teacher' | 'headteacher';
+type AppRole = 'admin' | 'teacher' | 'headteacher' | 'super_admin';
 
 interface Profile {
   id: string;
   user_id: string;
   full_name: string;
+  school_id: string | null;
   assigned_grades: string[] | null;
   assigned_streams: string[] | null;
   assigned_learning_areas: string[] | null;
@@ -18,6 +19,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  schoolId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,21 +34,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const schoolId = profile?.school_id || null;
+
   const fetchUserData = async (userId: string) => {
     try {
       const [profileRes, roleRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
-      if (profileRes.data) setProfile(profileRes.data);
-      if (roleRes.data) setRole(roleRes.data.role);
+      if (profileRes.data) setProfile(profileRes.data as Profile);
+      if (roleRes.data) setRole(roleRes.data.role as AppRole);
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
   };
 
   useEffect(() => {
-    // Set up auth listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
@@ -62,7 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -87,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, role, schoolId, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

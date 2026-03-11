@@ -42,7 +42,8 @@ export default function Login() {
     setLoading(true);
     try {
       await signIn(resolveEmail(username), password);
-      navigate('/dashboard');
+      // Role-based redirect will be handled by SmartRedirect at "/"
+      navigate('/');
     } catch (error: any) {
       toast({
         title: 'Login Failed',

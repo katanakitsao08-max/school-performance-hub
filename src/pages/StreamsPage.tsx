@@ -9,12 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function StreamsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [name, setName] = useState('');
@@ -34,7 +36,7 @@ export default function StreamsPage() {
         const { error } = await supabase.from('streams').update({ name }).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('streams').insert({ name });
+        const { error } = await supabase.from('streams').insert({ name, school_id: schoolId });
         if (error) throw error;
       }
     },

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { Save, School, Phone, MapPin, Mail } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -21,6 +22,7 @@ const SETTING_KEYS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [form, setForm] = useState<Record<string, string>>({});
 
   const { data: settings = [], isLoading } = useQuery({
@@ -49,7 +51,7 @@ export default function SettingsPage() {
         if (existing) {
           await supabase.from('school_settings').update({ value }).eq('id', existing.id);
         } else if (value) {
-          await supabase.from('school_settings').insert({ key, value });
+          await supabase.from('school_settings').insert({ key, value, school_id: schoolId });
         }
       }
     },
