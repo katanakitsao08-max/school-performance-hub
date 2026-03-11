@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function LearningAreasPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: '', grade: '1', max_score: 100 });
