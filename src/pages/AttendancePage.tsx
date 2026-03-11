@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: React.Eleme
 export default function AttendancePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { role, profile, user } = useAuth();
+  const { role, profile, user, schoolId } = useAuth();
 
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
   const assignedStreams = profile?.assigned_streams || [];
