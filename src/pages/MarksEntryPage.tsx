@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function MarksEntryPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { role, profile } = useAuth();
+  const { role, profile, schoolId } = useAuth();
   const currentYear = new Date().getFullYear();
 
   const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
