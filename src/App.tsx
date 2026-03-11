@@ -18,6 +18,7 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import SmsPage from "./pages/SmsPage";
 import PromotionPage from "./pages/PromotionPage";
 import SettingsPage from "./pages/SettingsPage";
+import AttendancePage from "./pages/AttendancePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
