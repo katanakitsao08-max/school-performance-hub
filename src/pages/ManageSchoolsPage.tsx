@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield } from 'lucide-react';
 
 export default function ManageSchoolsPage() {
   const { toast } = useToast();
@@ -29,9 +29,13 @@ export default function ManageSchoolsPage() {
     subscription_status: 'trial' as string,
   });
 
-  // Admin form for assigning school admin
   const [adminForm, setAdminForm] = useState({ username: '', password: '', full_name: '' });
   const [showAdminForm, setShowAdminForm] = useState(false);
+
+  // Dialog for assigning admin to existing school
+  const [adminDialog, setAdminDialog] = useState(false);
+  const [adminTarget, setAdminTarget] = useState<any>(null);
+  const [assignAdminForm, setAssignAdminForm] = useState({ username: '', password: '', full_name: '' });
 
   const { data: schools = [] } = useQuery({
     queryKey: ['all-schools'],
@@ -43,28 +47,42 @@ export default function ManageSchoolsPage() {
     enabled: !!user,
   });
 
-  // Get teacher/learner counts per school
   const { data: schoolStats = {} } = useQuery({
     queryKey: ['school-stats'],
     queryFn: async () => {
       const stats: Record<string, { teachers: number; learners: number }> = {};
-      
       const { data: profiles } = await supabase.from('profiles').select('school_id');
       const { data: learners } = await supabase.from('learners').select('school_id').eq('is_active', true);
-      
       (profiles || []).forEach(p => {
         if (!p.school_id) return;
         if (!stats[p.school_id]) stats[p.school_id] = { teachers: 0, learners: 0 };
         stats[p.school_id].teachers++;
       });
-      
       (learners || []).forEach(l => {
         if (!l.school_id) return;
         if (!stats[l.school_id]) stats[l.school_id] = { teachers: 0, learners: 0 };
         stats[l.school_id].learners++;
       });
-      
       return stats;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch school admins
+  const { data: schoolAdmins = {} } = useQuery({
+    queryKey: ['school-admins'],
+    queryFn: async () => {
+      const adminMap: Record<string, { full_name: string; user_id: string }[]> = {};
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
+      if (!roles || roles.length === 0) return adminMap;
+      const adminUserIds = roles.map(r => r.user_id);
+      const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, school_id').in('user_id', adminUserIds);
+      (profiles || []).forEach(p => {
+        if (!p.school_id) return;
+        if (!adminMap[p.school_id]) adminMap[p.school_id] = [];
+        adminMap[p.school_id].push({ full_name: p.full_name, user_id: p.user_id });
+      });
+      return adminMap;
     },
     enabled: !!user,
   });
@@ -77,18 +95,14 @@ export default function ManageSchoolsPage() {
 
   const createSchool = useMutation({
     mutationFn: async () => {
-      // If admin form is filled, validate the user can be created first
       let adminEmail = '';
       if (showAdminForm && adminForm.username && adminForm.password && adminForm.full_name) {
         adminEmail = adminForm.username.includes('@')
           ? adminForm.username
           : `${adminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
       }
-
-      // Generate school code
       const { data: codeData, error: codeError } = await supabase.rpc('generate_school_code');
       if (codeError) throw codeError;
-      
       const schoolData = {
         school_name: form.school_name,
         school_code: codeData as string,
@@ -97,29 +111,24 @@ export default function ManageSchoolsPage() {
         contact_phone: form.contact_phone,
         subscription_status: form.subscription_status,
       };
-
       const { data: school, error } = await supabase.from('schools').insert(schoolData).select().single();
       if (error) throw error;
-
-      // If admin form is filled, create school admin
       if (adminEmail) {
         const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
           body: { email: adminEmail, password: adminForm.password, full_name: adminForm.full_name, role: 'admin', school_id: school.id },
         });
-        
         if (userError || !userData?.success) {
           const errMsg = userData?.error || userError?.message || 'Failed to create admin';
-          // Delete the school since admin creation failed
           await supabase.from('schools').delete().eq('id', school.id);
           throw new Error(`School admin error: ${errMsg}`);
         }
       }
-
       return school;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       toast({ title: 'School created successfully' });
       setOpen(false);
       resetForm();
@@ -149,6 +158,31 @@ export default function ManageSchoolsPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const assignAdmin = useMutation({
+    mutationFn: async () => {
+      if (!adminTarget) return;
+      const email = assignAdminForm.username.includes('@')
+        ? assignAdminForm.username
+        : `${assignAdminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+
+      const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
+        body: { email, password: assignAdminForm.password, full_name: assignAdminForm.full_name, role: 'admin', school_id: adminTarget.id },
+      });
+      if (userError || !userData?.success) {
+        throw new Error(userData?.error || userError?.message || 'Failed to create admin');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school-admins'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      toast({ title: 'School admin assigned successfully' });
+      setAdminDialog(false);
+      setAdminTarget(null);
+      setAssignAdminForm({ username: '', password: '', full_name: '' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const resetForm = () => {
     setForm({ school_name: '', county: '', contact_email: '', contact_phone: '', subscription_status: 'trial' });
     setAdminForm({ username: '', password: '', full_name: '' });
@@ -165,6 +199,12 @@ export default function ManageSchoolsPage() {
       subscription_status: school.subscription_status,
     });
     setOpen(true);
+  };
+
+  const handleAssignAdmin = (school: any) => {
+    setAdminTarget(school);
+    setAssignAdminForm({ username: '', password: '', full_name: '' });
+    setAdminDialog(true);
   };
 
   const statusColor = (status: string) => {
@@ -255,6 +295,46 @@ export default function ManageSchoolsPage() {
           </Dialog>
         </div>
 
+        {/* Assign Admin Dialog */}
+        <Dialog open={adminDialog} onOpenChange={(v) => { setAdminDialog(v); if (!v) setAdminTarget(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Admin to {adminTarget?.school_name}</DialogTitle>
+            </DialogHeader>
+            {/* Show existing admins */}
+            {adminTarget && (schoolAdmins[adminTarget.id] || []).length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Current Admin(s)</Label>
+                <div className="space-y-1">
+                  {(schoolAdmins[adminTarget.id] || []).map((a: any) => (
+                    <div key={a.user_id} className="flex items-center gap-2 p-2 bg-muted/50 rounded text-sm">
+                      <Shield className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-medium">{a.full_name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <form onSubmit={(e) => { e.preventDefault(); assignAdmin.mutate(); }} className="space-y-4">
+              <div className="space-y-2">
+                <Label>New Admin Username/Email</Label>
+                <Input value={assignAdminForm.username} onChange={e => setAssignAdminForm(f => ({ ...f, username: e.target.value }))} required placeholder="e.g. admin2" />
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input type="password" value={assignAdminForm.password} onChange={e => setAssignAdminForm(f => ({ ...f, password: e.target.value }))} required minLength={6} />
+              </div>
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input value={assignAdminForm.full_name} onChange={e => setAssignAdminForm(f => ({ ...f, full_name: e.target.value }))} required />
+              </div>
+              <Button type="submit" className="w-full" disabled={assignAdmin.isPending}>
+                <UserPlus className="mr-2 h-4 w-4" /> Assign Admin
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search schools..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -268,15 +348,17 @@ export default function ManageSchoolsPage() {
                   <TableHead>School</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>County</TableHead>
+                  <TableHead>Admin(s)</TableHead>
                   <TableHead className="text-center">Staff</TableHead>
                   <TableHead className="text-center">Learners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(school => {
                   const stats = schoolStats[school.id] || { teachers: 0, learners: 0 };
+                  const admins = schoolAdmins[school.id] || [];
                   return (
                     <TableRow key={school.id}>
                       <TableCell>
@@ -290,6 +372,17 @@ export default function ManageSchoolsPage() {
                       </TableCell>
                       <TableCell><code className="text-xs bg-muted px-1.5 py-0.5 rounded">{school.school_code}</code></TableCell>
                       <TableCell>{school.county || '-'}</TableCell>
+                      <TableCell>
+                        {admins.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {admins.map((a: any) => (
+                              <p key={a.user_id} className="text-sm font-medium">{a.full_name}</p>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">No admin</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />
@@ -308,16 +401,21 @@ export default function ManageSchoolsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(school)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(school)} title="Edit school">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleAssignAdmin(school)} title="Assign admin">
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No schools found
                     </TableCell>
                   </TableRow>
