@@ -326,6 +326,7 @@ export default function MarksEntryPage() {
                         const val = scores[learner.id]?.[sub.id] || '';
                         const numVal = Number(val);
                         const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
+                        const subGrade = pct !== null ? getGrade(numVal, sub.max_score) : null;
                         let inputBorder = '';
                         if (pct !== null) {
                           if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
@@ -335,14 +336,24 @@ export default function MarksEntryPage() {
                         }
                         return (
                           <TableCell key={sub.id} className="p-1">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={sub.max_score}
-                              value={val}
-                              onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
-                              className={`w-[70px] text-center mx-auto h-9 ${inputBorder}`}
-                            />
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={sub.max_score}
+                                value={val}
+                                onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
+                                className={`w-[70px] text-center mx-auto h-9 ${inputBorder}`}
+                              />
+                              {subGrade && (
+                                <span className={`text-[10px] font-bold ${
+                                  subGrade === 'EE' ? 'text-emerald-600 dark:text-emerald-400' :
+                                  subGrade === 'ME' ? 'text-blue-600 dark:text-blue-400' :
+                                  subGrade === 'AE' ? 'text-amber-600 dark:text-amber-400' :
+                                  'text-red-600 dark:text-red-400'
+                                }`}>{subGrade}</span>
+                              )}
+                            </div>
                           </TableCell>
                         );
                       })}
