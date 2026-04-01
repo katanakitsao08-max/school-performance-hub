@@ -77,6 +77,14 @@ export default function ManageSchoolsPage() {
 
   const createSchool = useMutation({
     mutationFn: async () => {
+      // If admin form is filled, validate the user can be created first
+      let adminEmail = '';
+      if (showAdminForm && adminForm.username && adminForm.password && adminForm.full_name) {
+        adminEmail = adminForm.username.includes('@')
+          ? adminForm.username
+          : `${adminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+      }
+
       // Generate school code
       const { data: codeData, error: codeError } = await supabase.rpc('generate_school_code');
       if (codeError) throw codeError;
@@ -94,16 +102,17 @@ export default function ManageSchoolsPage() {
       if (error) throw error;
 
       // If admin form is filled, create school admin
-      if (showAdminForm && adminForm.username && adminForm.password && adminForm.full_name) {
-        const email = adminForm.username.includes('@')
-          ? adminForm.username
-          : `${adminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
-
+      if (adminEmail) {
         const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
-          body: { email, password: adminForm.password, full_name: adminForm.full_name, role: 'admin', school_id: school.id },
+          body: { email: adminEmail, password: adminForm.password, full_name: adminForm.full_name, role: 'admin', school_id: school.id },
         });
-        if (userError) throw userError;
-        if (!userData.success) throw new Error(userData.error);
+        
+        if (userError || !userData?.success) {
+          const errMsg = userData?.error || userError?.message || 'Failed to create admin';
+          // Delete the school since admin creation failed
+          await supabase.from('schools').delete().eq('id', school.id);
+          throw new Error(`School admin error: ${errMsg}`);
+        }
       }
 
       return school;
