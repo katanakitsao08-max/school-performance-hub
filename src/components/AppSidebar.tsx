@@ -21,6 +21,7 @@ const adminItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Users", url: "/users", icon: Users },
   { title: "Learning Areas", url: "/learning-areas", icon: BookOpen },
+  { title: "Grades", url: "/grades", icon: GraduationCap },
   { title: "Streams", url: "/streams", icon: Columns },
   { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
