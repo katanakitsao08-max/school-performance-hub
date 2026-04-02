@@ -11,7 +11,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Save, TrendingUp, TrendingDown, Award, AlertTriangle } from 'lucide-react';
-import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
+import { TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MarksEntryPage() {
@@ -19,8 +20,9 @@ export default function MarksEntryPage() {
   const queryClient = useQueryClient();
   const { role, profile, schoolId } = useAuth();
   const currentYear = new Date().getFullYear();
+  const dynamicGrades = useSchoolGrades();
 
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;

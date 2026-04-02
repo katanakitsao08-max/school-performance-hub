@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School } from 'lucide-react';
-import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,7 +20,8 @@ import * as XLSX from 'xlsx';
 
 export default function ReportsPage() {
   const { user, role, profile } = useAuth();
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const dynamicGrades = useSchoolGrades();
+  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStream, setSelectedStream] = useState('A');
   const [selectedTerm, setSelectedTerm] = useState(1);
