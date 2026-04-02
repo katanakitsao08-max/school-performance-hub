@@ -13,6 +13,7 @@ import ManageSchoolsPage from "./pages/ManageSchoolsPage";
 import UsersPage from "./pages/UsersPage";
 import LearningAreasPage from "./pages/LearningAreasPage";
 import StreamsPage from "./pages/StreamsPage";
+import GradesPage from "./pages/GradesPage";
 import LearnersPage from "./pages/LearnersPage";
 import MarksEntryPage from "./pages/MarksEntryPage";
 import ReportsPage from "./pages/ReportsPage";
