@@ -11,7 +11,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Save, TrendingUp, TrendingDown, Award, AlertTriangle } from 'lucide-react';
-import { GRADES, TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
+import { TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function MarksEntryPage() {
