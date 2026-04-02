@@ -22,7 +22,8 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
   const dynamicGrades = useSchoolGrades();
 
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
+  const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
+  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
