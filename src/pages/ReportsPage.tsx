@@ -20,7 +20,8 @@ import * as XLSX from 'xlsx';
 
 export default function ReportsPage() {
   const { user, role, profile } = useAuth();
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const dynamicGrades = useSchoolGrades();
+  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStream, setSelectedStream] = useState('A');
   const [selectedTerm, setSelectedTerm] = useState(1);
