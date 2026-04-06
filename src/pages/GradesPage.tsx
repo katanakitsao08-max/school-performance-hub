@@ -25,6 +25,7 @@ export default function GradesPage() {
         .from('school_settings')
         .select('*')
         .eq('key', 'available_grades')
+        .eq('school_id', schoolId!)
         .maybeSingle();
       if (data?.value) {
         try { return JSON.parse(data.value) as string[]; } catch { return []; }
