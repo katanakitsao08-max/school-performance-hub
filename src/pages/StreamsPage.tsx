@@ -22,12 +22,13 @@ export default function StreamsPage() {
   const [name, setName] = useState('');
 
   const { data: streams = [] } = useQuery({
-    queryKey: ['streams'],
+    queryKey: ['streams', schoolId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('streams').select('*').order('name');
+      const { data, error } = await supabase.from('streams').select('*').eq('school_id', schoolId!).order('name');
       if (error) throw error;
       return data || [];
     },
+    enabled: !!schoolId,
   });
 
   const saveMutation = useMutation({
