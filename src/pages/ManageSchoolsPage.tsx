@@ -8,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle } from 'lucide-react';
 
 export default function ManageSchoolsPage() {
   const { toast } = useToast();
@@ -36,6 +37,8 @@ export default function ManageSchoolsPage() {
   const [adminDialog, setAdminDialog] = useState(false);
   const [adminTarget, setAdminTarget] = useState<any>(null);
   const [assignAdminForm, setAssignAdminForm] = useState({ username: '', password: '', full_name: '' });
+  const [adminMode, setAdminMode] = useState<'new' | 'existing'>('new');
+  const [selectedExistingUser, setSelectedExistingUser] = useState('');
 
   const { data: schools = [] } = useQuery({
     queryKey: ['all-schools'],
@@ -83,6 +86,24 @@ export default function ManageSchoolsPage() {
         adminMap[p.school_id].push({ full_name: p.full_name, user_id: p.user_id });
       });
       return adminMap;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch all users (non-super_admin) for existing user assignment
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-users-for-assign'],
+    queryFn: async () => {
+      const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, school_id');
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+      const roleMap: Record<string, string> = {};
+      (roles || []).forEach(r => { roleMap[r.user_id] = r.role; });
+      return (profiles || []).map(p => ({
+        user_id: p.user_id,
+        full_name: p.full_name,
+        school_id: p.school_id,
+        role: roleMap[p.user_id] || 'unknown',
+      })).filter(u => u.role !== 'super_admin');
     },
     enabled: !!user,
   });
@@ -161,6 +182,30 @@ export default function ManageSchoolsPage() {
   const assignAdmin = useMutation({
     mutationFn: async () => {
       if (!adminTarget) return;
+
+      if (adminMode === 'existing' && selectedExistingUser) {
+        // Reassign existing user to this school as admin
+        const { error: profileErr } = await supabase.from('profiles')
+          .update({ school_id: adminTarget.id })
+          .eq('user_id', selectedExistingUser);
+        if (profileErr) throw profileErr;
+
+        // Upsert role to admin
+        const { data: existingRole } = await supabase.from('user_roles')
+          .select('id').eq('user_id', selectedExistingUser).maybeSingle();
+        if (existingRole) {
+          const { error: roleErr } = await supabase.from('user_roles')
+            .update({ role: 'admin' as any }).eq('user_id', selectedExistingUser);
+          if (roleErr) throw roleErr;
+        } else {
+          const { error: roleErr } = await supabase.from('user_roles')
+            .insert({ user_id: selectedExistingUser, role: 'admin' as any });
+          if (roleErr) throw roleErr;
+        }
+        return;
+      }
+
+      // Create new user
       const email = assignAdminForm.username.includes('@')
         ? assignAdminForm.username
         : `${assignAdminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
@@ -175,10 +220,41 @@ export default function ManageSchoolsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['all-users-for-assign'] });
       toast({ title: 'School admin assigned successfully' });
       setAdminDialog(false);
       setAdminTarget(null);
       setAssignAdminForm({ username: '', password: '', full_name: '' });
+      setSelectedExistingUser('');
+      setAdminMode('new');
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Regenerate school code
+  const regenerateCode = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { data: newCode, error: codeErr } = await supabase.rpc('generate_school_code');
+      if (codeErr) throw codeErr;
+      const { error } = await supabase.from('schools').update({ school_code: newCode as string }).eq('id', schoolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'School code regenerated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Revoke / activate license
+  const toggleLicense = useMutation({
+    mutationFn: async ({ schoolId, newStatus }: { schoolId: string; newStatus: string }) => {
+      const { error } = await supabase.from('schools').update({ subscription_status: newStatus }).eq('id', schoolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'Subscription updated' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -204,6 +280,8 @@ export default function ManageSchoolsPage() {
   const handleAssignAdmin = (school: any) => {
     setAdminTarget(school);
     setAssignAdminForm({ username: '', password: '', full_name: '' });
+    setSelectedExistingUser('');
+    setAdminMode('new');
     setAdminDialog(true);
   };
 
@@ -296,7 +374,7 @@ export default function ManageSchoolsPage() {
         </div>
 
         {/* Assign Admin Dialog */}
-        <Dialog open={adminDialog} onOpenChange={(v) => { setAdminDialog(v); if (!v) setAdminTarget(null); }}>
+        <Dialog open={adminDialog} onOpenChange={(v) => { setAdminDialog(v); if (!v) { setAdminTarget(null); setAdminMode('new'); } }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Assign Admin to {adminTarget?.school_name}</DialogTitle>
@@ -315,23 +393,59 @@ export default function ManageSchoolsPage() {
                 </div>
               </div>
             )}
-            <form onSubmit={(e) => { e.preventDefault(); assignAdmin.mutate(); }} className="space-y-4">
-              <div className="space-y-2">
-                <Label>New Admin Username/Email</Label>
-                <Input value={assignAdminForm.username} onChange={e => setAssignAdminForm(f => ({ ...f, username: e.target.value }))} required placeholder="e.g. admin2" />
-              </div>
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <Input type="password" value={assignAdminForm.password} onChange={e => setAssignAdminForm(f => ({ ...f, password: e.target.value }))} required minLength={6} />
-              </div>
-              <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input value={assignAdminForm.full_name} onChange={e => setAssignAdminForm(f => ({ ...f, full_name: e.target.value }))} required />
-              </div>
-              <Button type="submit" className="w-full" disabled={assignAdmin.isPending}>
-                <UserPlus className="mr-2 h-4 w-4" /> Assign Admin
-              </Button>
-            </form>
+
+            <Tabs value={adminMode} onValueChange={(v) => setAdminMode(v as 'new' | 'existing')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="new">Create New User</TabsTrigger>
+                <TabsTrigger value="existing">Select Existing User</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="new">
+                <form onSubmit={(e) => { e.preventDefault(); assignAdmin.mutate(); }} className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Username/Email</Label>
+                    <Input value={assignAdminForm.username} onChange={e => setAssignAdminForm(f => ({ ...f, username: e.target.value }))} required placeholder="e.g. admin2" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Password</Label>
+                    <Input type="password" value={assignAdminForm.password} onChange={e => setAssignAdminForm(f => ({ ...f, password: e.target.value }))} required minLength={6} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Full Name</Label>
+                    <Input value={assignAdminForm.full_name} onChange={e => setAssignAdminForm(f => ({ ...f, full_name: e.target.value }))} required />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={assignAdmin.isPending}>
+                    <UserPlus className="mr-2 h-4 w-4" /> Create & Assign Admin
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="existing">
+                <form onSubmit={(e) => { e.preventDefault(); assignAdmin.mutate(); }} className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Select User</Label>
+                    <Select value={selectedExistingUser} onValueChange={setSelectedExistingUser}>
+                      <SelectTrigger><SelectValue placeholder="Choose a user..." /></SelectTrigger>
+                      <SelectContent>
+                        {allUsers.map(u => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.full_name} <span className="text-muted-foreground text-xs">({u.role})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedExistingUser && (
+                      <p className="text-xs text-muted-foreground">
+                        This user will be reassigned to <strong>{adminTarget?.school_name}</strong> with admin role.
+                      </p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={assignAdmin.isPending || !selectedExistingUser}>
+                    <Shield className="mr-2 h-4 w-4" /> Assign as Admin
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
 
@@ -352,7 +466,7 @@ export default function ManageSchoolsPage() {
                   <TableHead className="text-center">Staff</TableHead>
                   <TableHead className="text-center">Learners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[160px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -401,13 +515,43 @@ export default function ManageSchoolsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(school)} title="Edit school">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleAssignAdmin(school)} title="Assign admin">
                             <UserPlus className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => regenerateCode.mutate(school.id)}
+                            disabled={regenerateCode.isPending}
+                            title="Regenerate school code"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                          {school.subscription_status === 'expired' ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleLicense.mutate({ schoolId: school.id, newStatus: 'active' })}
+                              disabled={toggleLicense.isPending}
+                              title="Activate license"
+                            >
+                              <CheckCircle className="h-4 w-4 text-success" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleLicense.mutate({ schoolId: school.id, newStatus: 'expired' })}
+                              disabled={toggleLicense.isPending}
+                              title="Revoke license"
+                            >
+                              <Ban className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
