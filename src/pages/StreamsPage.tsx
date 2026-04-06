@@ -24,7 +24,7 @@ export default function StreamsPage() {
   const { data: streams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('streams').select('*').order('name');
+      const { data, error } = await supabase.from('streams').select('*').eq('school_id', schoolId!).order('name');
       if (error) throw error;
       return data || [];
     },

@@ -13,6 +13,7 @@ export function useSchoolGrades() {
         .from('school_settings')
         .select('value')
         .eq('key', 'available_grades')
+        .eq('school_id', schoolId!)
         .maybeSingle();
       if (data?.value) {
         try {

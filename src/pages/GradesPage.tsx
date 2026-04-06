@@ -86,6 +86,21 @@ export default function GradesPage() {
     saveMutation.mutate(grades.filter(g => g !== grade));
   };
 
+  if (!schoolId) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="p-8 text-center max-w-md">
+            <CardContent>
+              <p className="text-destructive font-semibold">No school assigned to your account.</p>
+              <p className="text-muted-foreground mt-2">Please contact the Super Admin to assign you to a school before managing grades.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
