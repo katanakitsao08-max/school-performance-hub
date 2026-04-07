@@ -61,7 +61,7 @@ export default function UsersPage() {
   });
 
   const { data: allLearningAreas = [] } = useQuery({
-    queryKey: ['all-learning-areas'],
+    queryKey: ['all-learning-areas', schoolId],
     queryFn: async () => {
       const { data } = await supabase.from('learning_areas').select('name')
         .eq('is_active', true)
@@ -70,7 +70,7 @@ export default function UsersPage() {
       const unique = [...new Set((data || []).map((s: any) => s.name as string))];
       return unique;
     },
-  });
+    enabled: !!schoolId,
 
   const createUser = useMutation({
     mutationFn: async () => {
