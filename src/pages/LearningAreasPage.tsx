@@ -20,7 +20,7 @@ export default function LearningAreasPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { schoolId } = useAuth();
-  const { grades: schoolGrades } = useSchoolGrades();
+  const schoolGrades = useSchoolGrades();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [filterGrade, setFilterGrade] = useState<string>('all');
@@ -195,7 +195,7 @@ export default function LearningAreasPage() {
                         onClick={() => toggleActiveMutation.mutate({ id: area.id, is_active: !area.is_active })}
                       >
                         {area.is_active
-                          ? <ToggleRight className="h-4 w-4 text-green-600" />
+                          ? <ToggleRight className="h-4 w-4 text-primary" />
                           : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                         }
                       </Button>
