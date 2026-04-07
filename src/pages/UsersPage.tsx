@@ -71,6 +71,7 @@ export default function UsersPage() {
       return unique;
     },
     enabled: !!schoolId,
+  });
 
   const createUser = useMutation({
     mutationFn: async () => {
