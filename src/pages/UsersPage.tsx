@@ -13,9 +13,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Edit, KeyRound } from 'lucide-react';
-import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 
 export default function UsersPage() {
   const { toast } = useToast();
