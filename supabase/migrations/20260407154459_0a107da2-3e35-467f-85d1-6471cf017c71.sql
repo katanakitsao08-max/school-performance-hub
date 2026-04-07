@@ -1,0 +1,1 @@
+ALTER TABLE public.learning_areas ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
