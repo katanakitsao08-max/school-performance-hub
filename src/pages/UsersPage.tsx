@@ -63,7 +63,10 @@ export default function UsersPage() {
   const { data: allLearningAreas = [] } = useQuery({
     queryKey: ['all-learning-areas'],
     queryFn: async () => {
-      const { data } = await supabase.from('learning_areas').select('name').order('name');
+      const { data } = await supabase.from('learning_areas').select('name')
+        .eq('is_active', true)
+        .eq('school_id', schoolId!)
+        .order('name');
       const unique = [...new Set((data || []).map((s: any) => s.name as string))];
       return unique;
     },
