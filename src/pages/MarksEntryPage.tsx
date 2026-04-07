@@ -67,7 +67,7 @@ export default function MarksEntryPage() {
     queryKey: ['learning-areas', selectedGrade],
     queryFn: async () => {
       const { data, error } = await supabase.from('learning_areas').select('*')
-        .eq('grade', selectedGrade).order('name');
+        .eq('grade', selectedGrade).eq('is_active', true).order('name');
       if (error) throw error;
       return data || [];
     },
