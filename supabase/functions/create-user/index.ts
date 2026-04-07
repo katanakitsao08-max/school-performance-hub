@@ -38,7 +38,7 @@ serve(async (req) => {
       }
     }
 
-    // Create user
+    // Create user – if email already exists, look up the existing user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -46,7 +46,25 @@ serve(async (req) => {
       user_metadata: { full_name },
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      if (authError.message?.includes('already been registered')) {
+        // Find existing user by email
+        const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        if (listError) throw listError;
+        const existingUser = listData.users.find(u => u.email === email);
+        if (!existingUser) throw new Error('User exists but could not be found');
+
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `A user with email "${email}" already exists.`,
+          existing_user_id: existingUser.id 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw authError;
+    }
 
     // Assign role
     const { error: roleError } = await supabaseAdmin.from('user_roles').insert({
