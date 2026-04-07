@@ -20,7 +20,8 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, schoolId } = useAuth();
+  const schoolGrades = useSchoolGrades();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
