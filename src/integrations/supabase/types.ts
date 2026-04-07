@@ -123,6 +123,7 @@ export type Database = {
           created_at: string
           grade: string
           id: string
+          is_active: boolean
           max_score: number
           name: string
           school_id: string | null
@@ -131,6 +132,7 @@ export type Database = {
           created_at?: string
           grade: string
           id?: string
+          is_active?: boolean
           max_score?: number
           name: string
           school_id?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           created_at?: string
           grade?: string
           id?: string
+          is_active?: boolean
           max_score?: number
           name?: string
           school_id?: string | null
