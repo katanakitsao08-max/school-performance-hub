@@ -267,7 +267,7 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label>Assigned Grades</Label>
                   <div className="flex flex-wrap gap-2">
-                    {GRADES.map(g => (
+                    {schoolGrades.map(g => (
                       <label key={g} className="flex items-center gap-1.5 text-sm">
                         <Checkbox checked={form.assigned_grades.includes(g)} onCheckedChange={() => toggleGrade(g)} />
                         Grade {g}
