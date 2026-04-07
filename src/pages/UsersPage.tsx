@@ -13,14 +13,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Edit, KeyRound } from 'lucide-react';
-import { GRADES } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 
 export default function UsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, schoolId } = useAuth();
+  const schoolGrades = useSchoolGrades();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
@@ -51,11 +52,12 @@ export default function UsersPage() {
   });
 
   const { data: dbStreams = [] } = useQuery({
-    queryKey: ['streams'],
+    queryKey: ['streams', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('name').order('name');
+      const { data } = await supabase.from('streams').select('name').eq('school_id', schoolId!).order('name');
       return (data || []).map((s: any) => s.name as string);
     },
+    enabled: !!schoolId,
   });
 
   const { data: allLearningAreas = [] } = useQuery({
@@ -265,7 +267,7 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label>Assigned Grades</Label>
                   <div className="flex flex-wrap gap-2">
-                    {GRADES.map(g => (
+                    {schoolGrades.map(g => (
                       <label key={g} className="flex items-center gap-1.5 text-sm">
                         <Checkbox checked={form.assigned_grades.includes(g)} onCheckedChange={() => toggleGrade(g)} />
                         Grade {g}
