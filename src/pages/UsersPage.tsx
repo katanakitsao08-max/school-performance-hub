@@ -52,11 +52,12 @@ export default function UsersPage() {
   });
 
   const { data: dbStreams = [] } = useQuery({
-    queryKey: ['streams'],
+    queryKey: ['streams', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('name').order('name');
+      const { data } = await supabase.from('streams').select('name').eq('school_id', schoolId!).order('name');
       return (data || []).map((s: any) => s.name as string);
     },
+    enabled: !!schoolId,
   });
 
   const { data: allLearningAreas = [] } = useQuery({
