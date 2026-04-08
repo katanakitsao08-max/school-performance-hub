@@ -102,6 +102,21 @@ export default function LearningAreasPage() {
 
   const defaultGrade = schoolGrades.length > 0 ? schoolGrades[0] : '1';
 
+  if (!schoolId) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="p-8 text-center max-w-md">
+            <CardContent>
+              <p className="text-destructive font-semibold">No school assigned to your account.</p>
+              <p className="text-muted-foreground mt-2">Please contact the Super Admin to assign you to a school.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
