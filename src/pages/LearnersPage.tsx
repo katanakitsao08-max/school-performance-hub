@@ -150,17 +150,19 @@ export default function LearnersPage() {
             <h1 className="text-2xl font-display font-bold">Learners</h1>
             <p className="text-muted-foreground">Manage student records</p>
           </div>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> Add Learner</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Learner</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Admission No.</Label>
-                    <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} required />
+          <div className="flex gap-2">
+            <BulkUploadDialog availableGrades={availableGrades} availableStreams={availableStreams} />
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" /> Add Learner</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Learner</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); if (!editing && !form.admission_number) { setForm(f => ({ ...f, admission_number: generateAdmNumber() })); } saveMutation.mutate(); }} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Admission No. <span className="text-xs text-muted-foreground">(auto-generated if empty)</span></Label>
+                      <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder={generateAdmNumber() || 'Auto-generated'} />
                   </div>
                   <div className="space-y-2">
                     <Label>Full Name</Label>
