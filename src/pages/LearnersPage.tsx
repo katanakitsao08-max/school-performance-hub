@@ -35,6 +35,37 @@ export default function LearnersPage() {
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
 
+  const { data: school } = useQuery({
+    queryKey: ['school-info', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: allLearnerAdms = [] } = useQuery({
+    queryKey: ['learners-adm-count', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase.from('learners').select('admission_number').eq('school_id', schoolId);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const generateAdmNumber = () => {
+    if (!school?.school_name) return '';
+    const words = school.school_name.trim().split(/\s+/);
+    const prefix = words.length === 1 ? words[0].substring(0, 3).toUpperCase() : words.map(w => w[0]).join('').toUpperCase().substring(0, 4);
+    const existingNums = allLearnerAdms
+      .map(l => { const m = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+      .filter(n => n > 0);
+    const next = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+    return `${prefix}-${String(next).padStart(4, '0')}`;
+  };
+
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', filterGrade, filterStream],
     queryFn: async () => {
