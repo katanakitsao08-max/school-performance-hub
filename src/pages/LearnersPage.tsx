@@ -96,11 +96,15 @@ export default function LearnersPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const formData = { ...form };
+      if (!editing && !formData.admission_number) {
+        formData.admission_number = generateAdmNumber();
+      }
       if (editing) {
-        const { error } = await supabase.from('learners').update(form).eq('id', editing.id);
+        const { error } = await supabase.from('learners').update(formData).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('learners').insert({ ...form, school_id: schoolId });
+        const { error } = await supabase.from('learners').insert({ ...formData, school_id: schoolId });
         if (error) throw error;
       }
     },
