@@ -14,6 +14,7 @@ import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { GRADES } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import BulkUploadDialog from '@/components/BulkUploadDialog';
 
 export default function LearnersPage() {
   const { toast } = useToast();
@@ -33,6 +34,37 @@ export default function LearnersPage() {
     admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
   });
+
+  const { data: school } = useQuery({
+    queryKey: ['school-info', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: allLearnerAdms = [] } = useQuery({
+    queryKey: ['learners-adm-count', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase.from('learners').select('admission_number').eq('school_id', schoolId);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const generateAdmNumber = () => {
+    if (!school?.school_name) return '';
+    const words = school.school_name.trim().split(/\s+/);
+    const prefix = words.length === 1 ? words[0].substring(0, 3).toUpperCase() : words.map(w => w[0]).join('').toUpperCase().substring(0, 4);
+    const existingNums = allLearnerAdms
+      .map(l => { const m = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+      .filter(n => n > 0);
+    const next = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+    return `${prefix}-${String(next).padStart(4, '0')}`;
+  };
 
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', filterGrade, filterStream],
@@ -64,16 +96,21 @@ export default function LearnersPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const formData = { ...form };
+      if (!editing && !formData.admission_number) {
+        formData.admission_number = generateAdmNumber();
+      }
       if (editing) {
-        const { error } = await supabase.from('learners').update(form).eq('id', editing.id);
+        const { error } = await supabase.from('learners').update(formData).eq('id', editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('learners').insert({ ...form, school_id: schoolId });
+        const { error } = await supabase.from('learners').insert({ ...formData, school_id: schoolId });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
       toast({ title: editing ? 'Updated' : 'Created' });
       setOpen(false);
       setEditing(null);
@@ -118,17 +155,19 @@ export default function LearnersPage() {
             <h1 className="text-2xl font-display font-bold">Learners</h1>
             <p className="text-muted-foreground">Manage student records</p>
           </div>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> Add Learner</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Learner</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Admission No.</Label>
-                    <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} required />
+          <div className="flex gap-2">
+            <BulkUploadDialog availableGrades={availableGrades} availableStreams={availableStreams} />
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="mr-2 h-4 w-4" /> Add Learner</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Learner</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); if (!editing && !form.admission_number) { setForm(f => ({ ...f, admission_number: generateAdmNumber() })); } saveMutation.mutate(); }} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Admission No. <span className="text-xs text-muted-foreground">(auto-generated if empty)</span></Label>
+                      <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder={generateAdmNumber() || 'Auto-generated'} />
                   </div>
                   <div className="space-y-2">
                     <Label>Full Name</Label>
@@ -160,7 +199,8 @@ export default function LearnersPage() {
                 <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <div className="flex gap-4 flex-wrap">
