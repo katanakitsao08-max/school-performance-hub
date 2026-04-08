@@ -194,7 +194,8 @@ export default function LearnersPage() {
                 <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <div className="flex gap-4 flex-wrap">
