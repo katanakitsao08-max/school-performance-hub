@@ -65,6 +65,41 @@ export type Database = {
           },
         ]
       }
+      class_teachers: {
+        Row: {
+          created_at: string
+          grade: string
+          id: string
+          school_id: string
+          stream: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          grade: string
+          id?: string
+          school_id: string
+          stream: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          grade?: string
+          id?: string
+          school_id?: string
+          stream?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_teachers_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learners: {
         Row: {
           academic_year: number
@@ -399,6 +434,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "streams_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_assignments: {
+        Row: {
+          created_at: string
+          grade: string
+          id: string
+          learning_area_id: string
+          school_id: string
+          stream: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          grade: string
+          id?: string
+          learning_area_id: string
+          school_id: string
+          stream: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          grade?: string
+          id?: string
+          learning_area_id?: string
+          school_id?: string
+          stream?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_assignments_learning_area_id_fkey"
+            columns: ["learning_area_id"]
+            isOneToOne: false
+            referencedRelation: "learning_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_assignments_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"

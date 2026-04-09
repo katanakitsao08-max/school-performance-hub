@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function MarksEntryPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { role, profile, schoolId } = useAuth();
+  const { role, profile, schoolId, user } = useAuth();
   const currentYear = new Date().getFullYear();
   const dynamicGrades = useSchoolGrades();
 
@@ -27,6 +27,20 @@ export default function MarksEntryPage() {
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
+
+  // Fetch granular teacher_assignments for the current teacher
+  const { data: granularAssignments = [] } = useQuery({
+    queryKey: ['my-teacher-assignments', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id);
+      return data || [];
+    },
+    enabled: role === 'teacher' && !!user,
+  });
+  const hasGranularAssignments = granularAssignments.length > 0;
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
@@ -73,9 +87,22 @@ export default function MarksEntryPage() {
     },
   });
 
-  const subjects = isSubjectTeacher
-    ? allSubjects.filter(s => assignedLearningAreas.includes(s.name))
-    : allSubjects;
+  // Granular assignments take priority over legacy flat arrays
+  const subjects = useMemo(() => {
+    if (role === 'teacher' && hasGranularAssignments) {
+      const allowedIds = new Set(
+        granularAssignments
+          .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
+          .map(a => a.learning_area_id)
+      );
+      return allSubjects.filter(s => allowedIds.has(s.id));
+    }
+    // Legacy: flat assigned_learning_areas on profile
+    if (isSubjectTeacher) {
+      return allSubjects.filter(s => assignedLearningAreas.includes(s.name));
+    }
+    return allSubjects;
+  }, [allSubjects, role, hasGranularAssignments, granularAssignments, selectedGrade, selectedStream, isSubjectTeacher, assignedLearningAreas]);
 
   const { data: existingScores = [] } = useQuery({
     queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
