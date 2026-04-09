@@ -217,6 +217,68 @@ export default function ReportsPage() {
     ]);
 
     autoTable(doc, { head: [headers], body, startY: y + 4, styles: { fontSize: 7 } });
+
+    // --- Analysis Pages (appended, existing pages untouched) ---
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    if (analysis.subjectAnalyses.length > 0) {
+      doc.addPage('landscape');
+      let ay = 12;
+      ay = addPdfHeader(doc, ay);
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text('PERFORMANCE ANALYSIS', cx, ay, { align: 'center' });
+      ay += 8;
+
+      // Subject means table
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Subject Mean Scores', 14, ay); ay += 2;
+      autoTable(doc, {
+        head: [['Subject', 'Mean Score', 'Max Score', 'Grade']],
+        body: analysis.subjectAnalyses.map(s => [s.name, s.mean, s.maxScore, s.grade]),
+        startY: ay, styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+      ay = (doc as any).lastAutoTable.finalY + 8;
+
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+      doc.text(`Class Mean: ${analysis.classMean}`, 14, ay); ay += 6;
+      if (analysis.bestSubject) { doc.text(`Best Performing Subject: ${analysis.bestSubject.name} (${analysis.bestSubject.mean})`, 14, ay); ay += 6; }
+      if (analysis.leastSubject) { doc.text(`Least Performing Subject: ${analysis.leastSubject.name} (${analysis.leastSubject.mean})`, 14, ay); ay += 6; }
+      ay += 4;
+
+      // Top 5 overall
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Top 5 Learners (Overall)', 14, ay); ay += 2;
+      autoTable(doc, {
+        head: [['Rank', 'Name', 'Total', 'Mean', 'Grade']],
+        body: analysis.top5Overall.map(l => [l.rank, l.name, l.total, l.mean, l.grade]),
+        startY: ay, styles: { fontSize: 8 },
+        headStyles: { fillColor: [39, 174, 96] },
+      });
+
+      // Top 5 per subject page
+      doc.addPage('landscape');
+      let ty = 12;
+      ty = addPdfHeader(doc, ty);
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text('TOP 5 LEARNERS PER SUBJECT', cx, ty, { align: 'center' });
+      ty += 8;
+
+      analysis.subjectAnalyses.forEach(sub => {
+        if (ty > doc.internal.pageSize.getHeight() - 40) {
+          doc.addPage('landscape');
+          ty = 15;
+        }
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text(sub.name, 14, ty); ty += 2;
+        autoTable(doc, {
+          head: [['#', 'Name', 'Score', 'Grade']],
+          body: sub.top5.map((l, i) => [i + 1, l.name, l.score, l.grade]),
+          startY: ty, styles: { fontSize: 8 }, margin: { left: 14 },
+        });
+        ty = (doc as any).lastAutoTable.finalY + 6;
+      });
+    }
+
     doc.save(`Report_${isSchoolWide ? 'School' : `G${selectedGrades.join('-')}`}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
