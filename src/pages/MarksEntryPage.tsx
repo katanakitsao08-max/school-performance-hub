@@ -28,6 +28,20 @@ export default function MarksEntryPage() {
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
 
+  // Fetch granular teacher_assignments for the current teacher
+  const { data: granularAssignments = [] } = useQuery({
+    queryKey: ['my-teacher-assignments', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id);
+      return data || [];
+    },
+    enabled: role === 'teacher' && !!user,
+  });
+  const hasGranularAssignments = granularAssignments.length > 0;
+
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
