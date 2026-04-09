@@ -371,6 +371,40 @@ export default function ReportsPage() {
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
+
+    // --- Analysis Sheet (new, does not touch 'Report' sheet) ---
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    if (analysis.subjectAnalyses.length > 0) {
+      const aRows: any[][] = [
+        ['PERFORMANCE ANALYSIS'],
+        [],
+        ['Subject Mean Scores'],
+        ['Subject', 'Mean Score', 'Max Score', 'Grade'],
+        ...analysis.subjectAnalyses.map(s => [s.name, s.mean, s.maxScore, s.grade]),
+        [],
+        ['Class Mean', analysis.classMean],
+        ['Best Subject', analysis.bestSubject?.name || '-', analysis.bestSubject?.mean || '-'],
+        ['Least Subject', analysis.leastSubject?.name || '-', analysis.leastSubject?.mean || '-'],
+        [],
+        ['Top 5 Learners (Overall)'],
+        ['Rank', 'Name', 'Total', 'Mean', 'Grade'],
+        ...analysis.top5Overall.map(l => [l.rank, l.name, l.total, l.mean, l.grade]),
+      ];
+      const aws = XLSX.utils.aoa_to_sheet(aRows);
+      XLSX.utils.book_append_sheet(wb, aws, 'Analysis');
+
+      // Top Learners per subject sheet
+      const tRows: any[][] = [['TOP 5 LEARNERS PER SUBJECT'], []];
+      analysis.subjectAnalyses.forEach(sub => {
+        tRows.push([sub.name]);
+        tRows.push(['#', 'Name', 'Score', 'Grade']);
+        sub.top5.forEach((l, i) => tRows.push([i + 1, l.name, l.score, l.grade]));
+        tRows.push([]);
+      });
+      const tws = XLSX.utils.aoa_to_sheet(tRows);
+      XLSX.utils.book_append_sheet(wb, tws, 'Top Learners');
+    }
+
     XLSX.writeFile(wb, `Report_${isSchoolWide ? 'School' : `G${selectedGrades.join('-')}`}_T${selectedTerm}_${selectedYear}.xlsx`);
   };
 
