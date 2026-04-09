@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,7 @@ const adminItems = [
   { title: "Learning Areas", url: "/learning-areas", icon: BookOpen },
   { title: "Grades", url: "/grades", icon: GraduationCap },
   { title: "Streams", url: "/streams", icon: Columns },
+  { title: "Teacher Assignments", url: "/teacher-assignments", icon: UserCog },
   { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
