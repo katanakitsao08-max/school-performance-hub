@@ -87,9 +87,22 @@ export default function MarksEntryPage() {
     },
   });
 
-  const subjects = isSubjectTeacher
-    ? allSubjects.filter(s => assignedLearningAreas.includes(s.name))
-    : allSubjects;
+  // Granular assignments take priority over legacy flat arrays
+  const subjects = useMemo(() => {
+    if (role === 'teacher' && hasGranularAssignments) {
+      const allowedIds = new Set(
+        granularAssignments
+          .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
+          .map(a => a.learning_area_id)
+      );
+      return allSubjects.filter(s => allowedIds.has(s.id));
+    }
+    // Legacy: flat assigned_learning_areas on profile
+    if (isSubjectTeacher) {
+      return allSubjects.filter(s => assignedLearningAreas.includes(s.name));
+    }
+    return allSubjects;
+  }, [allSubjects, role, hasGranularAssignments, granularAssignments, selectedGrade, selectedStream, isSubjectTeacher, assignedLearningAreas]);
 
   const { data: existingScores = [] } = useQuery({
     queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
