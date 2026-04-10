@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +28,7 @@ const adminItems = [
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
@@ -46,6 +47,7 @@ const headteacherItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 

@@ -25,7 +25,7 @@ export default function ReportsPage() {
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
-  const [selectedStream, setSelectedStream] = useState('A');
+  const [selectedStreams, setSelectedStreams] = useState<string[]>(['A']);
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
@@ -36,6 +36,8 @@ export default function ReportsPage() {
   // For headteacher/admin: school-wide report
   const isSchoolWide = viewMode === 'school';
   const selectedGrade = selectedGrades[0] || '1';
+  const selectedStream = selectedStreams[0] || '';
+  const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join('+');
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
@@ -62,15 +64,25 @@ export default function ReportsPage() {
 
   // For combined/school reports, fetch learners for multiple grades
   const { data: learners = [] } = useQuery({
-    queryKey: ['learners-report', selectedGrades, selectedStream, isSchoolWide],
+    queryKey: ['learners-report', selectedGrades, selectedStreams, isSchoolWide],
     queryFn: async () => {
       let query = supabase.from('learners').select('*').eq('is_active', true).order('full_name');
       if (isSchoolWide) {
         // All grades
       } else if (selectedGrades.length === 1) {
-        query = query.eq('grade', selectedGrades[0]).eq('stream', selectedStream);
+        query = query.eq('grade', selectedGrades[0]);
+        if (selectedStreams.length === 1) {
+          query = query.eq('stream', selectedStreams[0]);
+        } else if (selectedStreams.length > 1) {
+          query = query.in('stream', selectedStreams);
+        }
       } else {
-        query = query.in('grade', selectedGrades).eq('stream', selectedStream);
+        query = query.in('grade', selectedGrades);
+        if (selectedStreams.length === 1) {
+          query = query.eq('stream', selectedStreams[0]);
+        } else if (selectedStreams.length > 1) {
+          query = query.in('stream', selectedStreams);
+        }
       }
       const { data } = await query;
       return data || [];
@@ -95,7 +107,7 @@ export default function ReportsPage() {
   });
 
   const { data: allScores = [] } = useQuery({
-    queryKey: ['scores-report', selectedGrades, selectedStream, selectedTerm, selectedYear, isSchoolWide],
+    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
@@ -197,8 +209,8 @@ export default function ReportsPage() {
     const title = isSchoolWide
       ? 'WHOLE SCHOOL REPORT'
       : selectedGrades.length > 1
-        ? `COMBINED REPORT — Grades ${selectedGrades.join(', ')}`
-        : `CLASS REPORT — Grade ${selectedGrade}${selectedStream}`;
+        ? `COMBINED REPORT — Grades ${selectedGrades.join(', ')} ${streamLabel}`
+        : `CLASS REPORT — Grade ${selectedGrade} ${streamLabel}`;
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text(title, cx, y, { align: 'center' });
     y += 6;
@@ -479,11 +491,33 @@ export default function ReportsPage() {
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-xs">Stream</Label>
-                <Select value={selectedStream} onValueChange={setSelectedStream}>
-                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-xs">Stream(s)</Label>
+                {(role === 'admin' || role === 'headteacher') ? (
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-w-[160px]">
+                    {dbStreams.map(s => (
+                      <label key={s} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={selectedStreams.includes(s)}
+                          onCheckedChange={() => {
+                            setSelectedStreams(prev => {
+                              if (prev.includes(s)) {
+                                const next = prev.filter(x => x !== s);
+                                return next.length > 0 ? next : prev;
+                              }
+                              return [...prev, s];
+                            });
+                          }}
+                        />
+                        {s}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <Select value={selectedStream} onValueChange={v => setSelectedStreams([v])}>
+                    <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
             </>
           )}
@@ -593,8 +627,8 @@ export default function ReportsPage() {
                   {isSchoolWide
                     ? `Whole School Report — Term ${selectedTerm}, ${selectedYear}`
                     : selectedGrades.length > 1
-                      ? `Combined Report — Grades ${selectedGrades.join(', ')} Stream ${selectedStream} — Term ${selectedTerm}, ${selectedYear}`
-                      : `Grade ${selectedGrade}${selectedStream} — Term ${selectedTerm}, ${selectedYear}`}
+                      ? `Combined Report — Grades ${selectedGrades.join(', ')} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`
+                      : `Grade ${selectedGrade} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">

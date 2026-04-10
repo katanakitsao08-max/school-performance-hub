@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +10,41 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
   const { user, profile, role } = useAuth();
+  const navigate = useNavigate();
+
+  // Fetch teacher assignments to check if teacher should auto-redirect
+  const { data: teacherAssignments = [] } = useQuery({
+    queryKey: ['my-teacher-assignments-dash', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id);
+      return data || [];
+    },
+    enabled: role === 'teacher' && !!user,
+  });
+
+  const { data: classTeacherAssignment } = useQuery({
+    queryKey: ['my-class-teacher-dash', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('class_teachers')
+        .select('grade, stream')
+        .eq('teacher_id', user!.id)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: role === 'teacher' && !!user,
+  });
+
+  // Auto-redirect teacher to marks entry if they have assignments
+  useEffect(() => {
+    if (role === 'teacher' && (teacherAssignments.length > 0 || classTeacherAssignment)) {
+      navigate('/marks-entry', { replace: true });
+    }
+  }, [role, teacherAssignments, classTeacherAssignment, navigate]);
 
   const assignedGrades = profile?.assigned_grades || [];
   const assignedStreams = profile?.assigned_streams || [];
