@@ -209,8 +209,8 @@ export default function ReportsPage() {
     const title = isSchoolWide
       ? 'WHOLE SCHOOL REPORT'
       : selectedGrades.length > 1
-        ? `COMBINED REPORT — Grades ${selectedGrades.join(', ')}`
-        : `CLASS REPORT — Grade ${selectedGrade}${selectedStream}`;
+        ? `COMBINED REPORT — Grades ${selectedGrades.join(', ')} ${streamLabel}`
+        : `CLASS REPORT — Grade ${selectedGrade} ${streamLabel}`;
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text(title, cx, y, { align: 'center' });
     y += 6;
@@ -491,11 +491,33 @@ export default function ReportsPage() {
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-xs">Stream</Label>
-                <Select value={selectedStream} onValueChange={setSelectedStream}>
-                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label className="text-xs">Stream(s)</Label>
+                {(role === 'admin' || role === 'headteacher') ? (
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-w-[160px]">
+                    {dbStreams.map(s => (
+                      <label key={s} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={selectedStreams.includes(s)}
+                          onCheckedChange={() => {
+                            setSelectedStreams(prev => {
+                              if (prev.includes(s)) {
+                                const next = prev.filter(x => x !== s);
+                                return next.length > 0 ? next : prev;
+                              }
+                              return [...prev, s];
+                            });
+                          }}
+                        />
+                        {s}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <Select value={selectedStream} onValueChange={v => setSelectedStreams([v])}>
+                    <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
             </>
           )}
@@ -605,8 +627,8 @@ export default function ReportsPage() {
                   {isSchoolWide
                     ? `Whole School Report — Term ${selectedTerm}, ${selectedYear}`
                     : selectedGrades.length > 1
-                      ? `Combined Report — Grades ${selectedGrades.join(', ')} Stream ${selectedStream} — Term ${selectedTerm}, ${selectedYear}`
-                      : `Grade ${selectedGrade}${selectedStream} — Term ${selectedTerm}, ${selectedYear}`}
+                      ? `Combined Report — Grades ${selectedGrades.join(', ')} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`
+                      : `Grade ${selectedGrade} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
