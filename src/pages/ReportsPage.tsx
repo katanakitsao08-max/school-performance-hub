@@ -36,6 +36,8 @@ export default function ReportsPage() {
   // For headteacher/admin: school-wide report
   const isSchoolWide = viewMode === 'school';
   const selectedGrade = selectedGrades[0] || '1';
+  const selectedStream = selectedStreams[0] || '';
+  const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join('+');
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
@@ -62,15 +64,25 @@ export default function ReportsPage() {
 
   // For combined/school reports, fetch learners for multiple grades
   const { data: learners = [] } = useQuery({
-    queryKey: ['learners-report', selectedGrades, selectedStream, isSchoolWide],
+    queryKey: ['learners-report', selectedGrades, selectedStreams, isSchoolWide],
     queryFn: async () => {
       let query = supabase.from('learners').select('*').eq('is_active', true).order('full_name');
       if (isSchoolWide) {
         // All grades
       } else if (selectedGrades.length === 1) {
-        query = query.eq('grade', selectedGrades[0]).eq('stream', selectedStream);
+        query = query.eq('grade', selectedGrades[0]);
+        if (selectedStreams.length === 1) {
+          query = query.eq('stream', selectedStreams[0]);
+        } else if (selectedStreams.length > 1) {
+          query = query.in('stream', selectedStreams);
+        }
       } else {
-        query = query.in('grade', selectedGrades).eq('stream', selectedStream);
+        query = query.in('grade', selectedGrades);
+        if (selectedStreams.length === 1) {
+          query = query.eq('stream', selectedStreams[0]);
+        } else if (selectedStreams.length > 1) {
+          query = query.in('stream', selectedStreams);
+        }
       }
       const { data } = await query;
       return data || [];
@@ -95,7 +107,7 @@ export default function ReportsPage() {
   });
 
   const { data: allScores = [] } = useQuery({
-    queryKey: ['scores-report', selectedGrades, selectedStream, selectedTerm, selectedYear, isSchoolWide],
+    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
