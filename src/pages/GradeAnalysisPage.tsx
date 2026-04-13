@@ -7,19 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { computeGradeAnalysis, SUB_LEVELS, type GradeAnalysisReport } from '@/lib/cbc-analysis-utils';
-import { FileDown } from 'lucide-react';
+import { FileDown, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { GradeAnalysisTable } from '@/components/GradeAnalysisTable';
+import { GradeAnalysisInsights } from '@/components/GradeAnalysisInsights';
 
 export default function GradeAnalysisPage() {
-  const { user, role, schoolId } = useAuth();
+  const { user, schoolId } = useAuth();
   const dynamicGrades = useSchoolGrades();
   const currentYear = new Date().getFullYear();
 
@@ -28,7 +29,6 @@ export default function GradeAnalysisPage() {
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
@@ -39,7 +39,6 @@ export default function GradeAnalysisPage() {
     enabled: !!schoolId,
   });
 
-  // Auto-select first stream
   useMemo(() => {
     if (dbStreams.length > 0 && selectedStreams.length === 0) {
       setSelectedStreams([dbStreams[0]]);
@@ -95,13 +94,11 @@ export default function GradeAnalysisPage() {
     enabled: learners.length > 0,
   });
 
-  // Filter learners by gender and exclude those with no scores
+  // Exclude learners with no scores
   const filteredLearners = useMemo(() => {
-    let filtered = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
-    // Exclude learners with no scores
     const learnerIdsWithScores = new Set(scores.map(s => s.learner_id));
-    return filtered.filter(l => learnerIdsWithScores.has(l.id));
-  }, [learners, scores, selectedGenderFilter]);
+    return learners.filter(l => learnerIdsWithScores.has(l.id));
+  }, [learners, scores]);
 
   const analysis: GradeAnalysisReport = useMemo(
     () => computeGradeAnalysis(filteredLearners, subjects, scores),
@@ -121,7 +118,8 @@ export default function GradeAnalysisPage() {
 
   const schoolName = schoolSettings['school_name'] || 'SCHOOL';
   const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join(' + ');
-  const title = `GRADE ${selectedGrade} ${streamLabel} END OF TERM EXAM ${selectedTerm} ${selectedYear} ANALYSIS`;
+  const assessmentLabel = ASSESSMENT_TYPE_LABELS[selectedAssessment]?.toUpperCase() || selectedAssessment.toUpperCase();
+  const title = `GRADE ${selectedGrade} ${assessmentLabel} TERM ${selectedTerm} ${selectedYear} RESULTS`;
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -131,53 +129,72 @@ export default function GradeAnalysisPage() {
     doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
     y += 8;
     doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text(title, cx, y, { align: 'center' });
-    y += 8;
+    doc.text(`${title} — ${streamLabel}`, cx, y, { align: 'center' });
+    y += 4;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`Entry: ${analysis.totalM} Male, ${analysis.totalF} Female, ${analysis.totalEntries} Total`, cx, y, { align: 'center' });
+    y += 6;
 
-    const headers = ['SUBJECT', ...SUB_LEVELS, 'ENTRY', 'T. POINT', 'AVERAGE', 'MEAN'];
+    // Headers: two rows
+    const subHeaders = SUB_LEVELS.flatMap(lv => [`${lv} M`, `${lv} F`]);
+    const headers = ['SUBJECT', 'M', 'F', ...subHeaders, 'T.POINT', 'AV.PT', 'MEAN'];
+
     const body = analysis.subjects.map(sa => [
       sa.subjectName,
-      ...SUB_LEVELS.map(lv => sa.distribution[lv]),
-      sa.entryCount,
+      sa.entryM, sa.entryF,
+      ...SUB_LEVELS.flatMap(lv => [sa.genderDistribution[lv].M, sa.genderDistribution[lv].F]),
       sa.totalPoints,
-      sa.averageScore,
       sa.meanGradePoint,
+      sa.meanGradeLabel,
     ]);
-    // Overall row
     body.push([
       'OVERALL',
-      ...SUB_LEVELS.map(lv => analysis.overallDistribution[lv]),
-      analysis.totalEntries,
+      analysis.totalM, analysis.totalF,
+      ...SUB_LEVELS.flatMap(lv => [analysis.overallGenderDistribution[lv].M, analysis.overallGenderDistribution[lv].F]),
       analysis.overallTotalPoints,
-      analysis.overallAverage,
       analysis.overallMean,
+      analysis.overallMeanLabel,
     ]);
 
     autoTable(doc, {
       head: [headers],
       body,
       startY: y,
-      styles: { fontSize: 8, halign: 'center' },
-      headStyles: { fillColor: [41, 128, 185], halign: 'center' },
+      styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
+      headStyles: { fillColor: [41, 128, 185], halign: 'center', fontSize: 6 },
       columnStyles: { 0: { halign: 'left' } },
     });
+
+    // Insights
+    const finalY = (doc as any).lastAutoTable?.finalY || y + 40;
+    doc.setFontSize(9); doc.setFont('helvetica', 'italic');
+    doc.text(`• Highest band: ${analysis.insights.highestBand}`, 14, finalY + 8);
+    doc.text(`• ${analysis.insights.genderNote}`, 14, finalY + 14);
+    doc.text(`• ${analysis.insights.overallComment}`, 14, finalY + 20);
 
     doc.save(`Analysis_G${selectedGrade}_${streamLabel}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
   const exportExcel = () => {
-    const headers = ['SUBJECT', ...SUB_LEVELS, 'ENTRY', 'T. POINT', 'AVERAGE', 'MEAN'];
+    const subHeaders = SUB_LEVELS.flatMap(lv => [`${lv} M`, `${lv} F`]);
+    const headers = ['SUBJECT', 'ENTRY M', 'ENTRY F', ...subHeaders, 'T.POINT', 'AV.POINT', 'MEAN'];
     const rows = analysis.subjects.map(sa => [
-      sa.subjectName,
-      ...SUB_LEVELS.map(lv => sa.distribution[lv]),
-      sa.entryCount, sa.totalPoints, sa.averageScore, sa.meanGradePoint,
+      sa.subjectName, sa.entryM, sa.entryF,
+      ...SUB_LEVELS.flatMap(lv => [sa.genderDistribution[lv].M, sa.genderDistribution[lv].F]),
+      sa.totalPoints, sa.meanGradePoint, sa.meanGradeLabel,
     ]);
     rows.push([
-      'OVERALL',
-      ...SUB_LEVELS.map(lv => analysis.overallDistribution[lv]),
-      analysis.totalEntries, analysis.overallTotalPoints, analysis.overallAverage, analysis.overallMean,
+      'OVERALL', analysis.totalM, analysis.totalF,
+      ...SUB_LEVELS.flatMap(lv => [analysis.overallGenderDistribution[lv].M, analysis.overallGenderDistribution[lv].F]),
+      analysis.overallTotalPoints, analysis.overallMean, analysis.overallMeanLabel,
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([[title], [], headers, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([
+      [schoolName.toUpperCase()], [`${title} — ${streamLabel}`], [],
+      headers, ...rows, [],
+      [`Highest band: ${analysis.insights.highestBand}`],
+      [analysis.insights.genderNote],
+      [analysis.insights.overallComment],
+    ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
     XLSX.writeFile(wb, `Analysis_G${selectedGrade}_${streamLabel}_T${selectedTerm}_${selectedYear}.xlsx`);
@@ -189,7 +206,7 @@ export default function GradeAnalysisPage() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-display font-bold">Grade Analysis</h1>
-            <p className="text-muted-foreground text-sm">CBC sub-level distribution analysis per grade and stream</p>
+            <p className="text-muted-foreground text-sm">CBC sub-level distribution with gender breakdown</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportPDF} disabled={analysis.subjects.length === 0}>
@@ -211,7 +228,7 @@ export default function GradeAnalysisPage() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Stream(s) — select multiple to combine</Label>
+            <Label className="text-xs">Stream(s)</Label>
             <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-w-[200px]">
               {dbStreams.map(s => (
                 <label key={s} className="flex items-center gap-1.5 text-sm cursor-pointer">
@@ -239,75 +256,24 @@ export default function GradeAnalysisPage() {
             <Label className="text-xs">Year</Label>
             <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[100px]" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Gender</Label>
-            <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {/* Analysis Table */}
         <Card>
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-sm font-display uppercase tracking-wide">{title}</CardTitle>
-            <p className="text-xs text-muted-foreground">{learners.length} learner(s) • {subjects.length} subject(s)</p>
+            <p className="text-xs font-bold uppercase tracking-wider">{schoolName.toUpperCase()}</p>
+            <CardTitle className="text-sm font-display uppercase tracking-wide">{title} — {streamLabel}</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Entry: {analysis.totalM} Male, {analysis.totalF} Female — {analysis.totalEntries} Total
+            </p>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="min-w-[140px]">SUBJECT</TableHead>
-                  {SUB_LEVELS.map(lv => (
-                    <TableHead key={lv} className="text-center min-w-[50px] text-xs">{lv}</TableHead>
-                  ))}
-                  <TableHead className="text-center min-w-[60px] text-xs">ENTRY</TableHead>
-                  <TableHead className="text-center min-w-[70px] text-xs">T. POINT</TableHead>
-                  <TableHead className="text-center min-w-[70px] text-xs">AVERAGE</TableHead>
-                  <TableHead className="text-center min-w-[60px] text-xs">MEAN</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analysis.subjects.map(sa => (
-                  <TableRow key={sa.subjectId}>
-                    <TableCell className="font-medium">{sa.subjectName}</TableCell>
-                    {SUB_LEVELS.map(lv => (
-                      <TableCell key={lv} className="text-center">{sa.distribution[lv]}</TableCell>
-                    ))}
-                    <TableCell className="text-center">{sa.entryCount}</TableCell>
-                    <TableCell className="text-center font-semibold">{sa.totalPoints}</TableCell>
-                    <TableCell className="text-center">{sa.averageScore}</TableCell>
-                    <TableCell className="text-center font-semibold">{sa.meanGradePoint}</TableCell>
-                  </TableRow>
-                ))}
-                {analysis.subjects.length > 0 && (
-                  <TableRow className="bg-muted/30 font-bold border-t-2">
-                    <TableCell>OVERALL</TableCell>
-                    {SUB_LEVELS.map(lv => (
-                      <TableCell key={lv} className="text-center">{analysis.overallDistribution[lv]}</TableCell>
-                    ))}
-                    <TableCell className="text-center">{analysis.totalEntries}</TableCell>
-                    <TableCell className="text-center">{analysis.overallTotalPoints}</TableCell>
-                    <TableCell className="text-center">{analysis.overallAverage}</TableCell>
-                    <TableCell className="text-center">{analysis.overallMean}</TableCell>
-                  </TableRow>
-                )}
-                {analysis.subjects.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={12} className="text-center py-12 text-muted-foreground">
-                      No data available. Select a grade and stream with scores entered.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <GradeAnalysisTable analysis={analysis} />
           </CardContent>
         </Card>
+
+        {/* Insights */}
+        {analysis.subjects.length > 0 && <GradeAnalysisInsights analysis={analysis} />}
       </div>
     </DashboardLayout>
   );
