@@ -630,6 +630,7 @@ export default function ReportsPage() {
                         <TableHead className="text-center">Max</TableHead>
                         <TableHead className="text-center">Grade</TableHead>
                         <TableHead>Remark</TableHead>
+                        <TableHead className="text-center">Teacher</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -644,6 +645,7 @@ export default function ReportsPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {s.grade !== '-' ? getGradeLabel(s.grade) : '-'}
                           </TableCell>
+                          <TableCell className="text-center text-xs font-semibold text-muted-foreground">{s.teacherInitials || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
