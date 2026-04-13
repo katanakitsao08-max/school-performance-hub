@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GraduationCap, BookOpen, CalendarCheck, TrendingUp, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getCBCGrade } from '@/lib/cbc-utils';
+import { getGrade } from '@/lib/cbc-utils';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
 
