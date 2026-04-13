@@ -576,6 +576,26 @@ export default function ReportsPage() {
             </Select>
           </div>
 
+          <div className="space-y-1">
+            <Label className="text-xs">Assessment</Label>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Gender</Label>
+            <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {viewMode === 'individual' && (
             <div className="space-y-1">
               <Label className="text-xs">Learner</Label>
