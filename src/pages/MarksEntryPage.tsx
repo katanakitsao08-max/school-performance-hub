@@ -22,14 +22,6 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
   const dynamicGrades = useSchoolGrades();
 
-  // For teachers with granular assignments, restrict grades to assigned ones
-  const granularGrades = useMemo(() => {
-    if (role !== 'teacher') return [];
-    return [...new Set(granularAssignments.map(a => a.grade))];
-  }, [granularAssignments, role]);
-
-  const teacherGrades = hasGranularAssignments ? granularGrades : (profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades);
-  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
@@ -48,6 +40,15 @@ export default function MarksEntryPage() {
   });
   const hasGranularAssignments = granularAssignments.length > 0;
 
+  // For teachers with granular assignments, restrict grades to assigned ones
+  const granularGrades = useMemo(() => {
+    if (role !== 'teacher' || !hasGranularAssignments) return [];
+    return [...new Set(granularAssignments.map(a => a.grade))];
+  }, [granularAssignments, role, hasGranularAssignments]);
+
+  const teacherGrades = hasGranularAssignments ? granularGrades : (profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades);
+  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
+
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
@@ -55,6 +56,13 @@ export default function MarksEntryPage() {
       return (data || []).map((s: any) => s.name);
     },
   });
+
+  const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
+  const [selectedStream, setSelectedStream] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
 
   // For teachers with granular assignments, restrict streams to assigned ones
   const granularStreams = useMemo(() => {
@@ -67,13 +75,6 @@ export default function MarksEntryPage() {
     : role === 'teacher' && assignedStreams.length > 0
       ? dbStreams.filter(s => assignedStreams.includes(s))
       : dbStreams;
-
-  const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
-  const [selectedStream, setSelectedStream] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState(1);
-  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
 
   useEffect(() => {
     if (availableStreams.length > 0 && !selectedStream) {
