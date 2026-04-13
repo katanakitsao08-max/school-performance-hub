@@ -20,7 +20,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export default function ReportsPage() {
-  const { user, role, profile } = useAuth();
+  const { user, role, profile, schoolId } = useAuth();
   const dynamicGrades = useSchoolGrades();
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
