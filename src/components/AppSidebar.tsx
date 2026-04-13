@@ -54,6 +54,11 @@ const headteacherItems = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
+const parentItems = [
+  { title: "Dashboard", url: "/parent", icon: LayoutDashboard },
+  { title: "Reports", url: "/reports", icon: FileText },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -61,7 +66,8 @@ export function AppSidebar() {
 
   const items = role === 'super_admin' ? superAdminItems
     : role === 'admin' ? adminItems 
-    : role === 'teacher' ? teacherItems 
+    : role === 'teacher' ? teacherItems
+    : role === 'parent' ? parentItems
     : headteacherItems;
 
   const initials = profile?.full_name
