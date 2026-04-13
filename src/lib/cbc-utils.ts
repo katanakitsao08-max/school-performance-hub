@@ -98,6 +98,14 @@ export function generateTeacherComment(
 export const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 export const STREAMS: string[] = [];
 export const TERMS = [1, 2, 3];
+export const ASSESSMENT_TYPES = ['opener', 'mid_term', 'end_term'] as const;
+export type AssessmentType = typeof ASSESSMENT_TYPES[number];
+export const ASSESSMENT_TYPE_LABELS: Record<AssessmentType, string> = {
+  opener: 'Opener',
+  mid_term: 'Mid-Term',
+  end_term: 'End-Term',
+};
+export const GENDERS = ['Male', 'Female'] as const;
 
 export function getNextGrade(currentGrade: string): string | null {
   const idx = GRADES.indexOf(currentGrade);

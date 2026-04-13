@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Save, TrendingUp, TrendingDown, Award, AlertTriangle } from 'lucide-react';
-import { TERMS, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, type CBCGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -22,8 +22,6 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
   const dynamicGrades = useSchoolGrades();
 
-  const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
-  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
   const isSubjectTeacher = role === 'teacher' && assignedLearningAreas.length > 0;
@@ -42,6 +40,15 @@ export default function MarksEntryPage() {
   });
   const hasGranularAssignments = granularAssignments.length > 0;
 
+  // For teachers with granular assignments, restrict grades to assigned ones
+  const granularGrades = useMemo(() => {
+    if (role !== 'teacher' || !hasGranularAssignments) return [];
+    return [...new Set(granularAssignments.map(a => a.grade))];
+  }, [granularAssignments, role, hasGranularAssignments]);
+
+  const teacherGrades = hasGranularAssignments ? granularGrades : (profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades);
+  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
+
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams'],
     queryFn: async () => {
@@ -50,15 +57,24 @@ export default function MarksEntryPage() {
     },
   });
 
-  const availableStreams = role === 'teacher' && assignedStreams.length > 0
-    ? dbStreams.filter(s => assignedStreams.includes(s))
-    : dbStreams;
-
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
   const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
+
+  // For teachers with granular assignments, restrict streams to assigned ones
+  const granularStreams = useMemo(() => {
+    if (!hasGranularAssignments) return [];
+    return [...new Set(granularAssignments.filter(a => a.grade === selectedGrade).map(a => a.stream))];
+  }, [granularAssignments, hasGranularAssignments, selectedGrade]);
+
+  const availableStreams = role === 'teacher' && hasGranularAssignments
+    ? granularStreams
+    : role === 'teacher' && assignedStreams.length > 0
+      ? dbStreams.filter(s => assignedStreams.includes(s))
+      : dbStreams;
 
   useEffect(() => {
     if (availableStreams.length > 0 && !selectedStream) {
@@ -105,13 +121,14 @@ export default function MarksEntryPage() {
   }, [allSubjects, role, hasGranularAssignments, granularAssignments, selectedGrade, selectedStream, isSubjectTeacher, assignedLearningAreas]);
 
   const { data: existingScores = [] } = useQuery({
-    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
+    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedAssessment, selectedYear],
     queryFn: async () => {
       const learnerIds = learners.map(l => l.id);
       if (learnerIds.length === 0) return [];
       const { data, error } = await supabase.from('scores').select('*')
         .in('learner_id', learnerIds)
-        .eq('term', selectedTerm).eq('year', selectedYear);
+        .eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
       if (error) throw error;
       return data || [];
     },
@@ -147,13 +164,14 @@ export default function MarksEntryPage() {
               year: selectedYear,
               score: Number(score),
               school_id: schoolId,
+              assessment_type: selectedAssessment,
             });
           }
         });
       });
       if (upserts.length === 0) return;
       const { error } = await supabase.from('scores').upsert(upserts, {
-        onConflict: 'learner_id,learning_area_id,term,year',
+        onConflict: 'learner_id,learning_area_id,term,year,assessment_type',
       });
       if (error) throw error;
     },
@@ -257,6 +275,13 @@ export default function MarksEntryPage() {
             <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Assessment</Label>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">

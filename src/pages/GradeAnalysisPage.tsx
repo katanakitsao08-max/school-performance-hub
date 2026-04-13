@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { TERMS } from '@/lib/cbc-utils';
 import { computeGradeAnalysis, SUB_LEVELS, type GradeAnalysisReport } from '@/lib/cbc-analysis-utils';
 import { FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -26,7 +26,9 @@ export default function GradeAnalysisPage() {
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
   const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
@@ -81,20 +83,29 @@ export default function GradeAnalysisPage() {
   });
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['analysis-scores', selectedGrade, selectedStreams, selectedTerm, selectedYear],
+    queryKey: ['analysis-scores', selectedGrade, selectedStreams, selectedTerm, selectedAssessment, selectedYear],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
       const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
+        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
     enabled: learners.length > 0,
   });
 
+  // Filter learners by gender and exclude those with no scores
+  const filteredLearners = useMemo(() => {
+    let filtered = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
+    // Exclude learners with no scores
+    const learnerIdsWithScores = new Set(scores.map(s => s.learner_id));
+    return filtered.filter(l => learnerIdsWithScores.has(l.id));
+  }, [learners, scores, selectedGenderFilter]);
+
   const analysis: GradeAnalysisReport = useMemo(
-    () => computeGradeAnalysis(learners, subjects, scores),
-    [learners, subjects, scores]
+    () => computeGradeAnalysis(filteredLearners, subjects, scores),
+    [filteredLearners, subjects, scores]
   );
 
   const { data: schoolSettings = {} } = useQuery({
@@ -218,8 +229,26 @@ export default function GradeAnalysisPage() {
             </Select>
           </div>
           <div className="space-y-1">
+            <Label className="text-xs">Assessment</Label>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
             <Label className="text-xs">Year</Label>
             <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[100px]" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Gender</Label>
+            <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

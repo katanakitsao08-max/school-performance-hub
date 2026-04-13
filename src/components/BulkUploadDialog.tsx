@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ParsedRow {
   full_name: string;
+  gender?: string;
   parent_name?: string;
   parent_phone?: string;
   marks: Record<string, number>;
@@ -87,6 +88,7 @@ export default function BulkUploadDialog({
     'phone', 'parent phone', 'parent_phone', 'guardian phone', 'tel', 'telephone',
     'admission', 'adm', 'adm no', 'admission number', 'admission_number', 'adm_no',
     'grade', 'class', 'stream', 'total', 'mean', 'average', 'rank', 'position',
+    'gender', 'sex',
   ]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,10 +124,12 @@ export default function BulkUploadDialog({
         const phoneCol = headers.find(h =>
           ['phone', 'parent phone', 'parent_phone', 'guardian phone', 'tel', 'telephone'].includes(h.toLowerCase().trim())
         );
+        const genderCol = headers.find(h =>
+          ['gender', 'sex'].includes(h.toLowerCase().trim())
+        );
 
         const subjects = headers.filter(h => !knownNonSubjectCols.has(h.toLowerCase().trim()));
-        // remove the identified name/parent/phone cols from subjects
-        const subjectCols = subjects.filter(h => h !== nameCol && h !== parentCol && h !== phoneCol);
+        const subjectCols = subjects.filter(h => h !== nameCol && h !== parentCol && h !== phoneCol && h !== genderCol);
         setSubjectColumns(subjectCols);
 
         const parsed: ParsedRow[] = json
@@ -138,6 +142,7 @@ export default function BulkUploadDialog({
             });
             return {
               full_name: row[nameCol]?.toString().trim(),
+              gender: genderCol ? (row[genderCol]?.toString().trim() || 'Male') : 'Male',
               parent_name: parentCol ? row[parentCol]?.toString().trim() : undefined,
               parent_phone: phoneCol ? row[phoneCol]?.toString().trim() : undefined,
               marks,
@@ -164,6 +169,7 @@ export default function BulkUploadDialog({
         full_name: r.full_name,
         grade,
         stream,
+        gender: r.gender || 'Male',
         parent_name: r.parent_name || null,
         parent_phone: r.parent_phone || null,
         school_id: schoolId,
@@ -210,6 +216,7 @@ export default function BulkUploadDialog({
                   term: 1,
                   year: new Date().getFullYear(),
                   school_id: schoolId,
+                  assessment_type: 'end_term',
                 });
               }
             });
@@ -217,7 +224,7 @@ export default function BulkUploadDialog({
 
           if (scores.length > 0) {
             const { error: sErr } = await supabase.from('scores').upsert(scores, {
-              onConflict: 'learner_id,learning_area_id,term,year',
+              onConflict: 'learner_id,learning_area_id,term,year,assessment_type',
             });
             if (sErr) throw sErr;
           }

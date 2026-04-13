@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School } from 'lucide-react';
-import { TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import jsPDF from 'jspdf';
@@ -20,14 +20,16 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export default function ReportsPage() {
-  const { user, role, profile } = useAuth();
+  const { user, role, profile, schoolId } = useAuth();
   const dynamicGrades = useSchoolGrades();
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>(['A']);
   const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -107,16 +109,51 @@ export default function ReportsPage() {
   });
 
   const { data: allScores = [] } = useQuery({
-    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedYear, isSchoolWide],
+    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedAssessment, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
+      let q = supabase.from('scores').select('*')
         .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
+      if (selectedAssessment !== 'end_term') {
+        q = q.eq('assessment_type', selectedAssessment);
+      } else {
+        q = q.eq('assessment_type', 'end_term');
+      }
+      const { data } = await q;
       return data || [];
     },
     enabled: learners.length > 0 && !!user,
   });
+
+  // Fetch teacher assignments for initials on reports
+  const { data: teacherAssignmentsForReport = [] } = useQuery({
+    queryKey: ['teacher-assignments-report', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('teacher_assignments').select('learning_area_id, teacher_id, grade, stream').eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['profiles-for-initials', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('user_id, full_name').eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const getTeacherInitials = (subjectId: string, grade: string, stream: string) => {
+    const assignment = teacherAssignmentsForReport.find(
+      a => a.learning_area_id === subjectId && a.grade === grade && a.stream === stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    if (!profile) return '';
+    return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
@@ -125,10 +162,12 @@ export default function ReportsPage() {
   }, [subjects, selectedGrade, isSchoolWide, selectedGrades]);
 
   const reportData = useMemo(() => {
-    // For combined/school reports, we rank per grade
     const relevantSubjects = isSchoolWide ? subjects : gradeSubjects;
     
-    return learners.map(l => {
+    // Filter by gender if set
+    const filteredLearners = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
+    
+    const mapped = filteredLearners.map(l => {
       const learnerGradeSubjects = relevantSubjects.filter(s => s.grade === l.grade);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerGradeSubjects.map(sub => {
@@ -138,22 +177,29 @@ export default function ReportsPage() {
           score: sc?.score || 0,
           grade: sc ? getGrade(sc.score, sub.max_score) : '-' as any,
           comment: sc?.teacher_comment || '',
+          teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
         };
       });
       const total = subjectData.reduce((s, d) => s + d.score, 0);
       const maxTotal = learnerGradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
       const mean = learnerGradeSubjects.length > 0 ? total / learnerGradeSubjects.length : 0;
       const avgMax = learnerGradeSubjects.length > 0 ? maxTotal / learnerGradeSubjects.length : 100;
+      const hasAnyScore = learnerScores.length > 0;
       return {
         ...l, subjectData, total, mean,
         overallGrade: learnerGradeSubjects.length > 0 ? getGrade(mean, avgMax) : '-',
+        hasAnyScore,
       };
-    }).sort((a, b) => b.total - a.total).map((l, i, arr) => {
+    })
+    // Exclude learners with no scores
+    .filter(l => l.hasAnyScore)
+    .sort((a, b) => b.total - a.total).map((l, i, arr) => {
       let rank = i + 1;
       if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
       return { ...l, rank };
     });
-  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide]);
+    return mapped;
+  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter]);
 
   const subjectMeans = useMemo(() => {
     return gradeSubjects.map(sub => {
@@ -312,13 +358,14 @@ export default function ReportsPage() {
     doc.text(`Adm No: ${ld.admission_number}`, 120, y);
     y += 6;
     doc.text(`Grade: ${ld.grade}${ld.stream}`, 14, y);
-    doc.text(`Term: ${selectedTerm}, ${selectedYear}`, 120, y);
+    doc.text(`Term: ${selectedTerm} (${ASSESSMENT_TYPE_LABELS[selectedAssessment]}), ${selectedYear}`, 120, y);
+    y += 6;
+    doc.text(`Gender: ${(ld as any).gender || '-'}`, 14, y);
     y += 8;
 
-    // Subject table with per-subject grade and remark
-    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark'];
+    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark', 'Teacher'];
     const body = ld.subjectData.map((s: any) => [
-      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-'
+      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-', s.teacherInitials || '-'
     ]);
 
     autoTable(doc, {
@@ -530,6 +577,26 @@ export default function ReportsPage() {
             </Select>
           </div>
 
+          <div className="space-y-1">
+            <Label className="text-xs">Assessment</Label>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Gender</Label>
+            <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {viewMode === 'individual' && (
             <div className="space-y-1">
               <Label className="text-xs">Learner</Label>
@@ -564,6 +631,7 @@ export default function ReportsPage() {
                         <TableHead className="text-center">Max</TableHead>
                         <TableHead className="text-center">Grade</TableHead>
                         <TableHead>Remark</TableHead>
+                        <TableHead className="text-center">Teacher</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -578,6 +646,7 @@ export default function ReportsPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {s.grade !== '-' ? getGradeLabel(s.grade) : '-'}
                           </TableCell>
+                          <TableCell className="text-center text-xs font-semibold text-muted-foreground">{s.teacherInitials || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
