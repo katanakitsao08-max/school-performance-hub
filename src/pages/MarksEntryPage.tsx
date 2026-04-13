@@ -121,13 +121,14 @@ export default function MarksEntryPage() {
   }, [allSubjects, role, hasGranularAssignments, granularAssignments, selectedGrade, selectedStream, isSubjectTeacher, assignedLearningAreas]);
 
   const { data: existingScores = [] } = useQuery({
-    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
+    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedAssessment, selectedYear],
     queryFn: async () => {
       const learnerIds = learners.map(l => l.id);
       if (learnerIds.length === 0) return [];
       const { data, error } = await supabase.from('scores').select('*')
         .in('learner_id', learnerIds)
-        .eq('term', selectedTerm).eq('year', selectedYear);
+        .eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
       if (error) throw error;
       return data || [];
     },
@@ -163,13 +164,14 @@ export default function MarksEntryPage() {
               year: selectedYear,
               score: Number(score),
               school_id: schoolId,
+              assessment_type: selectedAssessment,
             });
           }
         });
       });
       if (upserts.length === 0) return;
       const { error } = await supabase.from('scores').upsert(upserts, {
-        onConflict: 'learner_id,learning_area_id,term,year',
+        onConflict: 'learner_id,learning_area_id,term,year,assessment_type',
       });
       if (error) throw error;
     },
