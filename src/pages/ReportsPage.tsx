@@ -358,13 +358,14 @@ export default function ReportsPage() {
     doc.text(`Adm No: ${ld.admission_number}`, 120, y);
     y += 6;
     doc.text(`Grade: ${ld.grade}${ld.stream}`, 14, y);
-    doc.text(`Term: ${selectedTerm}, ${selectedYear}`, 120, y);
+    doc.text(`Term: ${selectedTerm} (${ASSESSMENT_TYPE_LABELS[selectedAssessment]}), ${selectedYear}`, 120, y);
+    y += 6;
+    doc.text(`Gender: ${(ld as any).gender || '-'}`, 14, y);
     y += 8;
 
-    // Subject table with per-subject grade and remark
-    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark'];
+    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark', 'Teacher'];
     const body = ld.subjectData.map((s: any) => [
-      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-'
+      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-', s.teacherInitials || '-'
     ]);
 
     autoTable(doc, {
