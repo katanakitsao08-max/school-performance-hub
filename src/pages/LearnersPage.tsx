@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
-import { GRADES } from '@/lib/cbc-utils';
+import { GRADES, GENDERS } from '@/lib/cbc-utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import BulkUploadDialog from '@/components/BulkUploadDialog';
@@ -32,7 +32,7 @@ export default function LearnersPage() {
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
     admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
+    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
   const { data: school } = useQuery({
@@ -133,7 +133,7 @@ export default function LearnersPage() {
 
   const resetForm = () => setForm({
     admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: availableStreams[0] || 'A',
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(),
+    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 
   const handleEdit = (l: any) => {
@@ -142,7 +142,7 @@ export default function LearnersPage() {
       admission_number: l.admission_number, full_name: l.full_name,
       grade: l.grade, stream: l.stream,
       parent_name: l.parent_name || '', parent_phone: l.parent_phone || '',
-      academic_year: l.academic_year,
+      academic_year: l.academic_year, gender: l.gender || 'Male',
     });
     setOpen(true);
   };
@@ -186,17 +186,24 @@ export default function LearnersPage() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{availableStreams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parent Name</Label>
-                    <Input value={form.parent_name} onChange={e => setForm(f => ({ ...f, parent_name: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parent Phone</Label>
-                    <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254..." />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Gender</Label>
+                     <Select value={form.gender} onValueChange={v => setForm(f => ({ ...f, gender: v }))}>
+                       <SelectTrigger><SelectValue /></SelectTrigger>
+                       <SelectContent>{GENDERS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                     </Select>
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Parent Name</Label>
+                     <Input value={form.parent_name} onChange={e => setForm(f => ({ ...f, parent_name: e.target.value }))} />
+                   </div>
+                   <div className="space-y-2">
+                     <Label>Parent Phone</Label>
+                     <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254..." />
+                   </div>
+                 </div>
+                 <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
               </form>
             </DialogContent>
             </Dialog>
@@ -228,25 +235,27 @@ export default function LearnersPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Adm No.</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Stream</TableHead>
-                  <TableHead>Parent</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead>Adm No.</TableHead>
+                   <TableHead>Name</TableHead>
+                   <TableHead>Gender</TableHead>
+                   <TableHead>Grade</TableHead>
+                   <TableHead>Stream</TableHead>
+                   <TableHead>Parent</TableHead>
+                   <TableHead>Phone</TableHead>
+                   <TableHead className="w-[100px]">Actions</TableHead>
+                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(l => (
                   <TableRow key={l.id}>
-                    <TableCell>{l.admission_number}</TableCell>
-                    <TableCell className="font-medium">{l.full_name}</TableCell>
-                    <TableCell>Grade {l.grade}</TableCell>
-                    <TableCell>{l.stream}</TableCell>
-                    <TableCell>{l.parent_name || '-'}</TableCell>
-                    <TableCell>{l.parent_phone || '-'}</TableCell>
+                     <TableCell>{l.admission_number}</TableCell>
+                     <TableCell className="font-medium">{l.full_name}</TableCell>
+                     <TableCell>{(l as any).gender || 'Male'}</TableCell>
+                     <TableCell>Grade {l.grade}</TableCell>
+                     <TableCell>{l.stream}</TableCell>
+                     <TableCell>{l.parent_name || '-'}</TableCell>
+                     <TableCell>{l.parent_phone || '-'}</TableCell>
                     <TableCell className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(l)}><Edit className="h-4 w-4" /></Button>
                       {isAdmin && (
@@ -270,7 +279,7 @@ export default function LearnersPage() {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
