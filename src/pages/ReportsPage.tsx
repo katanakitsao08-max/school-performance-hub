@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School } from 'lucide-react';
-import { TERMS, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import jsPDF from 'jspdf';
@@ -27,7 +27,9 @@ export default function ReportsPage() {
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>(['A']);
   const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -107,16 +109,51 @@ export default function ReportsPage() {
   });
 
   const { data: allScores = [] } = useQuery({
-    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedYear, isSchoolWide],
+    queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedAssessment, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
+      let q = supabase.from('scores').select('*')
         .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
+      if (selectedAssessment !== 'end_term') {
+        q = q.eq('assessment_type', selectedAssessment);
+      } else {
+        q = q.eq('assessment_type', 'end_term');
+      }
+      const { data } = await q;
       return data || [];
     },
     enabled: learners.length > 0 && !!user,
   });
+
+  // Fetch teacher assignments for initials on reports
+  const { data: teacherAssignmentsForReport = [] } = useQuery({
+    queryKey: ['teacher-assignments-report', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('teacher_assignments').select('learning_area_id, teacher_id, grade, stream').eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['profiles-for-initials', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('user_id, full_name').eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const getTeacherInitials = (subjectId: string, grade: string, stream: string) => {
+    const assignment = teacherAssignmentsForReport.find(
+      a => a.learning_area_id === subjectId && a.grade === grade && a.stream === stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    if (!profile) return '';
+    return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {

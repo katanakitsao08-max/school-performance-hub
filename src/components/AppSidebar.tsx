@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +29,7 @@ const adminItems = [
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
+  { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
@@ -41,6 +42,7 @@ const teacherItems = [
   { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
 ];
 
 const headteacherItems = [
@@ -48,6 +50,7 @@ const headteacherItems = [
   { title: "Learners", url: "/learners", icon: GraduationCap },
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
+  { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
