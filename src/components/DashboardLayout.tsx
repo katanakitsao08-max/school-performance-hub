@@ -2,10 +2,9 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -33,9 +32,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {role}
                 </Badge>
               )}
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground">
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-auto pb-24 md:pb-6">
