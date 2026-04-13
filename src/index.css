@@ -126,6 +126,9 @@
   .shadow-card-hover {
     box-shadow: var(--shadow-card-hover);
   }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @media print {
