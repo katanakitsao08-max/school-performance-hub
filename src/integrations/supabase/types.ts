@@ -238,6 +238,48 @@ export type Database = {
           },
         ]
       }
+      parent_learners: {
+        Row: {
+          created_at: string
+          id: string
+          learner_id: string
+          parent_user_id: string
+          relationship: string
+          school_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          learner_id: string
+          parent_user_id: string
+          relationship?: string
+          school_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          learner_id?: string
+          parent_user_id?: string
+          relationship?: string
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_learners_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_learners_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           assigned_grades: string[] | null
@@ -559,6 +601,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_attendance_alerts: { Args: never; Returns: undefined }
+      check_performance_drops: { Args: never; Returns: undefined }
       create_notification: {
         Args: {
           _message: string
