@@ -25,6 +25,7 @@ import AttendancePage from "./pages/AttendancePage";
 import TeacherAssignmentsPage from "./pages/TeacherAssignmentsPage";
 import GradeAnalysisPage from "./pages/GradeAnalysisPage";
 import PerformanceTrackingPage from "./pages/PerformanceTrackingPage";
+import MorePage from "./pages/MorePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/grade-analysis" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><GradeAnalysisPage /></ProtectedRoute>} />
             <Route path="/performance-tracking" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><PerformanceTrackingPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
+            <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
