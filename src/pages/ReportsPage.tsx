@@ -162,10 +162,12 @@ export default function ReportsPage() {
   }, [subjects, selectedGrade, isSchoolWide, selectedGrades]);
 
   const reportData = useMemo(() => {
-    // For combined/school reports, we rank per grade
     const relevantSubjects = isSchoolWide ? subjects : gradeSubjects;
     
-    return learners.map(l => {
+    // Filter by gender if set
+    const filteredLearners = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
+    
+    const mapped = filteredLearners.map(l => {
       const learnerGradeSubjects = relevantSubjects.filter(s => s.grade === l.grade);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerGradeSubjects.map(sub => {
@@ -175,22 +177,29 @@ export default function ReportsPage() {
           score: sc?.score || 0,
           grade: sc ? getGrade(sc.score, sub.max_score) : '-' as any,
           comment: sc?.teacher_comment || '',
+          teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
         };
       });
       const total = subjectData.reduce((s, d) => s + d.score, 0);
       const maxTotal = learnerGradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
       const mean = learnerGradeSubjects.length > 0 ? total / learnerGradeSubjects.length : 0;
       const avgMax = learnerGradeSubjects.length > 0 ? maxTotal / learnerGradeSubjects.length : 100;
+      const hasAnyScore = learnerScores.length > 0;
       return {
         ...l, subjectData, total, mean,
         overallGrade: learnerGradeSubjects.length > 0 ? getGrade(mean, avgMax) : '-',
+        hasAnyScore,
       };
-    }).sort((a, b) => b.total - a.total).map((l, i, arr) => {
+    })
+    // Exclude learners with no scores
+    .filter(l => l.hasAnyScore)
+    .sort((a, b) => b.total - a.total).map((l, i, arr) => {
       let rank = i + 1;
       if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
       return { ...l, rank };
     });
-  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide]);
+    return mapped;
+  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter]);
 
   const subjectMeans = useMemo(() => {
     return gradeSubjects.map(sub => {
