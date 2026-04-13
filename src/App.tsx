@@ -26,6 +26,7 @@ import TeacherAssignmentsPage from "./pages/TeacherAssignmentsPage";
 import GradeAnalysisPage from "./pages/GradeAnalysisPage";
 import PerformanceTrackingPage from "./pages/PerformanceTrackingPage";
 import MorePage from "./pages/MorePage";
+import ParentDashboard from "./pages/ParentDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,7 +35,10 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   const { user, role, loading } = useAuth();
   if (loading) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    if (role === 'parent') return <Navigate to="/parent" replace />;
+    return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -43,6 +47,7 @@ function SmartRedirect() {
   if (loading) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
+  if (role === 'parent') return <Navigate to="/parent" replace />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -79,6 +84,8 @@ const App = () => (
             <Route path="/performance-tracking" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><PerformanceTrackingPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
             <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
+            {/* Parent routes */}
+            <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

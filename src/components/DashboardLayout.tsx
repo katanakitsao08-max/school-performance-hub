@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { NotificationBell } from "@/components/NotificationBell";
+import { OfflineStatusBar } from "@/components/OfflineStatusBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -35,6 +36,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <NotificationBell />
             </div>
           </header>
+          <OfflineStatusBar />
           <main className="flex-1 p-4 md:p-6 overflow-auto pb-24 md:pb-6">
             {children}
           </main>
