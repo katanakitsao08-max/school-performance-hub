@@ -22,7 +22,13 @@ export default function MarksEntryPage() {
   const currentYear = new Date().getFullYear();
   const dynamicGrades = useSchoolGrades();
 
-  const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
+  // For teachers with granular assignments, restrict grades to assigned ones
+  const granularGrades = useMemo(() => {
+    if (role !== 'teacher') return [];
+    return [...new Set(granularAssignments.map(a => a.grade))];
+  }, [granularAssignments, role]);
+
+  const teacherGrades = hasGranularAssignments ? granularGrades : (profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades);
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
   const assignedLearningAreas = profile?.assigned_learning_areas || [];
@@ -50,9 +56,17 @@ export default function MarksEntryPage() {
     },
   });
 
-  const availableStreams = role === 'teacher' && assignedStreams.length > 0
-    ? dbStreams.filter(s => assignedStreams.includes(s))
-    : dbStreams;
+  // For teachers with granular assignments, restrict streams to assigned ones
+  const granularStreams = useMemo(() => {
+    if (!hasGranularAssignments) return [];
+    return [...new Set(granularAssignments.filter(a => a.grade === selectedGrade).map(a => a.stream))];
+  }, [granularAssignments, hasGranularAssignments, selectedGrade]);
+
+  const availableStreams = role === 'teacher' && hasGranularAssignments
+    ? granularStreams
+    : role === 'teacher' && assignedStreams.length > 0
+      ? dbStreams.filter(s => assignedStreams.includes(s))
+      : dbStreams;
 
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
   const [selectedStream, setSelectedStream] = useState('');
