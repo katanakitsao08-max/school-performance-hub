@@ -278,6 +278,13 @@ export default function MarksEntryPage() {
             </Select>
           </div>
           <div className="space-y-1">
+            <Label className="text-xs">Assessment</Label>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
+              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
             <Label className="text-xs">Year</Label>
             <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[100px]" />
           </div>
