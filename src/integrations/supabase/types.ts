@@ -106,6 +106,7 @@ export type Database = {
           admission_number: string
           created_at: string
           full_name: string
+          gender: string
           grade: string
           id: string
           is_active: boolean
@@ -120,6 +121,7 @@ export type Database = {
           admission_number: string
           created_at?: string
           full_name: string
+          gender?: string
           grade: string
           id?: string
           is_active?: boolean
@@ -134,6 +136,7 @@ export type Database = {
           admission_number?: string
           created_at?: string
           full_name?: string
+          gender?: string
           grade?: string
           id?: string
           is_active?: boolean
@@ -353,6 +356,7 @@ export type Database = {
       }
       scores: {
         Row: {
+          assessment_type: string
           created_at: string
           id: string
           learner_id: string
@@ -365,6 +369,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          assessment_type?: string
           created_at?: string
           id?: string
           learner_id: string
@@ -377,6 +382,7 @@ export type Database = {
           year: number
         }
         Update: {
+          assessment_type?: string
           created_at?: string
           id?: string
           learner_id?: string
