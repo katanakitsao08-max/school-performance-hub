@@ -282,6 +282,8 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     y = (doc as any).lastAutoTable.finalY + 3;
   }
 
+  // ── SUMMARY CARDS (compact) ──
+  const cardW = (cw - 9) / 4;
   const cardH = 12;
   const summaryItems = [
     { label: 'Total', value: `${data.total}/${data.maxTotal}`, color: primary },
