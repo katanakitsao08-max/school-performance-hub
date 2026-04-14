@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Search, UserPlus } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, UserPlus, Users } from 'lucide-react';
 import { GENDERS } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
@@ -169,6 +169,39 @@ export default function LearnersPage() {
     },
   });
 
+  const [bulkCreating, setBulkCreating] = useState(false);
+
+  const handleBulkCreateParents = async () => {
+    if (filtered.length === 0) {
+      toast({ title: 'No learners', description: 'No learners to create parent accounts for.', variant: 'destructive' });
+      return;
+    }
+    setBulkCreating(true);
+    try {
+      const payload = filtered.map(l => ({
+        id: l.id,
+        admission_number: l.admission_number,
+        full_name: l.full_name,
+        parent_name: l.parent_name,
+      }));
+      const { data, error } = await supabase.functions.invoke('bulk-create-parents', {
+        body: { learners: payload, school_id: schoolId },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      const s = data.summary;
+      toast({
+        title: 'Bulk Parent Accounts',
+        description: `Created: ${s.created} | Linked: ${s.linked} | Skipped: ${s.skipped} | Failed: ${s.failed}`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setBulkCreating(false);
+    }
+  };
+
   const resetForm = () => setForm({
     admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
@@ -193,7 +226,13 @@ export default function LearnersPage() {
             <h1 className="text-2xl font-display font-bold">Learners</h1>
             <p className="text-muted-foreground">Manage student records</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {isAdmin && (
+              <Button variant="outline" onClick={handleBulkCreateParents} disabled={bulkCreating}>
+                <Users className="mr-2 h-4 w-4" />
+                {bulkCreating ? 'Creating...' : 'Create All Parent Accounts'}
+              </Button>
+            )}
             <BulkUploadDialog availableGrades={availableGrades} availableStreams={availableStreams} />
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
               <DialogTrigger asChild>
