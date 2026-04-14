@@ -238,8 +238,50 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
 
   y = (doc as any).lastAutoTable.finalY + 3;
 
-  // ── SUMMARY CARDS (compact) ──
-  const cardW = (cw - 9) / 4;
+  // ── STRAND BREAKDOWN (if any subject has strands) ──
+  const subjectsWithStrands = data.subjectData.filter(s => s.strands && s.strands.length > 0);
+  if (subjectsWithStrands.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...dark);
+    doc.text('STRAND PERFORMANCE', mx, y);
+    y += 2;
+
+    const strandHeaders = ['Subject', 'Strand', 'Score', '/Max', 'Level', 'Comment'];
+    const strandBody: string[][] = [];
+    subjectsWithStrands.forEach(sub => {
+      sub.strands!.forEach((st, i) => {
+        strandBody.push([
+          i === 0 ? sub.name : '',
+          st.strandName,
+          `${st.score}`,
+          `${st.maxScore}`,
+          st.competencyLevel,
+          (st.teacherComment || '-').substring(0, 40),
+        ]);
+      });
+    });
+
+    autoTable(doc, {
+      head: [strandHeaders],
+      body: strandBody,
+      startY: y,
+      styles: { fontSize: 5.5, cellPadding: 1 },
+      headStyles: { fillColor: [39, 174, 96] as any, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 5.5 },
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+      columnStyles: {
+        0: { cellWidth: 25, fontStyle: 'bold' },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 12, halign: 'center' },
+        3: { cellWidth: 12, halign: 'center' },
+        4: { cellWidth: 12, halign: 'center' },
+      },
+      margin: { left: mx, right: mx },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 3;
+  }
+
   const cardH = 12;
   const summaryItems = [
     { label: 'Total', value: `${data.total}/${data.maxTotal}`, color: primary },
