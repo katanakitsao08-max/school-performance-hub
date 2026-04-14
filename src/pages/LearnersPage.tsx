@@ -162,7 +162,7 @@ export default function LearnersPage() {
       setCreatingParentFor(null);
       toast({
         title: 'Parent Account Created',
-        description: `Username: ${result.admNo} | Password: ${result.firstName}`,
+        description: `Username: ${result.admNo} | Password: ${result.password}`,
       });
     },
     onError: (error: any) => {
