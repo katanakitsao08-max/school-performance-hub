@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Save, School, Phone, MapPin, Mail } from 'lucide-react';
+import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 const SETTING_KEYS = [
@@ -22,8 +22,10 @@ const SETTING_KEYS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { schoolId } = useAuth();
+  const { schoolId, role } = useAuth();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ['school-settings'],
@@ -33,6 +35,8 @@ export default function SettingsPage() {
       return data || [];
     },
   });
+
+  const schoolLogoUrl = settings.find(s => s.key === 'school_logo_url')?.value || '';
 
   useEffect(() => {
     const mapped: Record<string, string> = {};
@@ -63,6 +67,68 @@ export default function SettingsPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !schoolId) return;
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${schoolId}/logo.${ext}`;
+
+      // Remove old logo
+      await supabase.storage.from('school-logos').remove([path]);
+
+      const { error: uploadError } = await supabase.storage
+        .from('school-logos')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('school-logos').getPublicUrl(path);
+      const logoUrl = urlData.publicUrl + '?t=' + Date.now();
+
+      // Save URL to school_settings
+      const existing = settings.find(s => s.key === 'school_logo_url');
+      if (existing) {
+        await supabase.from('school_settings').update({ value: logoUrl }).eq('id', existing.id);
+      } else {
+        await supabase.from('school_settings').insert({ key: 'school_logo_url', value: logoUrl, school_id: schoolId });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+      toast({ title: 'School logo uploaded successfully' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!schoolId) return;
+    setUploading(true);
+    try {
+      const existing = settings.find(s => s.key === 'school_logo_url');
+      if (existing) {
+        await supabase.from('school_settings').update({ value: '' }).eq('id', existing.id);
+      }
+      // Remove from storage
+      const { data: files } = await supabase.storage.from('school-logos').list(schoolId);
+      if (files?.length) {
+        await supabase.storage.from('school-logos').remove(files.map(f => `${schoolId}/${f.name}`));
+      }
+      queryClient.invalidateQueries({ queryKey: ['school-settings'] });
+      toast({ title: 'Logo removed' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const canUploadLogo = role === 'admin' || role === 'super_admin';
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in max-w-2xl">
@@ -70,6 +136,58 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-display font-bold">School Settings</h1>
           <p className="text-muted-foreground">Manage your school details that appear on reports and documents</p>
         </div>
+
+        {/* School Logo Card */}
+        {canUploadLogo && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">School Logo</CardTitle>
+              <CardDescription>Upload your school logo to appear on reports and documents</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30">
+                  {schoolLogoUrl ? (
+                    <img src={schoolLogoUrl} alt="School Logo" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  {schoolLogoUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveLogo}
+                      disabled={uploading}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">PNG, JPG or WebP. Max 2MB.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

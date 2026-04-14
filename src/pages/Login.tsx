@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { GraduationCap, Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import performTrackLogo from '@/assets/performtrack-logo.png';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -65,9 +66,7 @@ export default function Login() {
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-primary-foreground">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-              <GraduationCap className="h-9 w-9" />
-            </div>
+            <img src={performTrackLogo} alt="PerformTrack" className="w-16 h-16 rounded-2xl object-contain bg-white/20 backdrop-blur p-1" />
           </div>
           <h1 className="text-4xl xl:text-5xl font-display font-extrabold leading-tight mb-4">
             {schoolName}
@@ -89,9 +88,7 @@ export default function Login() {
         <div className="w-full max-w-sm">
           {/* Mobile branding */}
           <div className="lg:hidden text-center mb-8">
-            <div className="mx-auto w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center mb-4">
-              <GraduationCap className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={performTrackLogo} alt="PerformTrack" className="mx-auto w-14 h-14 rounded-2xl object-contain mb-4" />
             <h1 className="text-2xl font-display font-bold text-foreground">{schoolName}</h1>
             <p className="text-sm text-muted-foreground mt-1">{schoolMotto}</p>
           </div>

@@ -63,6 +63,7 @@ export default function ReportsPage() {
   const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
   const schoolMotto = schoolSettings['school_motto'] || '';
   const schoolAddress = schoolSettings['school_address'] || '';
+  const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
 
   // For combined/school reports, fetch learners for multiple grades
   const { data: learners = [] } = useQuery({
@@ -234,8 +235,34 @@ export default function ReportsPage() {
     });
   };
 
-  const addPdfHeader = (doc: jsPDF, y: number) => {
+  const loadImageAsBase64 = (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!url) { resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
+  const addPdfHeader = async (doc: jsPDF, y: number) => {
     const cx = doc.internal.pageSize.getWidth() / 2;
+    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+    
+    if (logoBase64) {
+      const logoSize = 18;
+      doc.addImage(logoBase64, 'PNG', cx - logoSize / 2, y - 4, logoSize, logoSize);
+      y += logoSize + 2;
+    }
+    
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
@@ -247,10 +274,10 @@ export default function ReportsPage() {
     return y + 5;
   };
 
-  const exportClassPDF = () => {
+  const exportClassPDF = async () => {
     const doc = new jsPDF({ orientation: 'landscape' });
     let y = 12;
-    y = addPdfHeader(doc, y);
+    y = await addPdfHeader(doc, y);
     const cx = doc.internal.pageSize.getWidth() / 2;
     const title = isSchoolWide
       ? 'WHOLE SCHOOL REPORT'
@@ -281,7 +308,7 @@ export default function ReportsPage() {
     if (analysis.subjectAnalyses.length > 0) {
       doc.addPage('landscape');
       let ay = 12;
-      ay = addPdfHeader(doc, ay);
+      ay = await addPdfHeader(doc, ay);
       doc.setFontSize(14); doc.setFont('helvetica', 'bold');
       doc.text('PERFORMANCE ANALYSIS', cx, ay, { align: 'center' });
       ay += 8;
@@ -316,7 +343,7 @@ export default function ReportsPage() {
       // Top 5 per subject page
       doc.addPage('landscape');
       let ty = 12;
-      ty = addPdfHeader(doc, ty);
+      ty = await addPdfHeader(doc, ty);
       doc.setFontSize(14); doc.setFont('helvetica', 'bold');
       doc.text('TOP 5 LEARNERS PER SUBJECT', cx, ty, { align: 'center' });
       ty += 8;
@@ -340,13 +367,13 @@ export default function ReportsPage() {
     doc.save(`Report_${isSchoolWide ? 'School' : `G${selectedGrades.join('-')}`}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
-  const exportIndividualPDF = (learnerData?: any) => {
+  const exportIndividualPDF = async (learnerData?: any) => {
     const ld = learnerData || selectedLearnerData;
     if (!ld) return;
 
     const doc = new jsPDF();
     let y = 15;
-    y = addPdfHeader(doc, y);
+    y = await addPdfHeader(doc, y);
     const cx = doc.internal.pageSize.getWidth() / 2;
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
