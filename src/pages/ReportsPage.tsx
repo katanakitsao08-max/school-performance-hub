@@ -36,6 +36,8 @@ export default function ReportsPage() {
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
+  const [batchExporting, setBatchExporting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
