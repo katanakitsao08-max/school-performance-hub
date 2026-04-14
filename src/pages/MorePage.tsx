@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, BookOpen, GraduationCap, Columns, UserCog, BarChart3,
   MessageSquare, ArrowUpCircle, Settings, PieChart, Activity,
-  CalendarCheck, LogOut, ChevronRight, Building2
+  CalendarCheck, LogOut, ChevronRight, Building2, Wallet
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -26,6 +26,12 @@ const adminMenuSections = [
       { title: "Performance Tracking", icon: Activity, to: "/performance-tracking" },
       { title: "Analytics", icon: BarChart3, to: "/analytics" },
       { title: "Attendance", icon: CalendarCheck, to: "/attendance" },
+    ],
+  },
+  {
+    title: "Finance",
+    items: [
+      { title: "Fee Management", icon: Wallet, to: "/fees" },
     ],
   },
   {
