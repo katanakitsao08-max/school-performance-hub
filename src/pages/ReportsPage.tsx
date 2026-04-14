@@ -168,6 +168,30 @@ export default function ReportsPage() {
     return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const getTeacherName = (subjectId: string, grade: string, stream: string) => {
+    const assignment = teacherAssignmentsForReport.find(
+      a => a.learning_area_id === subjectId && a.grade === grade && a.stream === stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    return profile?.full_name || '';
+  };
+
+  // Term history for trend graph
+  const { data: termHistoryScores = [] } = useQuery({
+    queryKey: ['term-history-scores', selectedYear, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('scores')
+        .select('learner_id, score, term, year, assessment_type, learning_area_id')
+        .eq('year', selectedYear)
+        .eq('assessment_type', 'end_term')
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return subjects;
