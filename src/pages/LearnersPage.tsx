@@ -297,6 +297,17 @@ export default function LearnersPage() {
                     <TableCell className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(l)}><Edit className="h-4 w-4" /></Button>
                       {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Create Parent Login"
+                          disabled={creatingParentFor === l.id}
+                          onClick={() => { setCreatingParentFor(l.id); createParentAccount.mutate(l); }}
+                        >
+                          <UserPlus className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
+                      {isAdmin && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
