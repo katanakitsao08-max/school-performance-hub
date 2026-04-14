@@ -12,9 +12,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Plus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+// CBC default learning areas per grade group
+const CBC_DEFAULTS: Record<string, string[]> = {
+  'lower': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'ENVIRONMENTAL ACTIVITIES', 'CREATIVE ARTS', 'RELIGIOUS EDUCATION'],
+  'upper': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS'],
+  'jss': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS', 'PRE-TECHNICAL STUDIES'],
+};
+
+function getGradeGroup(grade: string): 'lower' | 'upper' | 'jss' {
+  const num = parseInt(grade, 10);
+  if (num >= 7) return 'jss';
+  if (num >= 4) return 'upper';
+  return 'lower';
+}
 
 export default function LearningAreasPage() {
   const { toast } = useToast();
@@ -25,6 +39,7 @@ export default function LearningAreasPage() {
   const [editing, setEditing] = useState<any>(null);
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [form, setForm] = useState({ name: '', grade: '', max_score: 100 });
+  const [loadingDefaults, setLoadingDefaults] = useState(false);
 
   const { data: areas = [] } = useQuery({
     queryKey: ['learning-areas', schoolId],
@@ -100,6 +115,42 @@ export default function LearningAreasPage() {
     setOpen(true);
   };
 
+  const handleLoadDefaults = async () => {
+    if (!schoolId) return;
+    setLoadingDefaults(true);
+    try {
+      const existingNames = new Set(areas.map((a: any) => `${a.grade}::${a.name.toUpperCase()}`));
+      const toInsert: { name: string; grade: string; max_score: number; school_id: string }[] = [];
+
+      for (const grade of schoolGrades) {
+        const group = getGradeGroup(grade);
+        const defaults = CBC_DEFAULTS[group];
+        for (const subject of defaults) {
+          const key = `${grade}::${subject}`;
+          if (!existingNames.has(key)) {
+            toInsert.push({ name: subject, grade, max_score: 100, school_id: schoolId });
+          }
+        }
+      }
+
+      if (toInsert.length === 0) {
+        toast({ title: 'All default subjects already exist for your grades.' });
+        setLoadingDefaults(false);
+        return;
+      }
+
+      const { error } = await supabase.from('learning_areas').insert(toInsert);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['learning-areas'] });
+      toast({ title: `${toInsert.length} default subjects added across ${schoolGrades.length} grades.` });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setLoadingDefaults(false);
+    }
+  };
+
   const defaultGrade = schoolGrades.length > 0 ? schoolGrades[0] : '1';
 
   if (!schoolId) {
@@ -125,9 +176,9 @@ export default function LearningAreasPage() {
             <h1 className="text-2xl font-display font-bold">Learning Areas</h1>
             <p className="text-muted-foreground">Manage subjects per grade</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Select value={filterGrade} onValueChange={setFilterGrade}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Filter by grade" />
               </SelectTrigger>
               <SelectContent>
@@ -137,6 +188,36 @@ export default function LearningAreasPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={loadingDefaults}>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  {loadingDefaults ? 'Loading...' : 'Load CBC Defaults'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Load CBC Default Subjects?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will add the standard CBC learning areas for all your configured grades:
+                    <br /><br />
+                    <strong>Grade 1–3:</strong> English, Kiswahili, Mathematics, Environmental Activities, Creative Arts, Religious Education
+                    <br /><br />
+                    <strong>Grade 4–6:</strong> English, Kiswahili, Mathematics, Integrated Science, Agriculture, Religious Education, Social Studies, Creative Arts
+                    <br /><br />
+                    <strong>Grade 7–9:</strong> Same as Grade 4–6 + Pre-Technical Studies
+                    <br /><br />
+                    Existing subjects will not be duplicated. All subjects remain fully editable.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLoadDefaults}>Load Defaults</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm({ name: '', grade: '', max_score: 100 }); } }}>
               <DialogTrigger asChild>
                 <Button onClick={() => setForm(f => ({ ...f, grade: f.grade || defaultGrade }))}>
@@ -188,7 +269,7 @@ export default function LearningAreasPage() {
                 {filteredAreas.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No learning areas found. Add one above.
+                      No learning areas found. Click "Load CBC Defaults" to get started.
                     </TableCell>
                   </TableRow>
                 )}
