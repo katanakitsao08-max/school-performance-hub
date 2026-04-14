@@ -19,6 +19,21 @@ export default function ParentReportsTab({ child }: Props) {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [generating, setGenerating] = useState(false);
 
+  // Get school_id from parent_learners
+  const { data: parentLink } = useQuery({
+    queryKey: ['parent-link', child.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('parent_learners')
+        .select('school_id')
+        .eq('learner_id', child.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const schoolId = parentLink?.school_id;
+
   const { data: scores = [] } = useQuery({
     queryKey: ['parent-report-scores', child.id, selectedTerm, selectedYear],
     queryFn: async () => {
@@ -34,31 +49,209 @@ export default function ParentReportsTab({ child }: Props) {
   });
 
   const { data: schoolSettings = {} } = useQuery({
-    queryKey: ['parent-school-settings', child.id],
+    queryKey: ['parent-school-settings', schoolId],
     queryFn: async () => {
-      // Get school_id from parent_learners
-      const { data: links } = await supabase
-        .from('parent_learners')
-        .select('school_id')
-        .eq('learner_id', child.id)
-        .maybeSingle();
-      if (!links?.school_id) return {};
+      if (!schoolId) return {};
       const { data } = await supabase
         .from('school_settings')
         .select('key, value')
-        .eq('school_id', links.school_id);
+        .eq('school_id', schoolId);
       const settings: Record<string, string> = {};
       (data || []).forEach(s => { settings[s.key] = s.value; });
       return settings;
     },
+    enabled: !!schoolId,
   });
 
+  const { data: schoolRecord } = useQuery({
+    queryKey: ['parent-school-record', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch teacher assignments for initials
+  const { data: teacherAssignments = [] } = useQuery({
+    queryKey: ['parent-teacher-assignments', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('learning_area_id, teacher_id, grade, stream')
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['parent-profiles-initials', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('user_id, full_name').eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch all learners in the same grade for ranking & class averages
+  const { data: gradeLearners = [] } = useQuery({
+    queryKey: ['parent-grade-learners', child.grade, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('learners')
+        .select('id, grade, stream')
+        .eq('grade', child.grade)
+        .eq('is_active', true)
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch all scores for the grade (for rankings & class averages)
+  const { data: allGradeScores = [] } = useQuery({
+    queryKey: ['parent-grade-scores', child.grade, selectedTerm, selectedYear, schoolId],
+    queryFn: async () => {
+      const ids = gradeLearners.map(l => l.id);
+      if (!ids.length) return [];
+      const { data } = await supabase
+        .from('scores')
+        .select('learner_id, learning_area_id, score')
+        .in('learner_id', ids)
+        .eq('term', Number(selectedTerm))
+        .eq('year', Number(selectedYear))
+        .eq('assessment_type', 'end_term');
+      return data || [];
+    },
+    enabled: gradeLearners.length > 0,
+  });
+
+  // Fetch learning areas for the grade
+  const { data: gradeSubjects = [] } = useQuery({
+    queryKey: ['parent-grade-subjects', child.grade, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('learning_areas')
+        .select('id, name, max_score')
+        .eq('grade', child.grade)
+        .eq('is_active', true)
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const getTeacherInitials = (subjectId: string) => {
+    const assignment = teacherAssignments.find(
+      a => a.learning_area_id === subjectId && a.grade === child.grade && a.stream === child.stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    if (!profile) return '';
+    return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const getTeacherName = (subjectId: string) => {
+    const assignment = teacherAssignments.find(
+      a => a.learning_area_id === subjectId && a.grade === child.grade && a.stream === child.stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    return profile?.full_name || '';
+  };
+
+  // Compute rankings and class averages
+  const { classAvgPerSubject, overallRank, streamRank, totalInClass, totalInStream, gradeDistribution } = useMemo(() => {
+    const classAvg: Record<string, number> = {};
+    gradeSubjects.forEach(sub => {
+      const subScores = allGradeScores.filter(s => s.learning_area_id === sub.id);
+      classAvg[sub.name] = subScores.length > 0 ? subScores.reduce((sum, s) => sum + s.score, 0) / subScores.length : 0;
+    });
+
+    // Compute totals per learner
+    const learnerTotals: { id: string; stream: string; total: number }[] = [];
+    const learnerIdsWithScores = new Set(allGradeScores.map(s => s.learner_id));
+    
+    gradeLearners.filter(l => learnerIdsWithScores.has(l.id)).forEach(l => {
+      const lScores = allGradeScores.filter(s => s.learner_id === l.id);
+      const total = lScores.reduce((sum, s) => sum + s.score, 0);
+      learnerTotals.push({ id: l.id, stream: l.stream, total });
+    });
+
+    // Overall rank
+    learnerTotals.sort((a, b) => b.total - a.total);
+    let oRank = 0;
+    const childTotal = learnerTotals.find(l => l.id === child.id)?.total ?? 0;
+    learnerTotals.forEach((l, i) => {
+      if (l.id === child.id) {
+        oRank = learnerTotals.findIndex(x => x.total === l.total) + 1;
+      }
+    });
+
+    // Stream rank
+    const streamLearners = learnerTotals.filter(l => l.stream === child.stream).sort((a, b) => b.total - a.total);
+    let sRank = 0;
+    streamLearners.forEach((l) => {
+      if (l.id === child.id) {
+        sRank = streamLearners.findIndex(x => x.total === l.total) + 1;
+      }
+    });
+
+    // Grade distribution
+    const isK = isKJSEAGradeLevel(child.grade);
+    const levels = isK ? ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2'] : ['EE', 'ME', 'AE', 'BE'];
+    const dist: Record<string, number> = {};
+    levels.forEach(l => { dist[l] = 0; });
+    learnerTotals.forEach(lt => {
+      const lScores = allGradeScores.filter(s => s.learner_id === lt.id);
+      const subCount = gradeSubjects.length || 1;
+      const mean = lt.total / subCount;
+      const avgMax = gradeSubjects.length > 0 ? gradeSubjects.reduce((s, sub) => s + sub.max_score, 0) / subCount : 100;
+      const g = getGradeForLevel(mean, avgMax, child.grade);
+      if (g && g !== '-' && dist[g as string] !== undefined) {
+        dist[g as string]++;
+      }
+    });
+
+    return {
+      classAvgPerSubject: classAvg,
+      overallRank: oRank,
+      streamRank: sRank,
+      totalInClass: learnerTotals.length,
+      totalInStream: streamLearners.length,
+      gradeDistribution: levels.map(g => ({ grade: g, count: dist[g] || 0 })),
+    };
+  }, [allGradeScores, gradeLearners, gradeSubjects, child]);
+
+  // Load school logo as base64
+  const loadImageAsBase64 = (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!url) { resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
   const hasScores = scores.length > 0;
+  const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
 
   const handleDownload = async () => {
     if (!hasScores) return;
     setGenerating(true);
     try {
+      const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+
       const subjectData = scores.map(s => {
         const la = (s as any).learning_areas;
         const name = la?.name || 'Unknown';
@@ -69,8 +262,8 @@ export default function ParentReportsTab({ child }: Props) {
           score: Number(s.score),
           maxScore,
           grade: grade as string,
-          teacherInitials: '',
-          teacherName: '',
+          teacherInitials: getTeacherInitials(s.learning_area_id),
+          teacherName: getTeacherName(s.learning_area_id),
           comment: s.teacher_comment || '',
           strands: [],
         };
@@ -96,10 +289,10 @@ export default function ParentReportsTab({ child }: Props) {
         maxTotal,
         mean,
         overallGrade: overallGrade as string,
-        rank: 0,
-        streamRank: 0,
-        totalInClass: 0,
-        totalInStream: 0,
+        rank: overallRank,
+        streamRank,
+        totalInClass,
+        totalInStream,
         totalPoints,
         selectedTerm: Number(selectedTerm),
         selectedYear: Number(selectedYear),
@@ -107,9 +300,9 @@ export default function ParentReportsTab({ child }: Props) {
         classTeacherComment: generateTeacherComment(child.full_name, mean, 100, subjectData.map(s => ({ name: s.name, score: s.score, maxScore: s.maxScore }))),
         principalComment: '',
         schoolSettings,
-        logoBase64: null,
-        classAvgPerSubject: {},
-        gradeDistribution: [],
+        logoBase64,
+        classAvgPerSubject,
+        gradeDistribution,
         appUrl: window.location.origin,
       };
 
