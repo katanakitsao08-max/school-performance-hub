@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School, Archive, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
@@ -218,7 +218,7 @@ export default function ReportsPage() {
         return {
           id: sub.id, name: sub.name, maxScore: sub.max_score,
           score: sc?.score || 0,
-          grade: sc ? getGrade(sc.score, sub.max_score) : '-' as any,
+          grade: sc ? getGradeForLevel(sc.score, sub.max_score, l.grade) : '-' as any,
           comment: sc?.teacher_comment || '',
           teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
         };
@@ -230,7 +230,7 @@ export default function ReportsPage() {
       const hasAnyScore = learnerScores.length > 0;
       return {
         ...l, subjectData, total, mean,
-        overallGrade: learnerGradeSubjects.length > 0 ? getGrade(mean, avgMax) : '-',
+        overallGrade: learnerGradeSubjects.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
         hasAnyScore,
       };
     })
