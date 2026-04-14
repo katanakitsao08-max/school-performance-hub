@@ -34,6 +34,7 @@ export default function ReportsPage() {
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
