@@ -566,11 +566,7 @@ export default function ReportsPage() {
     const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
     const totalPoints = ld.subjectData.reduce((s: number, d: any) => {
       if (d.grade === '-') return s;
-      const pct = d.maxScore > 0 ? (d.score / d.maxScore) * 100 : 0;
-      if (pct >= 75) return s + 4;
-      if (pct >= 50) return s + 3;
-      if (pct >= 25) return s + 2;
-      return s + 1;
+      return s + getGradePoints(d.grade);
     }, 0);
 
     const streamKey = `${ld.grade}-${ld.stream}`;
@@ -628,11 +624,7 @@ export default function ReportsPage() {
       const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
       const totalPoints = ld.subjectData.reduce((s: number, d: any) => {
         if (d.grade === '-') return s;
-        const pct = d.maxScore > 0 ? (d.score / d.maxScore) * 100 : 0;
-        if (pct >= 75) return s + 4;
-        if (pct >= 50) return s + 3;
-        if (pct >= 25) return s + 2;
-        return s + 1;
+        return s + getGradePoints(d.grade);
       }, 0);
       const streamKey = `${ld.grade}-${ld.stream}`;
 
