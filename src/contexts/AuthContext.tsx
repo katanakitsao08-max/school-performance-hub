@@ -20,6 +20,8 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   schoolId: string | null;
+  schoolStatus: string | null;
+  isSchoolFrozen: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,9 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [schoolStatus, setSchoolStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const schoolId = profile?.school_id || null;
+
+  // School is frozen if status is 'expired' and user is NOT super_admin
+  const isSchoolFrozen = schoolStatus === 'expired' && role !== 'super_admin';
 
   const fetchUserData = async (userId: string) => {
     try {
@@ -42,7 +48,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
-      if (profileRes.data) setProfile(profileRes.data as Profile);
+      if (profileRes.data) {
+        setProfile(profileRes.data as Profile);
+        // Fetch school subscription status
+        if (profileRes.data.school_id) {
+          const { data: schoolData } = await supabase
+            .from('schools')
+            .select('subscription_status')
+            .eq('id', profileRes.data.school_id)
+            .maybeSingle();
+          setSchoolStatus(schoolData?.subscription_status || null);
+        }
+      }
       if (roleRes.data) setRole(roleRes.data.role as AppRole);
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -60,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null);
           setRole(null);
+          setSchoolStatus(null);
         }
         setLoading(false);
       }
@@ -86,10 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
+    setSchoolStatus(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, schoolId, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, role, schoolId, schoolStatus, isSchoolFrozen, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
