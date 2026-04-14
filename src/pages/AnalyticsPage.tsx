@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { TERMS, getGradeForLevel, getGradeColor } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -55,17 +55,17 @@ export default function AnalyticsPage() {
   }, [subjects, scores]);
 
   const gradeDistribution = useMemo(() => {
-    const dist = { EE: 0, ME: 0, AE: 0, BE: 0 };
+    const dist: Record<string, number> = {};
     learners.forEach(l => {
       const learnerScores = scores.filter(s => s.learner_id === l.id);
       if (learnerScores.length === 0) return;
       const mean = learnerScores.reduce((s, sc) => s + sc.score, 0) / learnerScores.length;
       const avgMax = subjects.length > 0 ? subjects.reduce((s, sub) => s + sub.max_score, 0) / subjects.length : 100;
-      const grade = getGrade(mean, avgMax);
-      dist[grade]++;
+      const grade = getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1');
+      dist[grade] = (dist[grade] || 0) + 1;
     });
     return Object.entries(dist).map(([name, value]) => ({ name, value }));
-  }, [learners, scores, subjects]);
+  }, [learners, scores, subjects, selectedGrade]);
 
   const rankedLearners = useMemo(() => {
     return learners.map(l => {
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const mean = ls.length > 0 ? total / ls.length : 0;
       const avgMax = subjects.length > 0 ? subjects.reduce((s, sub) => s + sub.max_score, 0) / subjects.length : 100;
-      return { ...l, total, mean, grade: ls.length > 0 ? getGrade(mean, avgMax) : '-' };
+      return { ...l, total, mean, grade: ls.length > 0 ? getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1') : '-' };
     }).sort((a, b) => b.total - a.total);
   }, [learners, scores, subjects]);
 

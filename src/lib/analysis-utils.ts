@@ -1,11 +1,11 @@
-import { getGrade, type CBCGrade } from './cbc-utils';
+import { getGradeForLevel, type AnyGrade } from './cbc-utils';
 
 export interface SubjectAnalysis {
   name: string;
   mean: number;
   maxScore: number;
-  grade: CBCGrade;
-  top5: { name: string; score: number; grade: CBCGrade }[];
+  grade: AnyGrade;
+  top5: { name: string; score: number; grade: AnyGrade }[];
 }
 
 export interface AnalysisResult {
@@ -24,17 +24,17 @@ export function computeAnalysis(
   const subjectAnalyses: SubjectAnalysis[] = gradeSubjects.map(sub => {
     const scores = allScores.filter((s: any) => s.learning_area_id === sub.id);
     const mean = scores.length > 0 ? scores.reduce((a: number, s: any) => a + s.score, 0) / scores.length : 0;
-    const grade = getGrade(mean, sub.max_score);
+    const grade = getGradeForLevel(mean, sub.max_score, sub.grade || '1');
 
     // Top 5 learners for this subject
     const learnerScores = reportData
       .map(l => {
         const sd = l.subjectData?.find((d: any) => d.id === sub.id);
-        return sd ? { name: l.full_name, score: sd.score as number, grade: sd.grade as CBCGrade } : null;
+        return sd ? { name: l.full_name, score: sd.score as number, grade: sd.grade as AnyGrade } : null;
       })
       .filter(Boolean)
       .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 5) as { name: string; score: number; grade: CBCGrade }[];
+      .slice(0, 5) as { name: string; score: number; grade: AnyGrade }[];
 
     return { name: sub.name, mean: Number(mean.toFixed(1)), maxScore: sub.max_score, grade, top5: learnerScores };
   });

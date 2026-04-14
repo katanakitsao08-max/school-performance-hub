@@ -1,7 +1,16 @@
 // CBC Grading utilities for Kenyan schools
 
 export type CBCGrade = 'EE' | 'ME' | 'AE' | 'BE';
+export type KJSEAGrade = 'EE1' | 'EE2' | 'ME1' | 'ME2' | 'AE1' | 'AE2' | 'BE1' | 'BE2';
+export type AnyGrade = CBCGrade | KJSEAGrade;
 
+// Grades 7, 8, 9 use KJSEA (8-level) grading; everything else uses KPSEA (4-level)
+export function isKJSEAGradeLevel(gradeLevel: string): boolean {
+  const num = parseInt(gradeLevel, 10);
+  return num >= 7 && num <= 9;
+}
+
+// KPSEA grading (Grade 6 and below)
 export function getGrade(score: number, maxScore: number): CBCGrade {
   const percentage = (score / maxScore) * 100;
   if (percentage >= 75) return 'EE';
@@ -10,38 +19,98 @@ export function getGrade(score: number, maxScore: number): CBCGrade {
   return 'BE';
 }
 
-export function getGradeLabel(grade: CBCGrade): string {
-  const labels: Record<CBCGrade, string> = {
+// KJSEA grading (Grade 7-9)
+export function getKJSEAGrade(score: number, maxScore: number): KJSEAGrade {
+  const pct = (score / maxScore) * 100;
+  if (pct >= 90) return 'EE1';
+  if (pct >= 75) return 'EE2';
+  if (pct >= 62) return 'ME1';
+  if (pct >= 50) return 'ME2';
+  if (pct >= 37) return 'AE1';
+  if (pct >= 25) return 'AE2';
+  if (pct >= 12) return 'BE1';
+  return 'BE2';
+}
+
+// Grade-aware: returns the correct grade based on the student's grade level
+export function getGradeForLevel(score: number, maxScore: number, gradeLevel: string): AnyGrade {
+  if (isKJSEAGradeLevel(gradeLevel)) {
+    return getKJSEAGrade(score, maxScore);
+  }
+  return getGrade(score, maxScore);
+}
+
+export function getGradeLabel(grade: AnyGrade): string {
+  const labels: Record<string, string> = {
     EE: 'Exceeding Expectations',
     ME: 'Meeting Expectations',
     AE: 'Approaching Expectations',
     BE: 'Below Expectations',
+    EE1: 'Exceeding Expectations (1)',
+    EE2: 'Exceeding Expectations (2)',
+    ME1: 'Meeting Expectations (1)',
+    ME2: 'Meeting Expectations (2)',
+    AE1: 'Approaching Expectations (1)',
+    AE2: 'Approaching Expectations (2)',
+    BE1: 'Below Expectations (1)',
+    BE2: 'Below Expectations (2)',
   };
-  return labels[grade];
+  return labels[grade] || grade;
 }
 
-export function getGradeColor(grade: CBCGrade): string {
-  const colors: Record<CBCGrade, string> = {
+export function getGradeColor(grade: AnyGrade): string {
+  const colors: Record<string, string> = {
     EE: 'text-grade-ee',
     ME: 'text-info',
     AE: 'text-warning',
     BE: 'text-destructive',
+    EE1: 'text-grade-ee',
+    EE2: 'text-grade-ee',
+    ME1: 'text-info',
+    ME2: 'text-info',
+    AE1: 'text-warning',
+    AE2: 'text-warning',
+    BE1: 'text-destructive',
+    BE2: 'text-destructive',
   };
-  return colors[grade];
+  return colors[grade] || '';
 }
 
-export function getGradeBgColor(grade: CBCGrade): string {
-  const colors: Record<CBCGrade, string> = {
+export function getGradeBgColor(grade: AnyGrade): string {
+  const colors: Record<string, string> = {
     EE: 'bg-grade-ee',
     ME: 'bg-info',
     AE: 'bg-warning',
     BE: 'bg-destructive',
+    EE1: 'bg-grade-ee',
+    EE2: 'bg-grade-ee',
+    ME1: 'bg-info',
+    ME2: 'bg-info',
+    AE1: 'bg-warning',
+    AE2: 'bg-warning',
+    BE1: 'bg-destructive',
+    BE2: 'bg-destructive',
   };
-  return colors[grade];
+  return colors[grade] || '';
 }
 
 export function getOverallGrade(totalScore: number, totalMaxScore: number): CBCGrade {
   return getGrade(totalScore, totalMaxScore);
+}
+
+// KJSEA points system
+const KJSEA_POINTS: Record<KJSEAGrade, number> = {
+  EE1: 8, EE2: 7, ME1: 6, ME2: 5, AE1: 4, AE2: 3, BE1: 2, BE2: 1,
+};
+
+const KPSEA_POINTS: Record<CBCGrade, number> = {
+  EE: 4, ME: 3, AE: 2, BE: 1,
+};
+
+export function getGradePoints(grade: AnyGrade): number {
+  if (grade in KJSEA_POINTS) return KJSEA_POINTS[grade as KJSEAGrade];
+  if (grade in KPSEA_POINTS) return KPSEA_POINTS[grade as CBCGrade];
+  return 0;
 }
 
 export function generateTeacherComment(
