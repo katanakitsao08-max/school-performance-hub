@@ -17,6 +17,8 @@ const SETTING_KEYS = [
   { key: 'school_address', label: 'School Address', icon: MapPin, placeholder: 'e.g. P.O. Box 123, Nairobi' },
   { key: 'school_phone', label: 'Phone Number', icon: Phone, placeholder: 'e.g. +254 700 000 000' },
   { key: 'school_email', label: 'Email Address', icon: Mail, placeholder: 'e.g. info@takayeschool.com' },
+  { key: 'closing_date', label: 'Closing Date', icon: School, placeholder: 'e.g. 28th March 2026' },
+  { key: 'opening_date', label: 'Opening Date', icon: School, placeholder: 'e.g. 5th May 2026' },
 ];
 
 export default function SettingsPage() {
