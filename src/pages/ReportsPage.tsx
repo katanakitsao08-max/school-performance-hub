@@ -582,6 +582,7 @@ export default function ReportsPage() {
   }, [reportData, schoolLogoUrl, schoolSettings, selectedTerm, selectedYear, selectedAssessment, comments, principalComments, classAvgPerSubject, streamRankings, streamCounts, selectedGrades, batchExporting]);
 
 
+  const exportExcel = () => {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : gradeSubjects;
     const headers = ['Rank', 'Name', ...(showGradeCol ? ['Class'] : []), ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade'];
