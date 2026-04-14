@@ -62,7 +62,7 @@ function loadImageAsBase64(url: string): Promise<string | null> {
 
 async function generateQRCodeBase64(text: string): Promise<string | null> {
   try {
-    return await QRCode.toDataURL(text, { width: 100, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
+    return await QRCode.toDataURL(text, { width: 80, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
   } catch { return null; }
 }
 
@@ -70,8 +70,8 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   const doc = new jsPDF({ format: 'a4' });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const mx = 14; // margin x
-  const cw = pw - mx * 2; // content width
+  const mx = 10;
+  const cw = pw - mx * 2;
   const cx = pw / 2;
 
   const ss = data.schoolSettings;
@@ -83,126 +83,126 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   const closingDate = ss['closing_date'] || '';
   const openingDate = ss['opening_date'] || '';
 
-  // ─── COLORS ───
-  const primary: [number, number, number] = [41, 128, 185]; // blue
+  const primary: [number, number, number] = [41, 128, 185];
   const dark: [number, number, number] = [44, 62, 80];
-  const light: [number, number, number] = [236, 240, 241];
 
-  let y = 10;
+  let y = 4;
 
-  // ═══════════════════════════════════════════════
-  //  HEADER BAND
-  // ═══════════════════════════════════════════════
+  // ── TOP BAND ──
   doc.setFillColor(...primary);
-  doc.rect(0, 0, pw, 4, 'F');
+  doc.rect(0, 0, pw, 3, 'F');
+  y = 6;
 
-  // Logo
+  // Logo + School Name on same line
   if (data.logoBase64) {
-    const logoSize = 20;
-    doc.addImage(data.logoBase64, 'PNG', cx - logoSize / 2, y, logoSize, logoSize);
-    y += logoSize + 3;
+    const logoSize = 14;
+    doc.addImage(data.logoBase64, 'PNG', mx, y - 2, logoSize, logoSize);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...dark);
+    doc.text(schoolName.toUpperCase(), mx + logoSize + 4, y + 4);
+    if (schoolMotto) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`"${schoolMotto}"`, mx + logoSize + 4, y + 9);
+    }
+    const contactParts = [schoolAddress, schoolPhone, schoolEmail].filter(Boolean);
+    if (contactParts.length) {
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text(contactParts.join(' • '), mx + logoSize + 4, y + 13);
+    }
+    y += logoSize + 1;
   } else {
-    y += 5;
-  }
-
-  // School Name
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...dark);
-  doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
-  y += 6;
-
-  if (schoolMotto) {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`"${schoolMotto}"`, cx, y, { align: 'center' });
-    y += 5;
-  }
-
-  // Contact line
-  const contactParts = [schoolAddress, schoolPhone, schoolEmail].filter(Boolean);
-  if (contactParts.length) {
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(contactParts.join(' • '), cx, y, { align: 'center' });
-    y += 4;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...dark);
+    doc.text(schoolName.toUpperCase(), cx, y + 4, { align: 'center' });
+    y += 6;
+    if (schoolMotto) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`"${schoolMotto}"`, cx, y, { align: 'center' });
+      y += 3;
+    }
+    const contactParts = [schoolAddress, schoolPhone, schoolEmail].filter(Boolean);
+    if (contactParts.length) {
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text(contactParts.join(' • '), cx, y, { align: 'center' });
+      y += 3;
+    }
   }
 
   // Divider
   doc.setDrawColor(...primary);
-  doc.setLineWidth(0.8);
+  doc.setLineWidth(0.6);
   doc.line(mx, y, pw - mx, y);
-  y += 2;
-  doc.setLineWidth(0.3);
-  doc.line(mx, y, pw - mx, y);
-  y += 6;
+  y += 3;
 
-  // ═══════════════════════════════════════════════
-  //  REPORT TITLE
-  // ═══════════════════════════════════════════════
-  doc.setFillColor(...light);
-  doc.roundedRect(mx, y - 3, cw, 10, 2, 2, 'F');
-  doc.setFontSize(12);
+  // ── REPORT TITLE + STUDENT INFO (compact single row) ──
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...dark);
-  doc.text('ACADEMIC PERFORMANCE REPORT', cx, y + 4, { align: 'center' });
-  y += 14;
+  doc.setTextColor(...primary);
+  doc.text('ACADEMIC PERFORMANCE REPORT', mx, y + 1);
 
-  // ═══════════════════════════════════════════════
-  //  STUDENT INFO CARD
-  // ═══════════════════════════════════════════════
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(mx, y - 3, cw, 28, 2, 2, 'S');
-
-  const col1 = mx + 4;
-  const col2 = mx + cw / 2;
-  doc.setFontSize(9);
+  // Right-aligned term/year
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
+  doc.text(`Term ${data.selectedTerm} (${data.assessmentLabel}) • ${data.selectedYear}`, pw - mx, y + 1, { align: 'right' });
+  y += 4;
 
-  const infoRow = (label: string, value: string, x: number, yp: number) => {
+  // Student info - compact 2 rows
+  const col1 = mx + 2;
+  const col2 = mx + cw * 0.35;
+  const col3 = mx + cw * 0.65;
+
+  const infoItem = (label: string, value: string, x: number, yp: number) => {
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 100, 100);
     doc.text(`${label}:`, x, yp);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...dark);
-    doc.text(value, x + doc.getTextWidth(`${label}: `) + 1, yp);
+    doc.text(value, x + doc.getTextWidth(`${label}: `) + 0.5, yp);
   };
 
-  infoRow('Student Name', data.learner.full_name, col1, y + 2);
-  infoRow('Admission No', data.learner.admission_number, col2, y + 2);
-  infoRow('Class', `Grade ${data.learner.grade} ${data.learner.stream}`, col1, y + 9);
-  infoRow('Gender', data.learner.gender, col2, y + 9);
-  infoRow('Term', `${data.selectedTerm} (${data.assessmentLabel})`, col1, y + 16);
-  infoRow('Year', `${data.selectedYear}`, col2, y + 16);
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(mx, y - 2, cw, 12, 1, 1, 'S');
 
-  y += 30;
+  infoItem('Name', data.learner.full_name, col1, y + 2);
+  infoItem('Adm No', data.learner.admission_number, col2, y + 2);
+  infoItem('Gender', data.learner.gender, col3, y + 2);
+  infoItem('Class', `Grade ${data.learner.grade} ${data.learner.stream}`, col1, y + 7);
 
-  // ═══════════════════════════════════════════════
-  //  SUBJECT PERFORMANCE TABLE
-  // ═══════════════════════════════════════════════
-  doc.setFontSize(10);
+  y += 13;
+
+  // ── SUBJECT TABLE ──
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...dark);
   doc.text('SUBJECT PERFORMANCE', mx, y);
-  y += 3;
+  y += 2;
 
-  const subjectHeaders = ['#', 'Subject', 'Score', 'Max', '%', 'Grade', 'Class Avg', 'Teacher', 'Comment'];
+  const subjectHeaders = ['#', 'Subject', 'Score', 'Max', '%', 'Grade', 'Avg', 'Teacher', 'Remark'];
   const subjectBody = data.subjectData.map((s, i) => {
     const pct = s.maxScore > 0 ? ((s.score / s.maxScore) * 100).toFixed(0) : '0';
-    const classAvg = data.classAvgPerSubject[s.name] !== undefined ? data.classAvgPerSubject[s.name].toFixed(1) : '-';
+    const classAvg = data.classAvgPerSubject[s.name] !== undefined ? data.classAvgPerSubject[s.name].toFixed(0) : '-';
     return [
       `${i + 1}`,
       s.name,
       `${s.score}`,
       `${s.maxScore}`,
       `${pct}%`,
-      s.grade !== '-' ? `${s.grade} (${getGradeLabel(s.grade as CBCGrade)})` : '-',
+      s.grade !== '-' ? s.grade : '-',
       classAvg,
-      s.teacherName || s.teacherInitials || '-',
+      s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-'),
       s.grade !== '-' ? getGradeLabel(s.grade as CBCGrade).split(' ')[0] : '-',
     ];
   });
@@ -211,300 +211,257 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     head: [subjectHeaders],
     body: subjectBody,
     startY: y,
-    styles: { fontSize: 7.5, cellPadding: 2 },
-    headStyles: { fillColor: primary, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+    styles: { fontSize: 6.5, cellPadding: 1.2 },
+    headStyles: { fillColor: primary, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 6.5 },
     alternateRowStyles: { fillColor: [248, 249, 250] },
     columnStyles: {
-      0: { cellWidth: 8 },
-      1: { cellWidth: 30 },
-      4: { halign: 'center' },
-      5: { cellWidth: 32 },
-      6: { halign: 'center', cellWidth: 16 },
+      0: { cellWidth: 6 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 12, halign: 'center' },
+      3: { cellWidth: 10, halign: 'center' },
+      4: { cellWidth: 10, halign: 'center' },
+      5: { cellWidth: 10, halign: 'center' },
+      6: { cellWidth: 10, halign: 'center' },
+      7: { cellWidth: 14, halign: 'center' },
     },
     margin: { left: mx, right: mx },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 6;
+  y = (doc as any).lastAutoTable.finalY + 3;
 
-  // ═══════════════════════════════════════════════
-  //  PERFORMANCE SUMMARY CARDS
-  // ═══════════════════════════════════════════════
-  const cardW = (cw - 12) / 4;
-  const cardH = 18;
+  // ── SUMMARY CARDS (compact) ──
+  const cardW = (cw - 9) / 4;
+  const cardH = 12;
   const summaryItems = [
-    { label: 'Total Marks', value: `${data.total}/${data.maxTotal}` },
-    { label: 'Mean Score', value: `${data.mean.toFixed(1)}%` },
-    { label: 'Stream Position', value: `${data.streamRank}/${data.totalInStream}` },
-    { label: 'Overall Position', value: `${data.rank}/${data.totalInClass}` },
+    { label: 'Total', value: `${data.total}/${data.maxTotal}`, color: primary },
+    { label: 'Mean', value: `${data.mean.toFixed(1)}%`, color: [39, 174, 96] as [number, number, number] },
+    { label: 'Stream Pos', value: `${data.streamRank}/${data.totalInStream}`, color: [142, 68, 173] as [number, number, number] },
+    { label: 'Overall Pos', value: `${data.rank}/${data.totalInClass}`, color: [230, 126, 34] as [number, number, number] },
   ];
 
   summaryItems.forEach((item, i) => {
-    const cardX = mx + i * (cardW + 4);
-    doc.setFillColor(...(i === 0 ? primary : i === 1 ? [39, 174, 96] as [number, number, number] : i === 2 ? [142, 68, 173] as [number, number, number] : [230, 126, 34] as [number, number, number]));
-    doc.roundedRect(cardX, y, cardW, cardH, 2, 2, 'F');
-    doc.setFontSize(7);
+    const cardX = mx + i * (cardW + 3);
+    doc.setFillColor(...item.color);
+    doc.roundedRect(cardX, y, cardW, cardH, 1.5, 1.5, 'F');
+    doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(255, 255, 255);
-    doc.text(item.label, cardX + cardW / 2, y + 5, { align: 'center' });
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(item.value, cardX + cardW / 2, y + 13, { align: 'center' });
-  });
-
-  y += cardH + 4;
-
-  // Additional stats row
-  const statsRow2 = [
-    { label: 'Overall Grade', value: data.overallGrade !== '-' ? `${data.overallGrade} (${getGradeLabel(data.overallGrade as CBCGrade)})` : '-' },
-    { label: 'Total Points', value: `${data.totalPoints}` },
-    { label: 'Mean Grade', value: data.overallGrade },
-  ];
-  
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(mx, y, cw, 12, 2, 2, 'F');
-  const statW = cw / 3;
-  statsRow2.forEach((item, i) => {
-    const sx = mx + i * statW + statW / 2;
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(item.label, sx, y + 4, { align: 'center' });
+    doc.text(item.label, cardX + cardW / 2, y + 4, { align: 'center' });
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...dark);
-    doc.text(item.value, sx, y + 9, { align: 'center' });
+    doc.text(item.value, cardX + cardW / 2, y + 10, { align: 'center' });
   });
 
-  y += 16;
+  y += cardH + 2;
 
-  // ═══════════════════════════════════════════════
-  //  PERFORMANCE GRAPH (Student vs Class Average)
-  // ═══════════════════════════════════════════════
+  // Additional stats inline
+  const gradeInfo = data.overallGrade !== '-' ? `${data.overallGrade} (${getGradeLabel(data.overallGrade as CBCGrade)})` : '-';
+  doc.setFillColor(245, 245, 245);
+  doc.roundedRect(mx, y, cw, 8, 1, 1, 'F');
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  const statsText = `Overall Grade: ${gradeInfo}  |  Total Points: ${data.totalPoints}  |  Mean Grade: ${data.overallGrade}`;
+  doc.text(statsText, cx, y + 5, { align: 'center' });
+  y += 11;
+
+  // ── PERFORMANCE GRAPH (compact) ──
   if (data.subjectData.length > 0) {
-    // Check if we need a new page
-    if (y + 60 > ph - 30) { doc.addPage(); y = 15; }
-
-    doc.setFontSize(10);
+    const graphH = 30;
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...dark);
-    doc.text('PERFORMANCE COMPARISON: Student vs Class Average', mx, y);
-    y += 5;
+    doc.text('STUDENT vs CLASS AVERAGE', mx, y);
 
-    const graphX = mx + 5;
-    const graphW = cw - 10;
-    const graphH = 45;
-    const barAreaW = graphW - 20;
+    // Term trend on the right side if available
+    const hasTermHistory = data.termHistory && data.termHistory.length > 1;
+    const graphW = hasTermHistory ? cw * 0.58 : cw - 5;
+    const graphX = mx + 2;
+    y += 3;
+
+    const barAreaW = graphW - 15;
     const barCount = data.subjectData.length;
     const groupW = barAreaW / barCount;
-    const barW = Math.min(groupW * 0.35, 12);
+    const barW = Math.min(groupW * 0.35, 8);
 
     // Y-axis
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(graphX + 15, y, graphX + 15, y + graphH);
-    doc.line(graphX + 15, y + graphH, graphX + 15 + barAreaW, y + graphH);
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.15);
+    doc.line(graphX + 10, y, graphX + 10, y + graphH);
+    doc.line(graphX + 10, y + graphH, graphX + 10 + barAreaW, y + graphH);
 
-    // Y-axis labels
-    for (let pct = 0; pct <= 100; pct += 25) {
+    for (let pct = 0; pct <= 100; pct += 50) {
       const ly = y + graphH - (graphH * pct / 100);
-      doc.setFontSize(5);
+      doc.setFontSize(4);
       doc.setTextColor(150, 150, 150);
-      doc.text(`${pct}`, graphX + 12, ly + 1.5, { align: 'right' });
+      doc.text(`${pct}`, graphX + 8, ly + 1, { align: 'right' });
       doc.setDrawColor(240, 240, 240);
-      doc.line(graphX + 15, ly, graphX + 15 + barAreaW, ly);
+      doc.line(graphX + 10, ly, graphX + 10 + barAreaW, ly);
     }
 
     data.subjectData.forEach((s, i) => {
-      const bx = graphX + 15 + i * groupW + groupW / 2;
+      const bx = graphX + 10 + i * groupW + groupW / 2;
       const studentPct = s.maxScore > 0 ? (s.score / s.maxScore) * 100 : 0;
       const classAvg = data.classAvgPerSubject[s.name] || 0;
       const classPct = s.maxScore > 0 ? (classAvg / s.maxScore) * 100 : 0;
 
-      // Student bar
       const sh = graphH * studentPct / 100;
       doc.setFillColor(...primary);
-      doc.rect(bx - barW - 0.5, y + graphH - sh, barW, sh, 'F');
+      doc.rect(bx - barW - 0.3, y + graphH - sh, barW, sh, 'F');
 
-      // Class avg bar
       const ch = graphH * classPct / 100;
       doc.setFillColor(230, 126, 34);
-      doc.rect(bx + 0.5, y + graphH - ch, barW, ch, 'F');
+      doc.rect(bx + 0.3, y + graphH - ch, barW, ch, 'F');
 
-      // Subject label
-      doc.setFontSize(4.5);
+      doc.setFontSize(3.5);
       doc.setTextColor(...dark);
-      const shortName = s.name.length > 8 ? s.name.substring(0, 7) + '..' : s.name;
-      doc.text(shortName, bx, y + graphH + 4, { align: 'center' });
+      const shortName = s.name.length > 6 ? s.name.substring(0, 5) + '..' : s.name;
+      doc.text(shortName, bx, y + graphH + 3, { align: 'center' });
     });
 
     // Legend
-    const legY = y + graphH + 8;
     doc.setFillColor(...primary);
-    doc.rect(cx - 30, legY, 4, 3, 'F');
-    doc.setFontSize(6);
+    doc.rect(graphX + 10, y + graphH + 5, 3, 2, 'F');
+    doc.setFontSize(4.5);
     doc.setTextColor(...dark);
-    doc.text('Student', cx - 25, legY + 2.5);
+    doc.text('Student', graphX + 14, y + graphH + 6.5);
     doc.setFillColor(230, 126, 34);
-    doc.rect(cx + 5, legY, 4, 3, 'F');
-    doc.text('Class Avg', cx + 10, legY + 2.5);
+    doc.rect(graphX + 30, y + graphH + 5, 3, 2, 'F');
+    doc.text('Class Avg', graphX + 34, y + graphH + 6.5);
 
-    y += graphH + 15;
-  }
+    // ── TERM TREND (side-by-side with bar chart) ──
+    if (hasTermHistory) {
+      const tgX = mx + cw * 0.62;
+      const tgW = cw * 0.36;
+      const tgH = graphH;
+      const tgY = y;
 
-  // ═══════════════════════════════════════════════
-  //  TERM TREND GRAPH
-  // ═══════════════════════════════════════════════
-  if (data.termHistory && data.termHistory.length > 1) {
-    if (y + 50 > ph - 30) { doc.addPage(); y = 15; }
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...dark);
-    doc.text('PERFORMANCE TREND OVER TIME', mx, y);
-    y += 5;
-
-    const tgX = mx + 20;
-    const tgW = cw - 40;
-    const tgH = 35;
-
-    // Axes
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(tgX, y, tgX, y + tgH);
-    doc.line(tgX, y + tgH, tgX + tgW, y + tgH);
-
-    // Y labels
-    for (let pct = 0; pct <= 100; pct += 25) {
-      const ly = y + tgH - (tgH * pct / 100);
-      doc.setFontSize(5);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`${pct}`, tgX - 3, ly + 1.5, { align: 'right' });
-      doc.setDrawColor(245, 245, 245);
-      doc.line(tgX, ly, tgX + tgW, ly);
-    }
-
-    const pts = data.termHistory;
-    const stepX = tgW / (pts.length - 1 || 1);
-
-    // Line
-    doc.setDrawColor(...primary);
-    doc.setLineWidth(0.6);
-    for (let i = 1; i < pts.length; i++) {
-      const x1 = tgX + (i - 1) * stepX;
-      const y1 = y + tgH - (tgH * pts[i - 1].mean / 100);
-      const x2 = tgX + i * stepX;
-      const y2 = y + tgH - (tgH * pts[i].mean / 100);
-      doc.line(x1, y1, x2, y2);
-    }
-
-    // Points + labels
-    pts.forEach((p, i) => {
-      const px = tgX + i * stepX;
-      const py = y + tgH - (tgH * p.mean / 100);
-      doc.setFillColor(...primary);
-      doc.circle(px, py, 1.5, 'F');
-      doc.setFontSize(6);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(...dark);
-      doc.text(`${p.mean.toFixed(0)}%`, px, py - 3, { align: 'center' });
-      doc.setFontSize(5.5);
-      doc.setTextColor(120, 120, 120);
-      doc.text(p.term, px, y + tgH + 4, { align: 'center' });
-    });
+      doc.text('PERFORMANCE TREND', tgX, tgY - 3);
 
-    y += tgH + 10;
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.15);
+      doc.line(tgX + 8, tgY, tgX + 8, tgY + tgH);
+      doc.line(tgX + 8, tgY + tgH, tgX + 8 + tgW - 10, tgY + tgH);
+
+      for (let pct = 0; pct <= 100; pct += 50) {
+        const ly = tgY + tgH - (tgH * pct / 100);
+        doc.setFontSize(4);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`${pct}`, tgX + 6, ly + 1, { align: 'right' });
+      }
+
+      const pts = data.termHistory!;
+      const stepX = (tgW - 12) / (pts.length - 1 || 1);
+
+      doc.setDrawColor(...primary);
+      doc.setLineWidth(0.5);
+      for (let i = 1; i < pts.length; i++) {
+        const x1 = tgX + 8 + (i - 1) * stepX;
+        const y1 = tgY + tgH - (tgH * pts[i - 1].mean / 100);
+        const x2 = tgX + 8 + i * stepX;
+        const y2 = tgY + tgH - (tgH * pts[i].mean / 100);
+        doc.line(x1, y1, x2, y2);
+      }
+
+      pts.forEach((p, i) => {
+        const px = tgX + 8 + i * stepX;
+        const py = tgY + tgH - (tgH * p.mean / 100);
+        doc.setFillColor(...primary);
+        doc.circle(px, py, 1, 'F');
+        doc.setFontSize(5);
+        doc.setTextColor(...dark);
+        doc.text(`${p.mean.toFixed(0)}%`, px, py - 2, { align: 'center' });
+        doc.setFontSize(4);
+        doc.setTextColor(120, 120, 120);
+        doc.text(p.term, px, tgY + tgH + 3, { align: 'center' });
+      });
+    }
+
+    y += graphH + 10;
   }
 
-  // ═══════════════════════════════════════════════
-  //  REMARKS SECTION
-  // ═══════════════════════════════════════════════
-  if (y + 50 > ph - 30) { doc.addPage(); y = 15; }
-
-  doc.setFontSize(10);
+  // ── REMARKS (compact) ──
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...dark);
   doc.text('REMARKS & SIGNATURES', mx, y);
-  y += 5;
+  y += 3;
 
-  // Class Teacher Remarks
+  // Class Teacher
   doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(mx, y, cw, 20, 2, 2, 'S');
-  doc.setFontSize(7.5);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(mx, y, cw, 14, 1, 1, 'S');
+  doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primary);
-  doc.text("Class Teacher's Remarks:", mx + 3, y + 5);
+  doc.text("Class Teacher:", mx + 2, y + 4);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...dark);
-  const ctLines = doc.splitTextToSize(data.classTeacherComment || '___________________________________', cw - 10);
-  doc.text(ctLines, mx + 3, y + 10);
-
-  doc.setFontSize(6.5);
+  const ctText = data.classTeacherComment || '___________________________________';
+  const ctLines = doc.splitTextToSize(ctText, cw - 8);
+  doc.text(ctLines.slice(0, 2), mx + 2, y + 8);
+  doc.setFontSize(5.5);
   doc.setTextColor(150, 150, 150);
-  doc.text('Sign: _______________  Date: _______________', mx + 3, y + 17);
-  y += 24;
+  doc.text('Sign: _____________  Date: _____________', mx + 2, y + 12);
+  y += 16;
 
-  // Principal Remarks
-  doc.roundedRect(mx, y, cw, 20, 2, 2, 'S');
-  doc.setFontSize(7.5);
+  // Principal
+  doc.roundedRect(mx, y, cw, 14, 1, 1, 'S');
+  doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primary);
-  doc.text("Principal's Remarks:", mx + 3, y + 5);
+  doc.text("Principal:", mx + 2, y + 4);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...dark);
-  const prLines = doc.splitTextToSize(data.principalComment || '___________________________________', cw - 10);
-  doc.text(prLines, mx + 3, y + 10);
-
-  doc.setFontSize(6.5);
+  const prText = data.principalComment || '___________________________________';
+  const prLines = doc.splitTextToSize(prText, cw - 8);
+  doc.text(prLines.slice(0, 2), mx + 2, y + 8);
+  doc.setFontSize(5.5);
   doc.setTextColor(150, 150, 150);
-  doc.text('Sign: _______________  Date: _______________  School Stamp:', mx + 3, y + 17);
-  y += 24;
+  doc.text('Sign: _____________  Date: _____________  Stamp:', mx + 2, y + 12);
+  y += 16;
 
-  // ═══════════════════════════════════════════════
-  //  SCHOOL CALENDAR + QR CODE
-  // ═══════════════════════════════════════════════
+  // ── CALENDAR + QR (compact inline) ──
   if (closingDate || openingDate || data.appUrl) {
-    if (y + 30 > ph - 10) { doc.addPage(); y = 15; }
-
-    const calQrH = 22;
+    const calH = 14;
     doc.setFillColor(248, 249, 250);
-    doc.roundedRect(mx, y, cw, calQrH, 2, 2, 'F');
+    doc.roundedRect(mx, y, cw, calH, 1, 1, 'F');
 
-    // Calendar section
     if (closingDate || openingDate) {
-      doc.setFontSize(8);
+      doc.setFontSize(6);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...dark);
-      doc.text('SCHOOL CALENDAR', mx + 4, y + 6);
-      doc.setFontSize(7);
+      doc.text('SCHOOL CALENDAR', mx + 3, y + 4);
       doc.setFont('helvetica', 'normal');
-      if (closingDate) doc.text(`Closing Date: ${closingDate}`, mx + 4, y + 12);
-      if (openingDate) doc.text(`Opening Date: ${openingDate}`, mx + 4, y + 17);
+      doc.setFontSize(5.5);
+      if (closingDate) doc.text(`Closing: ${closingDate}`, mx + 3, y + 8);
+      if (openingDate) doc.text(`Opening: ${openingDate}`, mx + 3, y + 12);
     }
 
-    // QR Code
     if (data.appUrl) {
       const qrUrl = `${data.appUrl}/parent-dashboard?learner=${data.learner.id}`;
       const qrBase64 = await generateQRCodeBase64(qrUrl);
       if (qrBase64) {
-        const qrSize = 18;
-        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 2, y + 2, qrSize, qrSize);
-        doc.setFontSize(5);
+        const qrSize = 12;
+        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 1, y + 1, qrSize, qrSize);
+        doc.setFontSize(4);
         doc.setTextColor(120, 120, 120);
-        doc.text('Scan for online portal', pw - mx - qrSize / 2 - 2, y + calQrH - 1, { align: 'center' });
+        doc.text('Scan for portal', pw - mx - qrSize / 2 - 1, y + calH - 0.5, { align: 'center' });
       }
     }
 
-    y += calQrH + 4;
+    y += calH + 2;
   }
 
-  // ═══════════════════════════════════════════════
-  //  FOOTER
-  // ═══════════════════════════════════════════════
+  // ── FOOTER ──
   doc.setFillColor(...primary);
-  doc.rect(0, ph - 6, pw, 6, 'F');
-  doc.setFontSize(5.5);
+  doc.rect(0, ph - 5, pw, 5, 'F');
+  doc.setFontSize(4.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('Generated by PerformTrack — CBC Smart School Management System', cx, ph - 2, { align: 'center' });
+  doc.text('Generated by PerformTrack — CBC Smart School Management System', cx, ph - 1.5, { align: 'center' });
 
   return doc;
 }
