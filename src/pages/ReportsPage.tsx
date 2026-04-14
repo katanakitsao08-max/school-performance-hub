@@ -63,6 +63,7 @@ export default function ReportsPage() {
   const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
   const schoolMotto = schoolSettings['school_motto'] || '';
   const schoolAddress = schoolSettings['school_address'] || '';
+  const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
 
   // For combined/school reports, fetch learners for multiple grades
   const { data: learners = [] } = useQuery({
