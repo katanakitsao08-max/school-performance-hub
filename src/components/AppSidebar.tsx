@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import performTrackLogo from "@/assets/performtrack-logo.png";
 
 const superAdminItems = [
   { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
@@ -82,13 +83,11 @@ export function AppSidebar() {
       <SidebarContent>
         <div className={`px-4 py-5 ${collapsed ? 'px-2 py-3' : ''}`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={performTrackLogo} alt="PerformTrack" className="h-9 w-9 rounded-xl object-contain flex-shrink-0" />
             {!collapsed && (
               <div className="min-w-0">
                 <h2 className="font-display text-sm font-bold text-sidebar-foreground truncate">
-                  {role === 'super_admin' ? 'CBC Platform' : 'CBC Smart School'}
+                  PerformTrack
                 </h2>
                 <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider">
                   {role === 'super_admin' ? 'Super Admin' : 'Performance Manager'}
