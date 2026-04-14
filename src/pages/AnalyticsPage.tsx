@@ -55,17 +55,17 @@ export default function AnalyticsPage() {
   }, [subjects, scores]);
 
   const gradeDistribution = useMemo(() => {
-    const dist = { EE: 0, ME: 0, AE: 0, BE: 0 };
+    const dist: Record<string, number> = {};
     learners.forEach(l => {
       const learnerScores = scores.filter(s => s.learner_id === l.id);
       if (learnerScores.length === 0) return;
       const mean = learnerScores.reduce((s, sc) => s + sc.score, 0) / learnerScores.length;
       const avgMax = subjects.length > 0 ? subjects.reduce((s, sub) => s + sub.max_score, 0) / subjects.length : 100;
       const grade = getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1');
-      dist[grade]++;
+      dist[grade] = (dist[grade] || 0) + 1;
     });
     return Object.entries(dist).map(([name, value]) => ({ name, value }));
-  }, [learners, scores, subjects]);
+  }, [learners, scores, subjects, selectedGrade]);
 
   const rankedLearners = useMemo(() => {
     return learners.map(l => {
