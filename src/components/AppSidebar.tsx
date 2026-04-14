@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ const adminItems = [
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
+  { title: "Fees", url: "/fees", icon: Wallet },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -58,7 +59,8 @@ const headteacherItems = [
 
 const parentItems = [
   { title: "Dashboard", url: "/parent", icon: LayoutDashboard },
-  { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Fees", url: "/parent", icon: Wallet },
+  { title: "Reports", url: "/parent", icon: FileText },
 ];
 
 export function AppSidebar() {
