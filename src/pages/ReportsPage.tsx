@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, FileDown, User, School } from 'lucide-react';
+import { Printer, FileDown, User, School, Archive, Loader2 } from 'lucide-react';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
