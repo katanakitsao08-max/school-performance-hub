@@ -40,6 +40,7 @@ export default function ReportsPage() {
   const [batchExporting, setBatchExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [generatingPrincipalRemark, setGeneratingPrincipalRemark] = useState<string | null>(null);
+  const [batchGeneratingRemarks, setBatchGeneratingRemarks] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
@@ -357,6 +358,59 @@ export default function ReportsPage() {
       toast.error('Failed to generate remark. Please try again.');
     } finally {
       setGeneratingPrincipalRemark(null);
+    }
+  };
+
+  const batchGeneratePrincipalRemarks = async () => {
+    if (reportData.length === 0 || batchGeneratingRemarks) return;
+    setBatchGeneratingRemarks(true);
+    try {
+      // Process in chunks of 20 to avoid token limits
+      const chunkSize = 20;
+      const allResults: { id: string; remark: string }[] = [];
+
+      for (let i = 0; i < reportData.length; i += chunkSize) {
+        const chunk = reportData.slice(i, i + chunkSize);
+        const students = chunk.map(ld => {
+          const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+          const meanPct = maxTotal > 0 ? (ld.total / maxTotal) * 100 : ld.mean;
+          return {
+            id: ld.id,
+            studentName: ld.full_name,
+            grade: ld.grade,
+            stream: ld.stream,
+            mean: meanPct,
+            overallGrade: ld.overallGrade,
+            rank: ld.rank,
+            totalStudents: reportData.length,
+            subjectData: ld.subjectData.map((s: any) => ({
+              name: s.name, score: s.score, maxScore: s.maxScore,
+            })),
+          };
+        });
+
+        const { data, error } = await supabase.functions.invoke('batch-principal-remarks', {
+          body: { students, schoolName },
+        });
+
+        if (error) throw error;
+        if (data?.error) {
+          toast.error(data.error);
+          break;
+        }
+
+        allResults.push(...(data.results || []));
+      }
+
+      const newComments: Record<string, string> = { ...principalComments };
+      allResults.forEach(r => { newComments[r.id] = r.remark; });
+      setPrincipalComments(newComments);
+      toast.success(`Generated ${allResults.length} principal remarks`);
+    } catch (err: any) {
+      console.error('Batch principal remarks failed:', err);
+      toast.error('Failed to generate batch remarks. Please try again.');
+    } finally {
+      setBatchGeneratingRemarks(false);
     }
   };
 
@@ -702,6 +756,13 @@ export default function ReportsPage() {
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {batchProgress.current}/{batchProgress.total}</>
                   ) : (
                     <><Archive className="mr-2 h-4 w-4" /> Batch Report Cards (ZIP)</>
+                  )}
+                </Button>
+                <Button variant="secondary" onClick={batchGeneratePrincipalRemarks} disabled={batchGeneratingRemarks || reportData.length === 0}>
+                  {batchGeneratingRemarks ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Remarks...</>
+                  ) : (
+                    <><Sparkles className="mr-2 h-4 w-4" /> AI Principal Remarks</>
                   )}
                 </Button>
               </>
