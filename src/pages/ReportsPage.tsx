@@ -246,6 +246,62 @@ export default function ReportsPage() {
     });
   }, [gradeSubjects, allScores]);
 
+  const classAvgPerSubject = useMemo(() => {
+    const map: Record<string, number> = {};
+    gradeSubjects.forEach(sub => {
+      const scores = allScores.filter(s => s.learning_area_id === sub.id);
+      map[sub.name] = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    });
+    return map;
+  }, [gradeSubjects, allScores]);
+
+  // Stream ranking: rank within same stream
+  const streamRankings = useMemo(() => {
+    const map: Record<string, number> = {};
+    const streamGroups: Record<string, typeof reportData> = {};
+    reportData.forEach(l => {
+      const key = `${l.grade}-${l.stream}`;
+      if (!streamGroups[key]) streamGroups[key] = [];
+      streamGroups[key].push(l);
+    });
+    Object.values(streamGroups).forEach(group => {
+      group.sort((a, b) => b.total - a.total).forEach((l, i, arr) => {
+        let rank = i + 1;
+        if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+        map[l.id] = rank;
+      });
+    });
+    return map;
+  }, [reportData]);
+
+  const streamCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    reportData.forEach(l => {
+      const key = `${l.grade}-${l.stream}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [reportData]);
+
+  // Build term history for a given learner
+  const getTermHistory = (learnerId: string) => {
+    const terms: { term: string; mean: number }[] = [];
+    for (let t = 1; t <= 3; t++) {
+      const termScores = termHistoryScores.filter(s => s.learner_id === learnerId && s.term === t);
+      if (termScores.length === 0) continue;
+      const total = termScores.reduce((s, sc) => s + sc.score, 0);
+      // Find max scores for these subjects
+      let maxTotal = 0;
+      termScores.forEach(sc => {
+        const sub = subjects.find(s => s.id === sc.learning_area_id);
+        maxTotal += sub?.max_score || 100;
+      });
+      const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+      terms.push({ term: `T${t} ${selectedYear}`, mean: pct });
+    }
+    return terms;
+  };
+
   const classMean = reportData.length > 0 ? reportData.reduce((s, l) => s + l.mean, 0) / reportData.length : 0;
   const highest = reportData.length > 0 ? Math.max(...reportData.map(l => l.total)) : 0;
   const lowest = reportData.length > 0 ? Math.min(...reportData.map(l => l.total)) : 0;
