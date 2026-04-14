@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileText, Download } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { getGradeForLevel, getGradePoints, isKJSEAGradeLevel, generateTeacherComment } from '@/lib/cbc-utils';
-import { generateReportCardPDF, type ReportCardData } from '@/lib/report-card-pdf';
+import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -113,7 +113,7 @@ export default function ParentReportsTab({ child }: Props) {
         appUrl: window.location.origin,
       };
 
-      const doc = await generateReportCardPDF(reportData);
+      const doc = await generatePremiumReportCard(reportData);
       doc.save(`${child.full_name.replace(/\s+/g, '_')}_Term${selectedTerm}_${selectedYear}.pdf`);
       toast({ title: 'Report card downloaded!' });
     } catch (err) {
