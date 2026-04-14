@@ -36,10 +36,10 @@ export default function PromotionPage() {
 
   const promoteMutation = useMutation({
     mutationFn: async () => {
-      if (!nextGrade && selectedGrade !== '9') return;
+      if (!nextGrade && selectedGrade !== lastGrade) return;
 
       for (const learner of learners) {
-        const toGrade = selectedGrade === '9' ? 'Completed' : nextGrade!;
+        const toGrade = selectedGrade === lastGrade ? 'Completed' : nextGrade!;
         
         // Log promotion
         await supabase.from('promotion_log').insert({
