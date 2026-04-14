@@ -603,10 +603,26 @@ export default function ReportsPage() {
         stream: ld.stream,
         gender: ld.gender || '-',
       },
-      subjectData: ld.subjectData.map((s: any) => ({
-        ...s,
-        teacherName: getTeacherName(s.id, ld.grade, ld.stream),
-      })),
+      subjectData: ld.subjectData.map((s: any) => {
+        const subjectStrands = reportStrands.filter(st => st.learning_area_id === s.id);
+        const strandData = subjectStrands.map(st => {
+          const ss = reportStrandScores.find(
+            (sc: any) => sc.strand_id === st.id && sc.learner_id === ld.id
+          );
+          return {
+            strandName: st.name,
+            score: ss?.score || 0,
+            maxScore: ss?.max_score || 100,
+            competencyLevel: ss?.competency_level || '-',
+            teacherComment: ss?.teacher_comment || '',
+          };
+        }).filter(st => st.score > 0);
+        return {
+          ...s,
+          teacherName: getTeacherName(s.id, ld.grade, ld.stream),
+          strands: strandData.length > 0 ? strandData : undefined,
+        };
+      }),
       total: ld.total,
       maxTotal,
       mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
