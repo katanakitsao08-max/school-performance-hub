@@ -43,9 +43,8 @@ serve(async (req) => {
       }
 
       const names = full_name.trim().split(/\s+/);
-      const password = names.find((n: string) => n.length >= 6) || names[0];
-      if (password.length < 6) {
-        results.push({ admNo: admission_number, name: full_name, password, status: 'failed', error: `No name part is 6+ chars` });
+      const longestName = names.reduce((a: string, b: string) => b.length > a.length ? b : a, names[0]);
+      const password = longestName.length >= 6 ? longestName : longestName.padEnd(6, '0');
         continue;
       }
 
