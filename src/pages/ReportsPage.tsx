@@ -19,6 +19,7 @@ import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-car
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
