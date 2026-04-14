@@ -106,17 +106,26 @@ export default function GradeAnalysisPage() {
   );
 
   const { data: schoolSettings = {} } = useQuery({
-    queryKey: ['school-settings-map'],
+    queryKey: ['school-settings-map', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('school_settings').select('*');
+      const { data } = await supabase.from('school_settings').select('*').eq('school_id', schoolId!);
       const map: Record<string, string> = {};
       (data || []).forEach(s => { map[s.key] = s.value; });
       return map;
     },
-    enabled: !!user,
+    enabled: !!schoolId,
   });
 
-  const schoolName = schoolSettings['school_name'] || 'SCHOOL';
+  const { data: schoolRecord } = useQuery({
+    queryKey: ['school-record', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  const schoolName = schoolSettings['school_name'] || schoolRecord?.school_name || 'SCHOOL';
   const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
   const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join(' + ');
   const assessmentLabel = ASSESSMENT_TYPE_LABELS[selectedAssessment]?.toUpperCase() || selectedAssessment.toUpperCase();
