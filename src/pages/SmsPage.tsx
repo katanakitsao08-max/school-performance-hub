@@ -9,7 +9,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Send } from 'lucide-react';
-import { GRADES, STREAMS, TERMS, getGrade } from '@/lib/cbc-utils';
+import { TERMS, getGrade } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
+import { useSchoolStreams } from '@/hooks/use-school-streams';
 
 export default function SmsPage() {
   const { toast } = useToast();

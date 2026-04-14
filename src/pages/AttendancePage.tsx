@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { GRADES } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX } from 'lucide-react';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';

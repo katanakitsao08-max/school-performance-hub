@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { GRADES, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const CHART_COLORS = ['hsl(142,64%,40%)', 'hsl(210,80%,52%)', 'hsl(38,92%,50%)', 'hsl(0,84%,60%)'];
