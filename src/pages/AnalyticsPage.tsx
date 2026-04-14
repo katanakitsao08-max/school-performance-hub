@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { TERMS, getGradeForLevel, getGradeColor } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 

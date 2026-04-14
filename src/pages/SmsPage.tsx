@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Send } from 'lucide-react';
-import { TERMS, getGrade } from '@/lib/cbc-utils';
+import { TERMS, getGradeForLevel } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 

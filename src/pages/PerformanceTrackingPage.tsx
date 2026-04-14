@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, getGradeForLevel, getGradeColor } from '@/lib/cbc-utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 export default function PerformanceTrackingPage() {
