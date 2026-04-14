@@ -198,6 +198,29 @@ export default function ReportsPage() {
     enabled: !!schoolId,
   });
 
+  // Fetch strands and strand scores for report cards
+  const { data: reportStrands = [] } = useQuery({
+    queryKey: ['report-strands', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order');
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: reportStrandScores = [] } = useQuery({
+    queryKey: ['report-strand-scores', selectedTerm, selectedYear, selectedAssessment, schoolId],
+    queryFn: async () => {
+      const learnerIds = learners.map(l => l.id);
+      if (!learnerIds.length) return [];
+      const { data } = await supabase.from('strand_scores').select('*')
+        .in('learner_id', learnerIds)
+        .eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
+      return data || [];
+    },
+    enabled: learners.length > 0 && !!schoolId,
+  });
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return subjects;
@@ -580,10 +603,26 @@ export default function ReportsPage() {
         stream: ld.stream,
         gender: ld.gender || '-',
       },
-      subjectData: ld.subjectData.map((s: any) => ({
-        ...s,
-        teacherName: getTeacherName(s.id, ld.grade, ld.stream),
-      })),
+      subjectData: ld.subjectData.map((s: any) => {
+        const subjectStrands = reportStrands.filter(st => st.learning_area_id === s.id);
+        const strandData = subjectStrands.map(st => {
+          const ss = reportStrandScores.find(
+            (sc: any) => sc.strand_id === st.id && sc.learner_id === ld.id
+          );
+          return {
+            strandName: st.name,
+            score: ss?.score || 0,
+            maxScore: ss?.max_score || 100,
+            competencyLevel: ss?.competency_level || '-',
+            teacherComment: ss?.teacher_comment || '',
+          };
+        }).filter(st => st.score > 0);
+        return {
+          ...s,
+          teacherName: getTeacherName(s.id, ld.grade, ld.stream),
+          strands: strandData.length > 0 ? strandData : undefined,
+        };
+      }),
       total: ld.total,
       maxTotal,
       mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
@@ -633,7 +672,14 @@ export default function ReportsPage() {
           id: ld.id, full_name: ld.full_name, admission_number: ld.admission_number,
           grade: ld.grade, stream: ld.stream, gender: ld.gender || '-',
         },
-        subjectData: ld.subjectData.map((s: any) => ({ ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream) })),
+        subjectData: ld.subjectData.map((s: any) => {
+          const subjectStrands = reportStrands.filter(st => st.learning_area_id === s.id);
+          const strandData = subjectStrands.map(st => {
+            const ss = reportStrandScores.find((sc: any) => sc.strand_id === st.id && sc.learner_id === ld.id);
+            return { strandName: st.name, score: ss?.score || 0, maxScore: ss?.max_score || 100, competencyLevel: ss?.competency_level || '-', teacherComment: ss?.teacher_comment || '' };
+          }).filter(st => st.score > 0);
+          return { ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream), strands: strandData.length > 0 ? strandData : undefined };
+        }),
         total: ld.total, maxTotal,
         mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
         overallGrade: ld.overallGrade,

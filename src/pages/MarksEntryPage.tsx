@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2, Layers } from 'lucide-react';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGradeForLevel, type AnyGrade, isKJSEAGradeLevel } from '@/lib/cbc-utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import StrandMarksEntry from '@/components/StrandMarksEntry';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -415,143 +417,166 @@ export default function MarksEntryPage() {
           </div>
         )}
 
-        {/* Grade summary cards */}
-        {classSummary && (
-          <div className="grid grid-cols-5 gap-2">
-            <Card className="border-emerald-200 dark:border-emerald-800">
-              <CardContent className="p-2 md:p-3 text-center">
-                <p className="text-lg font-bold">{classSummary.ee}</p>
-                <p className="text-[10px] text-muted-foreground">EE</p>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardContent className="p-2 md:p-3 text-center">
-                <p className="text-lg font-bold">{classSummary.me}</p>
-                <p className="text-[10px] text-muted-foreground">ME</p>
-              </CardContent>
-            </Card>
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardContent className="p-2 md:p-3 text-center">
-                <p className="text-lg font-bold">{classSummary.ae}</p>
-                <p className="text-[10px] text-muted-foreground">AE</p>
-              </CardContent>
-            </Card>
-            <Card className="border-red-200 dark:border-red-800">
-              <CardContent className="p-2 md:p-3 text-center">
-                <p className="text-lg font-bold">{classSummary.be}</p>
-                <p className="text-[10px] text-muted-foreground">BE</p>
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="subjects" className="space-y-3">
+          <TabsList>
+            <TabsTrigger value="subjects">Subject Scores</TabsTrigger>
+            <TabsTrigger value="strands" className="gap-1.5"><Layers className="h-3.5 w-3.5" /> Strand Scores</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="subjects" className="space-y-3">
+            {/* Grade summary cards */}
+            {classSummary && (
+              <div className="grid grid-cols-5 gap-2">
+                <Card className="border-emerald-200 dark:border-emerald-800">
+                  <CardContent className="p-2 md:p-3 text-center">
+                    <p className="text-lg font-bold">{classSummary.ee}</p>
+                    <p className="text-[10px] text-muted-foreground">EE</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-blue-200 dark:border-blue-800">
+                  <CardContent className="p-2 md:p-3 text-center">
+                    <p className="text-lg font-bold">{classSummary.me}</p>
+                    <p className="text-[10px] text-muted-foreground">ME</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-amber-200 dark:border-amber-800">
+                  <CardContent className="p-2 md:p-3 text-center">
+                    <p className="text-lg font-bold">{classSummary.ae}</p>
+                    <p className="text-[10px] text-muted-foreground">AE</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-red-200 dark:border-red-800">
+                  <CardContent className="p-2 md:p-3 text-center">
+                    <p className="text-lg font-bold">{classSummary.be}</p>
+                    <p className="text-[10px] text-muted-foreground">BE</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-2 md:p-3 text-center">
+                    <p className="text-lg font-bold text-primary">{classSummary.classMean}</p>
+                    <p className="text-[10px] text-muted-foreground">Mean</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Marks Grid */}
             <Card>
-              <CardContent className="p-2 md:p-3 text-center">
-                <p className="text-lg font-bold text-primary">{classSummary.classMean}</p>
-                <p className="text-[10px] text-muted-foreground">Mean</p>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="sticky left-0 bg-muted/50 z-10 w-[40px] text-xs">#</TableHead>
+                      <TableHead className="sticky left-[40px] bg-muted/50 z-10 min-w-[140px] text-xs">Learner</TableHead>
+                      {subjects.map(s => (
+                        <TableHead key={s.id} className="text-center min-w-[70px] text-xs">
+                          <div className="font-semibold truncate max-w-[80px]" title={s.name}>{s.name}</div>
+                          <div className="text-[9px] text-muted-foreground font-normal">/{s.max_score}</div>
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center bg-muted font-bold text-xs">Tot</TableHead>
+                      <TableHead className="text-center bg-muted font-bold text-xs">Mean</TableHead>
+                      <TableHead className="text-center bg-muted font-bold text-xs">Grd</TableHead>
+                      <TableHead className="text-center bg-muted font-bold text-xs">Rnk</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {learners.map((learner, idx) => {
+                      const total = getTotal(learner.id);
+                      const mean = getMean(learner.id);
+                      const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
+                      const grade = subjects.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
+                      const rank = getRank(learner.id);
+                      return (
+                        <TableRow key={learner.id} className="hover:bg-muted/30">
+                          <TableCell className="sticky left-0 bg-card z-10 text-xs text-muted-foreground p-1">{idx + 1}</TableCell>
+                          <TableCell className="sticky left-[40px] bg-card z-10 text-xs font-medium p-1 truncate max-w-[140px]" title={learner.full_name}>
+                            {learner.full_name}
+                          </TableCell>
+                          {subjects.map(sub => {
+                            const val = scores[learner.id]?.[sub.id] || '';
+                            const numVal = Number(val);
+                            const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
+                            const canEdit = editableSubjectIds.has(sub.id);
+                            let inputBorder = '';
+                            if (pct !== null) {
+                              if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
+                              else if (pct >= 50) inputBorder = 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20';
+                              else if (pct >= 25) inputBorder = 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/20';
+                              else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
+                            }
+                            return (
+                              <TableCell key={sub.id} className="p-0.5">
+                                {canEdit ? (
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={sub.max_score}
+                                    value={val}
+                                    onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
+                                    className={`w-[60px] text-center mx-auto h-8 text-xs ${inputBorder}`}
+                                    inputMode="numeric"
+                                  />
+                                ) : (
+                                  <div className={`w-[60px] text-center mx-auto h-8 flex items-center justify-center text-xs text-muted-foreground ${inputBorder ? inputBorder + ' rounded border' : ''}`}>
+                                    {val || '-'}
+                                  </div>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell className="text-center font-bold text-sm p-1">{total}</TableCell>
+                          <TableCell className="text-center text-xs p-1">{mean.toFixed(1)}</TableCell>
+                          <TableCell className="text-center p-1">{getGradeBadge(grade as AnyGrade | '-')}</TableCell>
+                          <TableCell className="text-center p-1">
+                            <span className={`font-bold text-sm ${rank === 1 ? 'text-amber-600' : rank === 2 ? 'text-slate-500' : rank === 3 ? 'text-orange-600' : ''}`}>
+                              {rank}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {learners.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
+                          No learners in this class. Select a different grade or stream.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
-          </div>
-        )}
 
-        {/* Marks Grid */}
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="sticky left-0 bg-muted/50 z-10 w-[40px] text-xs">#</TableHead>
-                  <TableHead className="sticky left-[40px] bg-muted/50 z-10 min-w-[140px] text-xs">Learner</TableHead>
-                  {subjects.map(s => (
-                    <TableHead key={s.id} className="text-center min-w-[70px] text-xs">
-                      <div className="font-semibold truncate max-w-[80px]" title={s.name}>{s.name}</div>
-                      <div className="text-[9px] text-muted-foreground font-normal">/{s.max_score}</div>
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-center bg-muted font-bold text-xs">Tot</TableHead>
-                  <TableHead className="text-center bg-muted font-bold text-xs">Mean</TableHead>
-                  <TableHead className="text-center bg-muted font-bold text-xs">Grd</TableHead>
-                  <TableHead className="text-center bg-muted font-bold text-xs">Rnk</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {learners.map((learner, idx) => {
-                  const total = getTotal(learner.id);
-                  const mean = getMean(learner.id);
-                  const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
-                  const grade = subjects.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
-                  const rank = getRank(learner.id);
-                  return (
-                    <TableRow key={learner.id} className="hover:bg-muted/30">
-                      <TableCell className="sticky left-0 bg-card z-10 text-xs text-muted-foreground p-1">{idx + 1}</TableCell>
-                      <TableCell className="sticky left-[40px] bg-card z-10 text-xs font-medium p-1 truncate max-w-[140px]" title={learner.full_name}>
-                        {learner.full_name}
-                      </TableCell>
-                      {subjects.map(sub => {
-                        const val = scores[learner.id]?.[sub.id] || '';
-                        const numVal = Number(val);
-                        const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
-                        const canEdit = editableSubjectIds.has(sub.id);
-                        let inputBorder = '';
-                        if (pct !== null) {
-                          if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
-                          else if (pct >= 50) inputBorder = 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20';
-                          else if (pct >= 25) inputBorder = 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/20';
-                          else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
-                        }
-                        return (
-                          <TableCell key={sub.id} className="p-0.5">
-                            {canEdit ? (
-                              <Input
-                                type="number"
-                                min={0}
-                                max={sub.max_score}
-                                value={val}
-                                onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
-                                className={`w-[60px] text-center mx-auto h-8 text-xs ${inputBorder}`}
-                                inputMode="numeric"
-                              />
-                            ) : (
-                              <div className={`w-[60px] text-center mx-auto h-8 flex items-center justify-center text-xs text-muted-foreground ${inputBorder ? inputBorder + ' rounded border' : ''}`}>
-                                {val || '-'}
-                              </div>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-center font-bold text-sm p-1">{total}</TableCell>
-                      <TableCell className="text-center text-xs p-1">{mean.toFixed(1)}</TableCell>
-                      <TableCell className="text-center p-1">{getGradeBadge(grade as AnyGrade | '-')}</TableCell>
-                      <TableCell className="text-center p-1">
-                        <span className={`font-bold text-sm ${rank === 1 ? 'text-amber-600' : rank === 2 ? 'text-slate-500' : rank === 3 ? 'text-orange-600' : ''}`}>
-                          {rank}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {learners.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
-                      No learners in this class. Select a different grade or stream.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            {/* Sticky save button on mobile */}
+            {hasUnsavedChanges && (
+              <div className="fixed bottom-20 left-0 right-0 p-3 md:hidden z-50">
+                <Button
+                  onClick={() => saveMutation.mutate()}
+                  disabled={saveMutation.isPending}
+                  className="w-full shadow-lg"
+                  size="lg"
+                >
+                  <Save className="mr-2 h-4 w-4" /> Save All Scores
+                </Button>
+              </div>
+            )}
+          </TabsContent>
 
-        {/* Sticky save button on mobile */}
-        {hasUnsavedChanges && (
-          <div className="fixed bottom-20 left-0 right-0 p-3 md:hidden z-50">
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
-              className="w-full shadow-lg"
-              size="lg"
-            >
-              <Save className="mr-2 h-4 w-4" /> Save All Scores
-            </Button>
-          </div>
-        )}
+          <TabsContent value="strands">
+            <StrandMarksEntry
+              schoolId={schoolId!}
+              selectedGrade={selectedGrade}
+              selectedStream={selectedStream}
+              selectedTerm={selectedTerm}
+              selectedYear={selectedYear}
+              selectedAssessment={selectedAssessment}
+              learners={learners}
+              isPrivileged={isPrivileged}
+              editableSubjectIds={editableSubjectIds}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

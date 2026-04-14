@@ -24,6 +24,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AttendancePage from "./pages/AttendancePage";
 import TeacherAssignmentsPage from "./pages/TeacherAssignmentsPage";
 import GradeAnalysisPage from "./pages/GradeAnalysisPage";
+import StrandsPage from "./pages/StrandsPage";
 import PerformanceTrackingPage from "./pages/PerformanceTrackingPage";
 import MorePage from "./pages/MorePage";
 import ParentDashboard from "./pages/ParentDashboard";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
             <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
             <Route path="/promotion" element={<ProtectedRoute allowedRoles={['admin']}><PromotionPage /></ProtectedRoute>} />
+            <Route path="/strands" element={<ProtectedRoute allowedRoles={['admin']}><StrandsPage /></ProtectedRoute>} />
             <Route path="/teacher-assignments" element={<ProtectedRoute allowedRoles={['admin']}><TeacherAssignmentsPage /></ProtectedRoute>} />
             <Route path="/grade-analysis" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><GradeAnalysisPage /></ProtectedRoute>} />
             <Route path="/performance-tracking" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><PerformanceTrackingPage /></ProtectedRoute>} />
