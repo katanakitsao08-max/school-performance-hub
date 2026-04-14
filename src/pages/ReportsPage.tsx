@@ -50,17 +50,27 @@ export default function ReportsPage() {
   });
 
   const { data: schoolSettings = {} } = useQuery({
-    queryKey: ['school-settings-map'],
+    queryKey: ['school-settings-map', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('school_settings').select('*');
+      const { data } = await supabase.from('school_settings').select('*').eq('school_id', schoolId!);
       const map: Record<string, string> = {};
       (data || []).forEach(s => { map[s.key] = s.value; });
       return map;
     },
-    enabled: !!user,
+    enabled: !!schoolId,
   });
 
-  const schoolName = schoolSettings['school_name'] || 'TAKAYE SCHOOL';
+  // Fallback: fetch school name from schools table if not in settings
+  const { data: schoolRecord } = useQuery({
+    queryKey: ['school-record', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  const schoolName = schoolSettings['school_name'] || schoolRecord?.school_name || 'SCHOOL';
   const schoolMotto = schoolSettings['school_motto'] || '';
   const schoolAddress = schoolSettings['school_address'] || '';
   const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
