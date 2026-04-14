@@ -132,15 +132,17 @@ export default function LearnersPage() {
 
   const createParentAccount = useMutation({
     mutationFn: async (learner: any) => {
-      const firstName = learner.full_name.trim().split(/\s+/)[0];
-      if (firstName.length < 6) {
-        throw new Error(`Password "${firstName}" is too short (min 6 chars). Please update the student name.`);
+      const names = learner.full_name.trim().split(/\s+/);
+      // Pick the longest name that's at least 6 chars; fallback to first name
+      const password = names.find((n: string) => n.length >= 6) || names[0];
+      if (password.length < 6) {
+        throw new Error(`No name part is 6+ chars ("${learner.full_name}"). Please update the student name.`);
       }
       const email = `${learner.admission_number.toLowerCase().replace(/\s+/g, '')}@school.local`;
       const parentName = learner.parent_name || learner.full_name + ' Parent';
 
       const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password: firstName, full_name: parentName, role: 'parent', school_id: schoolId },
+        body: { email, password, full_name: parentName, role: 'parent', school_id: schoolId },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
@@ -154,13 +156,13 @@ export default function LearnersPage() {
       });
       if (linkError) throw linkError;
 
-      return { admNo: learner.admission_number, firstName };
+      return { admNo: learner.admission_number, password };
     },
     onSuccess: (result) => {
       setCreatingParentFor(null);
       toast({
         title: 'Parent Account Created',
-        description: `Username: ${result.admNo} | Password: ${result.firstName}`,
+        description: `Username: ${result.admNo} | Password: ${result.password}`,
       });
     },
     onError: (error: any) => {
