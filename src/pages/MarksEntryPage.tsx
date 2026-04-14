@@ -213,29 +213,38 @@ export default function MarksEntryPage() {
     const maxPerSubject = getTotalMaxScore() / subjects.length;
     const grades = learners.map(l => {
       const mean = getMean(l.id);
-      return getGrade(mean, maxPerSubject);
+      return getGradeForLevel(mean, maxPerSubject, selectedGrade);
     });
+    const isKJSEA = isKJSEAGradeLevel(selectedGrade);
     return {
-      ee: grades.filter(g => g === 'EE').length,
-      me: grades.filter(g => g === 'ME').length,
-      ae: grades.filter(g => g === 'AE').length,
-      be: grades.filter(g => g === 'BE').length,
+      ee: grades.filter(g => isKJSEA ? (g === 'EE1' || g === 'EE2') : g === 'EE').length,
+      me: grades.filter(g => isKJSEA ? (g === 'ME1' || g === 'ME2') : g === 'ME').length,
+      ae: grades.filter(g => isKJSEA ? (g === 'AE1' || g === 'AE2') : g === 'AE').length,
+      be: grades.filter(g => isKJSEA ? (g === 'BE1' || g === 'BE2') : g === 'BE').length,
       classMean: learners.length > 0
         ? (learners.reduce((sum, l) => sum + getMean(l.id), 0) / learners.length).toFixed(1)
         : '0',
     };
   }, [learners, scores, subjects]);
 
-  const getGradeBadge = (grade: CBCGrade | '-') => {
+  const getGradeBadge = (grade: AnyGrade | '-') => {
     if (grade === '-') return null;
-    const colorMap: Record<CBCGrade, string> = {
+    const colorMap: Record<string, string> = {
       EE: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400',
       ME: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400',
       AE: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400',
       BE: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400',
+      EE1: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400',
+      EE2: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400',
+      ME1: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400',
+      ME2: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400',
+      AE1: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400',
+      AE2: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400',
+      BE1: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400',
+      BE2: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400',
     };
     return (
-      <Badge className={`${colorMap[grade]} border font-semibold`} variant="outline">
+      <Badge className={`${colorMap[grade] || ''} border font-semibold`} variant="outline">
         {grade}
       </Badge>
     );
@@ -371,7 +380,7 @@ export default function MarksEntryPage() {
                   const total = getTotal(learner.id);
                   const mean = getMean(learner.id);
                   const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
-                  const grade = subjects.length > 0 ? getGrade(mean, maxPerSubject) : '-';
+                  const grade = subjects.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
                   const rank = getRank(learner.id);
                   return (
                     <TableRow key={learner.id} className="hover:bg-muted/30">
@@ -381,7 +390,7 @@ export default function MarksEntryPage() {
                         const val = scores[learner.id]?.[sub.id] || '';
                         const numVal = Number(val);
                         const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
-                        const subGrade = pct !== null ? getGrade(numVal, sub.max_score) : null;
+                        const subGrade = pct !== null ? getGradeForLevel(numVal, sub.max_score, selectedGrade) : null;
                         let inputBorder = '';
                         if (pct !== null) {
                           if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
@@ -414,7 +423,7 @@ export default function MarksEntryPage() {
                       })}
                       <TableCell className="text-center font-bold text-base">{total}</TableCell>
                       <TableCell className="text-center font-medium">{mean.toFixed(1)}</TableCell>
-                      <TableCell className="text-center">{getGradeBadge(grade as CBCGrade | '-')}</TableCell>
+                      <TableCell className="text-center">{getGradeBadge(grade as AnyGrade | '-')}</TableCell>
                       <TableCell className="text-center">
                         <span className={`font-bold text-base ${rank === 1 ? 'text-amber-600' : rank === 2 ? 'text-slate-500' : rank === 3 ? 'text-orange-600' : ''}`}>
                           {rank}
