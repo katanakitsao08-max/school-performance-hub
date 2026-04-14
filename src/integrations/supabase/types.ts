@@ -100,6 +100,75 @@ export type Database = {
           },
         ]
       }
+      fee_records: {
+        Row: {
+          amount_charged: number
+          amount_paid: number
+          created_at: string
+          description: string | null
+          fee_type: string
+          id: string
+          learner_id: string
+          mpesa_reference: string | null
+          payment_date: string | null
+          payment_method: string | null
+          recorded_by: string
+          school_id: string | null
+          term: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount_charged?: number
+          amount_paid?: number
+          created_at?: string
+          description?: string | null
+          fee_type?: string
+          id?: string
+          learner_id: string
+          mpesa_reference?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          recorded_by: string
+          school_id?: string | null
+          term: number
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          amount_charged?: number
+          amount_paid?: number
+          created_at?: string
+          description?: string | null
+          fee_type?: string
+          id?: string
+          learner_id?: string
+          mpesa_reference?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          recorded_by?: string
+          school_id?: string | null
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_records_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_records_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learners: {
         Row: {
           academic_year: number
