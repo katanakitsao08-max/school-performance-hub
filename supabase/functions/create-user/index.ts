@@ -77,7 +77,14 @@ serve(async (req) => {
     // Update profile with school_id and grades for admin
     const profileUpdate: any = { school_id: resolvedSchoolId };
     if (role === 'admin') {
-      profileUpdate.assigned_grades = ['1','2','3','4','5','6','7','8','9'];
+      // Admin gets all grades dynamically - fetch from school settings
+      const { data: gradeSetting } = await supabaseAdmin.from('school_settings')
+        .select('value').eq('key', 'available_grades').eq('school_id', resolvedSchoolId).maybeSingle();
+      let grades = ['1','2','3','4','5','6','7','8','9'];
+      if (gradeSetting?.value) {
+        try { const parsed = JSON.parse(gradeSetting.value); if (parsed.length > 0) grades = parsed; } catch {}
+      }
+      profileUpdate.assigned_grades = grades;
       profileUpdate.assigned_streams = [];
     }
 

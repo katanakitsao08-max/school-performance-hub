@@ -25,7 +25,7 @@ export default function ReportsPage() {
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
-  const [selectedStreams, setSelectedStreams] = useState<string[]>(['A']);
+  const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
