@@ -91,7 +91,7 @@ export default function PromotionPage() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <ArrowUpCircle className="h-5 w-5" />
             <span className="font-medium">
-              {selectedGrade === '9' ? 'Completed / Alumni' : nextGrade ? `Grade ${nextGrade}` : '-'}
+              {selectedGrade === lastGrade ? 'Completed / Alumni' : nextGrade ? `Grade ${nextGrade}` : '-'}
             </span>
           </div>
         </div>
@@ -100,7 +100,7 @@ export default function PromotionPage() {
           <CardHeader>
             <CardTitle>Grade {selectedGrade} Learners ({learners.length})</CardTitle>
             <CardDescription>
-              {selectedGrade === '9'
+              {selectedGrade === lastGrade
                 ? 'These learners will be marked as completed (Alumni)'
                 : `These learners will be promoted to Grade ${nextGrade}`}
             </CardDescription>
