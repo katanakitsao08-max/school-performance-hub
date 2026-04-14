@@ -50,7 +50,7 @@ export default function PromotionPage() {
           school_id: schoolId,
         });
 
-        if (selectedGrade === '9') {
+        if (selectedGrade === lastGrade) {
           // Mark as inactive (alumni)
           await supabase.from('learners').update({
             is_active: false,
