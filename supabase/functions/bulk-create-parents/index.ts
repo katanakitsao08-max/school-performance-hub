@@ -42,9 +42,10 @@ serve(async (req) => {
         continue;
       }
 
-      const firstName = full_name.trim().split(/\s+/)[0];
-      if (firstName.length < 6) {
-        results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'failed', error: `Password "${firstName}" too short (min 6)` });
+      const names = full_name.trim().split(/\s+/);
+      const password = names.find((n: string) => n.length >= 6) || names[0];
+      if (password.length < 6) {
+        results.push({ admNo: admission_number, name: full_name, password, status: 'failed', error: `No name part is 6+ chars` });
         continue;
       }
 
