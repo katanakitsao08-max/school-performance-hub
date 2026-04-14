@@ -209,7 +209,7 @@ export default function ParentReportsTab({ child }: Props) {
       const mean = lt.total / subCount;
       const avgMax = gradeSubjects.length > 0 ? gradeSubjects.reduce((s, sub) => s + sub.max_score, 0) / subCount : 100;
       const g = getGradeForLevel(mean, avgMax, child.grade);
-      if (g && g !== '-' && dist[g as string] !== undefined) {
+      if (g && String(g) !== '-' && dist[String(g)] !== undefined) {
         dist[g as string]++;
       }
     });
