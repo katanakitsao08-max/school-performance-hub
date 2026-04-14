@@ -31,7 +31,8 @@ export default function PromotionPage() {
     },
   });
 
-  const nextGrade = getNextGrade(selectedGrade);
+  const nextGrade = getNextGrade(selectedGrade, dynamicGrades);
+  const lastGrade = dynamicGrades.length > 0 ? dynamicGrades[dynamicGrades.length - 1] : '9';
 
   const promoteMutation = useMutation({
     mutationFn: async () => {
