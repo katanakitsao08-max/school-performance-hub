@@ -274,10 +274,10 @@ export default function ReportsPage() {
     return y + 5;
   };
 
-  const exportClassPDF = () => {
+  const exportClassPDF = async () => {
     const doc = new jsPDF({ orientation: 'landscape' });
     let y = 12;
-    y = addPdfHeader(doc, y);
+    y = await addPdfHeader(doc, y);
     const cx = doc.internal.pageSize.getWidth() / 2;
     const title = isSchoolWide
       ? 'WHOLE SCHOOL REPORT'
@@ -308,7 +308,7 @@ export default function ReportsPage() {
     if (analysis.subjectAnalyses.length > 0) {
       doc.addPage('landscape');
       let ay = 12;
-      ay = addPdfHeader(doc, ay);
+      ay = await addPdfHeader(doc, ay);
       doc.setFontSize(14); doc.setFont('helvetica', 'bold');
       doc.text('PERFORMANCE ANALYSIS', cx, ay, { align: 'center' });
       ay += 8;
@@ -343,7 +343,7 @@ export default function ReportsPage() {
       // Top 5 per subject page
       doc.addPage('landscape');
       let ty = 12;
-      ty = addPdfHeader(doc, ty);
+      ty = await addPdfHeader(doc, ty);
       doc.setFontSize(14); doc.setFont('helvetica', 'bold');
       doc.text('TOP 5 LEARNERS PER SUBJECT', cx, ty, { align: 'center' });
       ty += 8;
@@ -367,13 +367,13 @@ export default function ReportsPage() {
     doc.save(`Report_${isSchoolWide ? 'School' : `G${selectedGrades.join('-')}`}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
-  const exportIndividualPDF = (learnerData?: any) => {
+  const exportIndividualPDF = async (learnerData?: any) => {
     const ld = learnerData || selectedLearnerData;
     if (!ld) return;
 
     const doc = new jsPDF();
     let y = 15;
-    y = addPdfHeader(doc, y);
+    y = await addPdfHeader(doc, y);
     const cx = doc.internal.pageSize.getWidth() / 2;
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
