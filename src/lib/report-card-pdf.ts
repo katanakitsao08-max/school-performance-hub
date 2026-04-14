@@ -3,6 +3,14 @@ import autoTable from 'jspdf-autotable';
 import { getGradeLabel, type AnyGrade } from './cbc-utils';
 import QRCode from 'qrcode';
 
+export interface StrandReportData {
+  strandName: string;
+  score: number;
+  maxScore: number;
+  competencyLevel: string;
+  teacherComment: string;
+}
+
 export interface ReportCardData {
   learner: {
     id: string;
@@ -20,6 +28,7 @@ export interface ReportCardData {
     teacherInitials: string;
     teacherName: string;
     comment: string;
+    strands?: StrandReportData[];
   }[];
   total: number;
   maxTotal: number;
