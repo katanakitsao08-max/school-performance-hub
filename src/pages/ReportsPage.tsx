@@ -284,6 +284,20 @@ export default function ReportsPage() {
     return map;
   }, [gradeSubjects, allScores]);
 
+  // Grade distribution for report cards
+  const gradeDistribution = useMemo(() => {
+    const isK = isKJSEAGradeLevel(selectedGrade);
+    const levels = isK ? ['EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2'] : ['EE', 'ME', 'AE', 'BE'];
+    const dist: Record<string, number> = {};
+    levels.forEach(l => { dist[l] = 0; });
+    reportData.forEach(l => {
+      if (l.overallGrade && l.overallGrade !== '-') {
+        dist[l.overallGrade] = (dist[l.overallGrade] || 0) + 1;
+      }
+    });
+    return levels.map(g => ({ grade: g, count: dist[g] || 0 }));
+  }, [reportData, selectedGrade]);
+
   // Stream ranking: rank within same stream
   const streamRankings = useMemo(() => {
     const map: Record<string, number> = {};
