@@ -40,6 +40,7 @@ export default function ReportsPage() {
   const [batchExporting, setBatchExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [generatingPrincipalRemark, setGeneratingPrincipalRemark] = useState<string | null>(null);
+  const [batchGeneratingRemarks, setBatchGeneratingRemarks] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
