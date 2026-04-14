@@ -655,6 +655,13 @@ export default function ReportsPage() {
               <>
                 <Button variant="outline" onClick={exportClassPDF}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
                 <Button variant="outline" onClick={exportExcel}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
+                <Button variant="default" onClick={exportBatchPDF} disabled={batchExporting || reportData.length === 0}>
+                  {batchExporting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {batchProgress.current}/{batchProgress.total}</>
+                  ) : (
+                    <><Archive className="mr-2 h-4 w-4" /> Batch Report Cards (ZIP)</>
+                  )}
+                </Button>
               </>
             ) : selectedLearnerData && (
               <Button variant="outline" onClick={() => exportIndividualPDF()}>
