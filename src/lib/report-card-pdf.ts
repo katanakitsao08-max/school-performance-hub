@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getGrade, getGradeLabel, type CBCGrade } from './cbc-utils';
+import { getGradeLabel, type AnyGrade } from './cbc-utils';
 import QRCode from 'qrcode';
 
 export interface ReportCardData {
@@ -203,7 +203,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       s.grade !== '-' ? s.grade : '-',
       classAvg,
       s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-'),
-      s.grade !== '-' ? getGradeLabel(s.grade as CBCGrade).split(' ')[0] : '-',
+      s.grade !== '-' ? getGradeLabel(s.grade as AnyGrade).split(' ')[0] : '-',
     ];
   });
 
@@ -255,7 +255,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   y += cardH + 2;
 
   // Additional stats inline
-  const gradeInfo = data.overallGrade !== '-' ? `${data.overallGrade} (${getGradeLabel(data.overallGrade as CBCGrade)})` : '-';
+  const gradeInfo = data.overallGrade !== '-' ? `${data.overallGrade} (${getGradeLabel(data.overallGrade as AnyGrade)})` : '-';
   doc.setFillColor(245, 245, 245);
   doc.roundedRect(mx, y, cw, 8, 1, 1, 'F');
   doc.setFontSize(6);
