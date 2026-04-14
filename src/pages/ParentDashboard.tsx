@@ -5,7 +5,8 @@ import { User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ParentChildSelector from '@/components/parent/ParentChildSelector';
 import ParentPerformanceTab from '@/components/parent/ParentPerformanceTab';
 import ParentAttendanceTab from '@/components/parent/ParentAttendanceTab';
@@ -14,7 +15,14 @@ import ParentReportsTab from '@/components/parent/ParentReportsTab';
 
 export default function ParentDashboard() {
   const { user, profile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'performance';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveTab(searchParams.get('tab') || 'performance');
+  }, [searchParams]);
 
   const { data: children = [] } = useQuery({
     queryKey: ['parent-children', user?.id],
@@ -68,7 +76,7 @@ export default function ParentDashboard() {
             />
 
             {activeChild && (
-              <Tabs defaultValue="performance" className="space-y-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList className="w-full grid grid-cols-4">
                   <TabsTrigger value="performance" className="text-xs">Performance</TabsTrigger>
                   <TabsTrigger value="attendance" className="text-xs">Attendance</TabsTrigger>
