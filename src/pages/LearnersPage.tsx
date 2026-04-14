@@ -11,7 +11,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
-import { GRADES, GENDERS } from '@/lib/cbc-utils';
+import { GENDERS } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
+import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import BulkUploadDialog from '@/components/BulkUploadDialog';
@@ -20,9 +22,11 @@ export default function LearnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { role, profile, schoolId } = useAuth();
+  const dynamicGrades = useSchoolGrades();
+  const dynamicStreams = useSchoolStreams();
   const assignedGrades = profile?.assigned_grades || [];
   const assignedStreams = profile?.assigned_streams || [];
-  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
+  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => dynamicGrades.includes(g)) : dynamicGrades;
   const isAdmin = role === 'admin';
 
   const [open, setOpen] = useState(false);
@@ -31,7 +35,7 @@ export default function LearnersPage() {
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
+    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
@@ -78,14 +82,7 @@ export default function LearnersPage() {
     },
   });
 
-  const { data: allStreams = [] } = useQuery({
-    queryKey: ['streams'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('streams').select('name').order('name');
-      if (error) throw error;
-      return (data || []).map((s: any) => s.name as string);
-    },
-  });
+  const allStreams = dynamicStreams;
 
   const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
@@ -132,7 +129,7 @@ export default function LearnersPage() {
   });
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: availableStreams[0] || 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 

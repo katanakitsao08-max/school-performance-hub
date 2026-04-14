@@ -9,12 +9,16 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Send } from 'lucide-react';
-import { GRADES, STREAMS, TERMS, getGrade } from '@/lib/cbc-utils';
+import { TERMS, getGrade } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
+import { useSchoolStreams } from '@/hooks/use-school-streams';
 
 export default function SmsPage() {
   const { toast } = useToast();
-  const [selectedGrade, setSelectedGrade] = useState('1');
-  const [selectedStream, setSelectedStream] = useState('A');
+  const dynamicGrades = useSchoolGrades();
+  const dynamicStreams = useSchoolStreams();
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [sending, setSending] = useState(false);
@@ -105,12 +109,12 @@ export default function SmsPage() {
 
         <div className="flex gap-4 flex-wrap">
           <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+            <SelectContent>{dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={selectedStream} onValueChange={setSelectedStream}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Stream" /></SelectTrigger>
+            <SelectContent>{dynamicStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>

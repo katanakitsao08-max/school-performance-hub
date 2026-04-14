@@ -107,8 +107,8 @@ export const ASSESSMENT_TYPE_LABELS: Record<AssessmentType, string> = {
 };
 export const GENDERS = ['Male', 'Female'] as const;
 
-export function getNextGrade(currentGrade: string): string | null {
-  const idx = GRADES.indexOf(currentGrade);
-  if (idx === -1 || idx === GRADES.length - 1) return null;
-  return GRADES[idx + 1];
+export function getNextGrade(currentGrade: string, gradesList: string[] = GRADES): string | null {
+  const idx = gradesList.indexOf(currentGrade);
+  if (idx === -1 || idx === gradesList.length - 1) return null;
+  return gradesList[idx + 1];
 }

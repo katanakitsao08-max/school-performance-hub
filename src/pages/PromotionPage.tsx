@@ -9,7 +9,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowUpCircle, AlertTriangle } from 'lucide-react';
-import { GRADES, getNextGrade } from '@/lib/cbc-utils';
+import { getNextGrade } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -17,7 +18,8 @@ export default function PromotionPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { schoolId } = useAuth();
-  const [selectedGrade, setSelectedGrade] = useState('1');
+  const dynamicGrades = useSchoolGrades();
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const { data: learners = [] } = useQuery({
@@ -29,14 +31,15 @@ export default function PromotionPage() {
     },
   });
 
-  const nextGrade = getNextGrade(selectedGrade);
+  const nextGrade = getNextGrade(selectedGrade, dynamicGrades);
+  const lastGrade = dynamicGrades.length > 0 ? dynamicGrades[dynamicGrades.length - 1] : '9';
 
   const promoteMutation = useMutation({
     mutationFn: async () => {
-      if (!nextGrade && selectedGrade !== '9') return;
+      if (!nextGrade && selectedGrade !== lastGrade) return;
 
       for (const learner of learners) {
-        const toGrade = selectedGrade === '9' ? 'Completed' : nextGrade!;
+        const toGrade = selectedGrade === lastGrade ? 'Completed' : nextGrade!;
         
         // Log promotion
         await supabase.from('promotion_log').insert({
@@ -47,7 +50,7 @@ export default function PromotionPage() {
           school_id: schoolId,
         });
 
-        if (selectedGrade === '9') {
+        if (selectedGrade === lastGrade) {
           // Mark as inactive (alumni)
           await supabase.from('learners').update({
             is_active: false,
@@ -81,14 +84,14 @@ export default function PromotionPage() {
           <div>
             <label className="text-xs text-muted-foreground">From Grade</label>
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+              <SelectContent>{dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <ArrowUpCircle className="h-5 w-5" />
             <span className="font-medium">
-              {selectedGrade === '9' ? 'Completed / Alumni' : nextGrade ? `Grade ${nextGrade}` : '-'}
+              {selectedGrade === lastGrade ? 'Completed / Alumni' : nextGrade ? `Grade ${nextGrade}` : '-'}
             </span>
           </div>
         </div>
@@ -97,7 +100,7 @@ export default function PromotionPage() {
           <CardHeader>
             <CardTitle>Grade {selectedGrade} Learners ({learners.length})</CardTitle>
             <CardDescription>
-              {selectedGrade === '9'
+              {selectedGrade === lastGrade
                 ? 'These learners will be marked as completed (Alumni)'
                 : `These learners will be promoted to Grade ${nextGrade}`}
             </CardDescription>

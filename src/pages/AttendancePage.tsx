@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { GRADES } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX } from 'lucide-react';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
@@ -29,7 +29,8 @@ export default function AttendancePage() {
   const queryClient = useQueryClient();
   const { role, profile, user, schoolId } = useAuth();
 
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const dynamicGrades = useSchoolGrades();
+  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
 
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');

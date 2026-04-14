@@ -6,13 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { GRADES, TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { TERMS, getGrade, getGradeColor } from '@/lib/cbc-utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const CHART_COLORS = ['hsl(142,64%,40%)', 'hsl(210,80%,52%)', 'hsl(38,92%,50%)', 'hsl(0,84%,60%)'];
 
 export default function AnalyticsPage() {
-  const [selectedGrade, setSelectedGrade] = useState('1');
+  const dynamicGrades = useSchoolGrades();
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -88,8 +90,8 @@ export default function AnalyticsPage() {
 
         <div className="flex gap-4 flex-wrap">
           <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+            <SelectContent>{dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
