@@ -504,6 +504,118 @@ export type Database = {
           },
         ]
       }
+      strand_scores: {
+        Row: {
+          assessment_type: string
+          competency_level: string
+          created_at: string
+          id: string
+          learner_id: string
+          max_score: number
+          school_id: string | null
+          score: number
+          strand_id: string
+          teacher_comment: string | null
+          term: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          assessment_type?: string
+          competency_level?: string
+          created_at?: string
+          id?: string
+          learner_id: string
+          max_score?: number
+          school_id?: string | null
+          score?: number
+          strand_id: string
+          teacher_comment?: string | null
+          term: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          assessment_type?: string
+          competency_level?: string
+          created_at?: string
+          id?: string
+          learner_id?: string
+          max_score?: number
+          school_id?: string | null
+          score?: number
+          strand_id?: string
+          teacher_comment?: string | null
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strand_scores_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strand_scores_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strand_scores_strand_id_fkey"
+            columns: ["strand_id"]
+            isOneToOne: false
+            referencedRelation: "strands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strands: {
+        Row: {
+          created_at: string
+          id: string
+          learning_area_id: string
+          name: string
+          school_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          learning_area_id: string
+          name: string
+          school_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          learning_area_id?: string
+          name?: string
+          school_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strands_learning_area_id_fkey"
+            columns: ["learning_area_id"]
+            isOneToOne: false
+            referencedRelation: "learning_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strands_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       streams: {
         Row: {
           created_at: string
@@ -529,6 +641,38 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_strands: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          strand_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          strand_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          strand_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_strands_strand_id_fkey"
+            columns: ["strand_id"]
+            isOneToOne: false
+            referencedRelation: "strands"
             referencedColumns: ["id"]
           },
         ]
