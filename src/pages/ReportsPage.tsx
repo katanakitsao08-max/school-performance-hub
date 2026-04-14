@@ -517,7 +517,71 @@ export default function ReportsPage() {
     doc.save(`Report_${ld.full_name.replace(/\s+/g, '_')}_G${ld.grade}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
-  const exportExcel = () => {
+  const exportBatchPDF = useCallback(async () => {
+    if (reportData.length === 0 || batchExporting) return;
+    setBatchExporting(true);
+    setBatchProgress({ current: 0, total: reportData.length });
+
+    const zip = new JSZip();
+    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+
+    for (let idx = 0; idx < reportData.length; idx++) {
+      const ld = reportData[idx];
+      setBatchProgress({ current: idx + 1, total: reportData.length });
+
+      const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+      const totalPoints = ld.subjectData.reduce((s: number, d: any) => {
+        if (d.grade === '-') return s;
+        const pct = d.maxScore > 0 ? (d.score / d.maxScore) * 100 : 0;
+        if (pct >= 75) return s + 4;
+        if (pct >= 50) return s + 3;
+        if (pct >= 25) return s + 2;
+        return s + 1;
+      }, 0);
+      const streamKey = `${ld.grade}-${ld.stream}`;
+
+      const cardData: ReportCardData = {
+        learner: {
+          id: ld.id, full_name: ld.full_name, admission_number: ld.admission_number,
+          grade: ld.grade, stream: ld.stream, gender: ld.gender || '-',
+        },
+        subjectData: ld.subjectData.map((s: any) => ({ ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream) })),
+        total: ld.total, maxTotal,
+        mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
+        overallGrade: ld.overallGrade,
+        rank: ld.rank,
+        streamRank: streamRankings[ld.id] || ld.rank,
+        totalInClass: reportData.length,
+        totalInStream: streamCounts[streamKey] || reportData.length,
+        totalPoints, selectedTerm, selectedYear,
+        assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        classTeacherComment: comments[ld.id] || '',
+        principalComment: principalComments[ld.id] || '',
+        schoolSettings: schoolSettings as Record<string, string>,
+        logoBase64, classAvgPerSubject,
+        termHistory: getTermHistory(ld.id),
+        appUrl: window.location.origin,
+      };
+
+      const doc = await generatePremiumReportCard(cardData);
+      const pdfBlob = doc.output('arraybuffer');
+      zip.file(`${ld.full_name.replace(/\s+/g, '_')}_G${ld.grade}_T${selectedTerm}_${selectedYear}.pdf`, pdfBlob);
+
+      // Yield to UI so progress updates render
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ReportCards_G${selectedGrades.join('-')}_T${selectedTerm}_${selectedYear}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBatchExporting(false);
+  }, [reportData, schoolLogoUrl, schoolSettings, selectedTerm, selectedYear, selectedAssessment, comments, principalComments, classAvgPerSubject, streamRankings, streamCounts, selectedGrades, batchExporting]);
+
+
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : gradeSubjects;
     const headers = ['Rank', 'Name', ...(showGradeCol ? ['Class'] : []), ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade'];
