@@ -762,10 +762,11 @@ export default function ReportsPage() {
                       </p>
                     </div>
                     <div><span className="text-sm text-muted-foreground">Position:</span><p className="text-xl font-bold">{selectedLearnerData.rank} / {reportData.length}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Stream Position:</span><p className="text-xl font-bold">{streamRankings[selectedLearnerData.id] || '-'} / {streamCounts[`${selectedLearnerData.grade}-${selectedLearnerData.stream}`] || '-'}</p></div>
                   </div>
                   <div className="space-y-2 no-print">
                     <div className="flex items-center justify-between">
-                      <Label>Teacher's Comment</Label>
+                      <Label>Class Teacher's Comment</Label>
                       <Button variant="outline" size="sm" onClick={() => generateComment(selectedLearnerData)}>
                         Auto-Generate
                       </Button>
@@ -773,8 +774,17 @@ export default function ReportsPage() {
                     <Textarea
                       value={comments[selectedLearnerData.id] || ''}
                       onChange={e => setComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
-                      placeholder="Enter teacher's comment..."
+                      placeholder="Enter class teacher's comment..."
                       rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2 no-print">
+                    <Label>Principal's Comment</Label>
+                    <Textarea
+                      value={principalComments[selectedLearnerData.id] || ''}
+                      onChange={e => setPrincipalComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
+                      placeholder="Enter principal's comment..."
+                      rows={2}
                     />
                   </div>
                 </CardContent>
