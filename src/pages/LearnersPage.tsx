@@ -22,9 +22,11 @@ export default function LearnersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { role, profile, schoolId } = useAuth();
+  const dynamicGrades = useSchoolGrades();
+  const dynamicStreams = useSchoolStreams();
   const assignedGrades = profile?.assigned_grades || [];
   const assignedStreams = profile?.assigned_streams || [];
-  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => GRADES.includes(g)) : GRADES;
+  const availableGrades = role === 'teacher' ? assignedGrades.filter(g => dynamicGrades.includes(g)) : dynamicGrades;
   const isAdmin = role === 'admin';
 
   const [open, setOpen] = useState(false);
@@ -33,7 +35,7 @@ export default function LearnersPage() {
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'A'),
+    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
@@ -134,7 +136,7 @@ export default function LearnersPage() {
   });
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '1', stream: availableStreams[0] || 'A',
+    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 

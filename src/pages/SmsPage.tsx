@@ -15,8 +15,10 @@ import { useSchoolStreams } from '@/hooks/use-school-streams';
 
 export default function SmsPage() {
   const { toast } = useToast();
-  const [selectedGrade, setSelectedGrade] = useState('1');
-  const [selectedStream, setSelectedStream] = useState('A');
+  const dynamicGrades = useSchoolGrades();
+  const dynamicStreams = useSchoolStreams();
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [sending, setSending] = useState(false);

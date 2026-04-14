@@ -13,7 +13,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const CHART_COLORS = ['hsl(142,64%,40%)', 'hsl(210,80%,52%)', 'hsl(38,92%,50%)', 'hsl(0,84%,60%)'];
 
 export default function AnalyticsPage() {
-  const [selectedGrade, setSelectedGrade] = useState('1');
+  const dynamicGrades = useSchoolGrades();
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 

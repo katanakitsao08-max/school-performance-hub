@@ -18,7 +18,8 @@ export default function PromotionPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { schoolId } = useAuth();
-  const [selectedGrade, setSelectedGrade] = useState('1');
+  const dynamicGrades = useSchoolGrades();
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const { data: learners = [] } = useQuery({

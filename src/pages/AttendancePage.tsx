@@ -29,7 +29,8 @@ export default function AttendancePage() {
   const queryClient = useQueryClient();
   const { role, profile, user, schoolId } = useAuth();
 
-  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : GRADES;
+  const dynamicGrades = useSchoolGrades();
+  const availableGrades = role === 'teacher' ? (profile?.assigned_grades || []) : dynamicGrades;
   const assignedStreams = profile?.assigned_streams || [];
 
   const [selectedGrade, setSelectedGrade] = useState(availableGrades[0] || '1');
