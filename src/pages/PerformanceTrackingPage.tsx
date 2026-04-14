@@ -268,7 +268,7 @@ export default function PerformanceTrackingPage() {
                             (s.assessment_type || 'end_term') === at
                           );
                           const score = sc?.score || 0;
-                          const grade = score > 0 ? getGrade(score, sub.max_score) : null;
+                          const grade = score > 0 ? getGradeForLevel(score, sub.max_score, selectedGrade) : null;
                           const trend = getTrend(score, prevScore);
                           prevScore = score || prevScore;
                           return (

@@ -121,7 +121,7 @@ export default function ParentDashboard() {
               const overallAvg = childScores.length > 0
                 ? Math.round(childScores.reduce((a, s) => a + Number(s.score), 0) / childScores.length)
                 : 0;
-              const overallGrade = getGrade(overallAvg, 100);
+              const overallGrade = getGradeForLevel(overallAvg, 100, child.grade || '1');
 
               return (
                 <TabsContent key={child.id} value={child.id} className="space-y-4">
@@ -188,7 +188,7 @@ export default function ParentDashboard() {
                         <div className="mt-3 space-y-1.5">
                           {Object.values(subjectMap).map(s => {
                             const avg = Math.round(s.scores.reduce((a, b) => a + b, 0) / s.scores.length);
-                            const grade = getGrade(avg, 100);
+                            const grade = getGradeForLevel(avg, 100, child.grade || '1');
                             return (
                               <div key={s.name} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50">
                                 <span className="text-xs font-medium">{s.name}</span>

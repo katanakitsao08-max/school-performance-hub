@@ -61,7 +61,7 @@ export default function AnalyticsPage() {
       if (learnerScores.length === 0) return;
       const mean = learnerScores.reduce((s, sc) => s + sc.score, 0) / learnerScores.length;
       const avgMax = subjects.length > 0 ? subjects.reduce((s, sub) => s + sub.max_score, 0) / subjects.length : 100;
-      const grade = getGrade(mean, avgMax);
+      const grade = getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1');
       dist[grade]++;
     });
     return Object.entries(dist).map(([name, value]) => ({ name, value }));
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const mean = ls.length > 0 ? total / ls.length : 0;
       const avgMax = subjects.length > 0 ? subjects.reduce((s, sub) => s + sub.max_score, 0) / subjects.length : 100;
-      return { ...l, total, mean, grade: ls.length > 0 ? getGrade(mean, avgMax) : '-' };
+      return { ...l, total, mean, grade: ls.length > 0 ? getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1') : '-' };
     }).sort((a, b) => b.total - a.total);
   }, [learners, scores, subjects]);
 
