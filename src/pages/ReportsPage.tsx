@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { computeAnalysis } from '@/lib/analysis-utils';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, FileDown, User, School } from 'lucide-react';
+import { Printer, FileDown, User, School, Archive, Loader2 } from 'lucide-react';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-car
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
@@ -35,6 +36,8 @@ export default function ReportsPage() {
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
+  const [batchExporting, setBatchExporting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
@@ -514,6 +517,71 @@ export default function ReportsPage() {
     doc.save(`Report_${ld.full_name.replace(/\s+/g, '_')}_G${ld.grade}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
+  const exportBatchPDF = useCallback(async () => {
+    if (reportData.length === 0 || batchExporting) return;
+    setBatchExporting(true);
+    setBatchProgress({ current: 0, total: reportData.length });
+
+    const zip = new JSZip();
+    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+
+    for (let idx = 0; idx < reportData.length; idx++) {
+      const ld = reportData[idx];
+      setBatchProgress({ current: idx + 1, total: reportData.length });
+
+      const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+      const totalPoints = ld.subjectData.reduce((s: number, d: any) => {
+        if (d.grade === '-') return s;
+        const pct = d.maxScore > 0 ? (d.score / d.maxScore) * 100 : 0;
+        if (pct >= 75) return s + 4;
+        if (pct >= 50) return s + 3;
+        if (pct >= 25) return s + 2;
+        return s + 1;
+      }, 0);
+      const streamKey = `${ld.grade}-${ld.stream}`;
+
+      const cardData: ReportCardData = {
+        learner: {
+          id: ld.id, full_name: ld.full_name, admission_number: ld.admission_number,
+          grade: ld.grade, stream: ld.stream, gender: ld.gender || '-',
+        },
+        subjectData: ld.subjectData.map((s: any) => ({ ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream) })),
+        total: ld.total, maxTotal,
+        mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
+        overallGrade: ld.overallGrade,
+        rank: ld.rank,
+        streamRank: streamRankings[ld.id] || ld.rank,
+        totalInClass: reportData.length,
+        totalInStream: streamCounts[streamKey] || reportData.length,
+        totalPoints, selectedTerm, selectedYear,
+        assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        classTeacherComment: comments[ld.id] || '',
+        principalComment: principalComments[ld.id] || '',
+        schoolSettings: schoolSettings as Record<string, string>,
+        logoBase64, classAvgPerSubject,
+        termHistory: getTermHistory(ld.id),
+        appUrl: window.location.origin,
+      };
+
+      const doc = await generatePremiumReportCard(cardData);
+      const pdfBlob = doc.output('arraybuffer');
+      zip.file(`${ld.full_name.replace(/\s+/g, '_')}_G${ld.grade}_T${selectedTerm}_${selectedYear}.pdf`, pdfBlob);
+
+      // Yield to UI so progress updates render
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ReportCards_G${selectedGrades.join('-')}_T${selectedTerm}_${selectedYear}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBatchExporting(false);
+  }, [reportData, schoolLogoUrl, schoolSettings, selectedTerm, selectedYear, selectedAssessment, comments, principalComments, classAvgPerSubject, streamRankings, streamCounts, selectedGrades, batchExporting]);
+
+
   const exportExcel = () => {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : gradeSubjects;
@@ -587,6 +655,13 @@ export default function ReportsPage() {
               <>
                 <Button variant="outline" onClick={exportClassPDF}><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
                 <Button variant="outline" onClick={exportExcel}><FileDown className="mr-2 h-4 w-4" /> Excel</Button>
+                <Button variant="default" onClick={exportBatchPDF} disabled={batchExporting || reportData.length === 0}>
+                  {batchExporting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {batchProgress.current}/{batchProgress.total}</>
+                  ) : (
+                    <><Archive className="mr-2 h-4 w-4" /> Batch Report Cards (ZIP)</>
+                  )}
+                </Button>
               </>
             ) : selectedLearnerData && (
               <Button variant="outline" onClick={() => exportIndividualPDF()}>
