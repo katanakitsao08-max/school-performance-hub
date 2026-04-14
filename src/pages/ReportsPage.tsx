@@ -198,6 +198,29 @@ export default function ReportsPage() {
     enabled: !!schoolId,
   });
 
+  // Fetch strands and strand scores for report cards
+  const { data: reportStrands = [] } = useQuery({
+    queryKey: ['report-strands', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order');
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: reportStrandScores = [] } = useQuery({
+    queryKey: ['report-strand-scores', selectedTerm, selectedYear, selectedAssessment, schoolId],
+    queryFn: async () => {
+      const learnerIds = learners.map(l => l.id);
+      if (!learnerIds.length) return [];
+      const { data } = await supabase.from('strand_scores').select('*')
+        .in('learner_id', learnerIds)
+        .eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
+      return data || [];
+    },
+    enabled: learners.length > 0 && !!schoolId,
+  });
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return subjects;
