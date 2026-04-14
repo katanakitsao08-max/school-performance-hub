@@ -226,7 +226,13 @@ export default function LearnersPage() {
             <h1 className="text-2xl font-display font-bold">Learners</h1>
             <p className="text-muted-foreground">Manage student records</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {isAdmin && (
+              <Button variant="outline" onClick={handleBulkCreateParents} disabled={bulkCreating}>
+                <Users className="mr-2 h-4 w-4" />
+                {bulkCreating ? 'Creating...' : 'Create All Parent Accounts'}
+              </Button>
+            )}
             <BulkUploadDialog availableGrades={availableGrades} availableStreams={availableStreams} />
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); resetForm(); } }}>
               <DialogTrigger asChild>
