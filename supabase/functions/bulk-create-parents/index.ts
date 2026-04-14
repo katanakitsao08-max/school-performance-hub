@@ -56,7 +56,7 @@ serve(async (req) => {
         // Create user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email,
-          password: firstName,
+          password: password,
           email_confirm: true,
           user_metadata: { full_name: displayName },
         });
@@ -80,16 +80,16 @@ serve(async (req) => {
                 relationship: 'parent',
               });
               if (linkErr && !linkErr.message?.includes('duplicate')) {
-                results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'failed', error: linkErr.message });
+                results.push({ admNo: admission_number, name: full_name, password: password, status: 'failed', error: linkErr.message });
               } else {
-                results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'linked' });
+                results.push({ admNo: admission_number, name: full_name, password: password, status: 'linked' });
               }
             } else {
-              results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'failed', error: 'User exists but not found' });
+              results.push({ admNo: admission_number, name: full_name, password: password, status: 'failed', error: 'User exists but not found' });
             }
             continue;
           }
-          results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'failed', error: authError.message });
+          results.push({ admNo: admission_number, name: full_name, password: password, status: 'failed', error: authError.message });
           continue;
         }
 
@@ -107,9 +107,9 @@ serve(async (req) => {
           relationship: 'parent',
         });
 
-        results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'created' });
+        results.push({ admNo: admission_number, name: full_name, password: password, status: 'created' });
       } catch (err: any) {
-        results.push({ admNo: admission_number, name: full_name, password: firstName, status: 'failed', error: err.message });
+        results.push({ admNo: admission_number, name: full_name, password: password, status: 'failed', error: err.message });
       }
     }
 
