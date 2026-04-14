@@ -15,6 +15,7 @@ import { Printer, FileDown, User, School } from 'lucide-react';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
+import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -33,6 +34,7 @@ export default function ReportsPage() {
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
@@ -166,6 +168,30 @@ export default function ReportsPage() {
     return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const getTeacherName = (subjectId: string, grade: string, stream: string) => {
+    const assignment = teacherAssignmentsForReport.find(
+      a => a.learning_area_id === subjectId && a.grade === grade && a.stream === stream
+    );
+    if (!assignment) return '';
+    const profile = allProfiles.find(p => p.user_id === assignment.teacher_id);
+    return profile?.full_name || '';
+  };
+
+  // Term history for trend graph
+  const { data: termHistoryScores = [] } = useQuery({
+    queryKey: ['term-history-scores', selectedYear, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('scores')
+        .select('learner_id, score, term, year, assessment_type, learning_area_id')
+        .eq('year', selectedYear)
+        .eq('assessment_type', 'end_term')
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return subjects;
@@ -219,6 +245,62 @@ export default function ReportsPage() {
       return { name: sub.name, mean: avg };
     });
   }, [gradeSubjects, allScores]);
+
+  const classAvgPerSubject = useMemo(() => {
+    const map: Record<string, number> = {};
+    gradeSubjects.forEach(sub => {
+      const scores = allScores.filter(s => s.learning_area_id === sub.id);
+      map[sub.name] = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    });
+    return map;
+  }, [gradeSubjects, allScores]);
+
+  // Stream ranking: rank within same stream
+  const streamRankings = useMemo(() => {
+    const map: Record<string, number> = {};
+    const streamGroups: Record<string, typeof reportData> = {};
+    reportData.forEach(l => {
+      const key = `${l.grade}-${l.stream}`;
+      if (!streamGroups[key]) streamGroups[key] = [];
+      streamGroups[key].push(l);
+    });
+    Object.values(streamGroups).forEach(group => {
+      group.sort((a, b) => b.total - a.total).forEach((l, i, arr) => {
+        let rank = i + 1;
+        if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+        map[l.id] = rank;
+      });
+    });
+    return map;
+  }, [reportData]);
+
+  const streamCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    reportData.forEach(l => {
+      const key = `${l.grade}-${l.stream}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [reportData]);
+
+  // Build term history for a given learner
+  const getTermHistory = (learnerId: string) => {
+    const terms: { term: string; mean: number }[] = [];
+    for (let t = 1; t <= 3; t++) {
+      const termScores = termHistoryScores.filter(s => s.learner_id === learnerId && s.term === t);
+      if (termScores.length === 0) continue;
+      const total = termScores.reduce((s, sc) => s + sc.score, 0);
+      // Find max scores for these subjects
+      let maxTotal = 0;
+      termScores.forEach(sc => {
+        const sub = subjects.find(s => s.id === sc.learning_area_id);
+        maxTotal += sub?.max_score || 100;
+      });
+      const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+      terms.push({ term: `T${t} ${selectedYear}`, mean: pct });
+    }
+    return terms;
+  };
 
   const classMean = reportData.length > 0 ? reportData.reduce((s, l) => s + l.mean, 0) / reportData.length : 0;
   const highest = reportData.length > 0 ? Math.max(...reportData.map(l => l.total)) : 0;
@@ -381,77 +463,54 @@ export default function ReportsPage() {
     const ld = learnerData || selectedLearnerData;
     if (!ld) return;
 
-    const doc = new jsPDF();
-    let y = 15;
-    y = await addPdfHeader(doc, y);
-    const cx = doc.internal.pageSize.getWidth() / 2;
+    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+    const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+    const totalPoints = ld.subjectData.reduce((s: number, d: any) => {
+      if (d.grade === '-') return s;
+      const pct = d.maxScore > 0 ? (d.score / d.maxScore) * 100 : 0;
+      if (pct >= 75) return s + 4;
+      if (pct >= 50) return s + 3;
+      if (pct >= 25) return s + 2;
+      return s + 1;
+    }, 0);
 
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text('LEARNER REPORT CARD', cx, y, { align: 'center' });
-    y += 10;
+    const streamKey = `${ld.grade}-${ld.stream}`;
 
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text(`Name: ${ld.full_name}`, 14, y);
-    doc.text(`Adm No: ${ld.admission_number}`, 120, y);
-    y += 6;
-    doc.text(`Grade: ${ld.grade}${ld.stream}`, 14, y);
-    doc.text(`Term: ${selectedTerm} (${ASSESSMENT_TYPE_LABELS[selectedAssessment]}), ${selectedYear}`, 120, y);
-    y += 6;
-    doc.text(`Gender: ${(ld as any).gender || '-'}`, 14, y);
-    y += 8;
+    const cardData: ReportCardData = {
+      learner: {
+        id: ld.id,
+        full_name: ld.full_name,
+        admission_number: ld.admission_number,
+        grade: ld.grade,
+        stream: ld.stream,
+        gender: ld.gender || '-',
+      },
+      subjectData: ld.subjectData.map((s: any) => ({
+        ...s,
+        teacherName: getTeacherName(s.id, ld.grade, ld.stream),
+      })),
+      total: ld.total,
+      maxTotal,
+      mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
+      overallGrade: ld.overallGrade,
+      rank: ld.rank,
+      streamRank: streamRankings[ld.id] || ld.rank,
+      totalInClass: reportData.length,
+      totalInStream: streamCounts[streamKey] || reportData.length,
+      totalPoints,
+      selectedTerm,
+      selectedYear,
+      assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+      classTeacherComment: comments[ld.id] || '',
+      principalComment: principalComments[ld.id] || '',
+      schoolSettings: schoolSettings as Record<string, string>,
+      logoBase64,
+      classAvgPerSubject,
+      termHistory: getTermHistory(ld.id),
+      appUrl: window.location.origin,
+    };
 
-    const headers = ['Subject', 'Score', 'Max', 'Grade', 'Remark', 'Teacher'];
-    const body = ld.subjectData.map((s: any) => [
-      s.name, s.score, s.maxScore, s.grade, s.grade !== '-' ? getGradeLabel(s.grade) : '-', s.teacherInitials || '-'
-    ]);
-
-    autoTable(doc, {
-      head: [headers],
-      body,
-      startY: y,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [41, 128, 185] },
-    });
-
-    y = (doc as any).lastAutoTable.finalY + 10;
-
-    // Summary
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('SUMMARY', 14, y);
-    y += 7;
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text(`Total Score: ${ld.total}`, 14, y);
-    doc.text(`Mean Score: ${ld.mean.toFixed(1)}`, 80, y);
-    y += 6;
-    doc.text(`Overall Grade: ${ld.overallGrade}${ld.overallGrade !== '-' ? ` (${getGradeLabel(ld.overallGrade as any)})` : ''}`, 14, y);
-    doc.text(`Position: ${ld.rank} out of ${reportData.length}`, 80, y);
-    y += 10;
-
-    const comment = comments[ld.id];
-    if (comment) {
-      doc.setFont('helvetica', 'bold');
-      doc.text("Teacher's Comment:", 14, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      const lines = doc.splitTextToSize(comment, 180);
-      doc.text(lines, 14, y);
-      y += lines.length * 5 + 5;
-    }
-
-    y += 10;
-    doc.setDrawColor(0); doc.setLineWidth(0.3);
-    doc.line(14, y, 80, y);
-    doc.line(110, y, 196, y);
-    y += 5;
-    doc.setFontSize(9);
-    doc.text("Class Teacher's Signature", 14, y);
-    doc.text("Head Teacher's Signature", 110, y);
-    y += 6;
-    doc.line(14, y + 8, 80, y + 8);
-    doc.line(110, y + 8, 196, y + 8);
-    doc.text("Date", 14, y + 13);
-    doc.text("Date", 110, y + 13);
-
+    const doc = await generatePremiumReportCard(cardData);
     doc.save(`Report_${ld.full_name.replace(/\s+/g, '_')}_G${ld.grade}_T${selectedTerm}_${selectedYear}.pdf`);
   };
 
@@ -688,7 +747,7 @@ export default function ReportsPage() {
                       ))}
                     </TableBody>
                   </Table>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-muted rounded-lg">
                     <div><span className="text-sm text-muted-foreground">Total:</span><p className="text-xl font-bold">{selectedLearnerData.total}</p></div>
                     <div><span className="text-sm text-muted-foreground">Mean:</span><p className="text-xl font-bold">{selectedLearnerData.mean.toFixed(1)}</p></div>
                     <div>
@@ -703,10 +762,11 @@ export default function ReportsPage() {
                       </p>
                     </div>
                     <div><span className="text-sm text-muted-foreground">Position:</span><p className="text-xl font-bold">{selectedLearnerData.rank} / {reportData.length}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Stream Position:</span><p className="text-xl font-bold">{streamRankings[selectedLearnerData.id] || '-'} / {streamCounts[`${selectedLearnerData.grade}-${selectedLearnerData.stream}`] || '-'}</p></div>
                   </div>
                   <div className="space-y-2 no-print">
                     <div className="flex items-center justify-between">
-                      <Label>Teacher's Comment</Label>
+                      <Label>Class Teacher's Comment</Label>
                       <Button variant="outline" size="sm" onClick={() => generateComment(selectedLearnerData)}>
                         Auto-Generate
                       </Button>
@@ -714,8 +774,17 @@ export default function ReportsPage() {
                     <Textarea
                       value={comments[selectedLearnerData.id] || ''}
                       onChange={e => setComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
-                      placeholder="Enter teacher's comment..."
+                      placeholder="Enter class teacher's comment..."
                       rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2 no-print">
+                    <Label>Principal's Comment</Label>
+                    <Textarea
+                      value={principalComments[selectedLearnerData.id] || ''}
+                      onChange={e => setPrincipalComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
+                      placeholder="Enter principal's comment..."
+                      rows={2}
                     />
                   </div>
                 </CardContent>
