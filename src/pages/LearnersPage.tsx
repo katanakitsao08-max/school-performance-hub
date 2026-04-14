@@ -133,11 +133,9 @@ export default function LearnersPage() {
   const createParentAccount = useMutation({
     mutationFn: async (learner: any) => {
       const names = learner.full_name.trim().split(/\s+/);
-      // Pick the longest name that's at least 6 chars; fallback to first name
-      const password = names.find((n: string) => n.length >= 6) || names[0];
-      if (password.length < 6) {
-        throw new Error(`No name part is 6+ chars ("${learner.full_name}"). Please update the student name.`);
-      }
+      // Pick the longest name; pad with zeros if under 6 chars
+      const longestName = names.reduce((a: string, b: string) => b.length > a.length ? b : a, names[0]);
+      const password = longestName.length >= 6 ? longestName : longestName.padEnd(6, '0');
       const email = `${learner.admission_number.toLowerCase().replace(/\s+/g, '')}@school.local`;
       const parentName = learner.parent_name || learner.full_name + ' Parent';
 
