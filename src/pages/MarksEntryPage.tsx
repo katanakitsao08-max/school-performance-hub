@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2, Layers } from 'lucide-react';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGradeForLevel, type AnyGrade, isKJSEAGradeLevel } from '@/lib/cbc-utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import StrandMarksEntry from '@/components/StrandMarksEntry';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 
