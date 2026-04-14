@@ -758,6 +758,13 @@ export default function ReportsPage() {
                     <><Archive className="mr-2 h-4 w-4" /> Batch Report Cards (ZIP)</>
                   )}
                 </Button>
+                <Button variant="secondary" onClick={batchGeneratePrincipalRemarks} disabled={batchGeneratingRemarks || reportData.length === 0}>
+                  {batchGeneratingRemarks ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Remarks...</>
+                  ) : (
+                    <><Sparkles className="mr-2 h-4 w-4" /> AI Principal Remarks</>
+                  )}
+                </Button>
               </>
             ) : selectedLearnerData && (
               <Button variant="outline" onClick={() => exportIndividualPDF()}>
