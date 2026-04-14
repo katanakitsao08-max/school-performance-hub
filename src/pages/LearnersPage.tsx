@@ -82,14 +82,7 @@ export default function LearnersPage() {
     },
   });
 
-  const { data: allStreams = [] } = useQuery({
-    queryKey: ['streams'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('streams').select('name').order('name');
-      if (error) throw error;
-      return (data || []).map((s: any) => s.name as string);
-    },
-  });
+  const allStreams = dynamicStreams;
 
   const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
