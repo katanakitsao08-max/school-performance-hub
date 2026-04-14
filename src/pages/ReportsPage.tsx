@@ -709,6 +709,7 @@ export default function ReportsPage() {
         schoolSettings: schoolSettings as Record<string, string>,
         logoBase64, classAvgPerSubject,
         termHistory: getTermHistory(ld.id),
+        gradeDistribution,
         appUrl: window.location.origin,
       };
 
