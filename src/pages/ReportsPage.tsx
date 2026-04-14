@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, FileDown, User, School, Archive, Loader2 } from 'lucide-react';
+import { Printer, FileDown, User, School, Archive, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeColor, getGradeLabel, generateTeacherComment } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,6 +39,7 @@ export default function ReportsPage() {
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [generatingPrincipalRemark, setGeneratingPrincipalRemark] = useState<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
@@ -316,6 +318,46 @@ export default function ReportsPage() {
       learner.subjectData.map((s: any) => ({ name: s.name, score: s.score, maxScore: s.maxScore }))
     );
     setComments(prev => ({ ...prev, [learner.id]: comment }));
+  };
+
+  const generatePrincipalRemark = async (learner: any) => {
+    if (generatingPrincipalRemark) return;
+    setGeneratingPrincipalRemark(learner.id);
+    try {
+      const maxTotal = learner.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+      const meanPct = maxTotal > 0 ? (learner.total / maxTotal) * 100 : learner.mean;
+
+      const { data, error } = await supabase.functions.invoke('generate-principal-remark', {
+        body: {
+          studentName: learner.full_name,
+          grade: learner.grade,
+          stream: learner.stream,
+          mean: meanPct,
+          overallGrade: learner.overallGrade,
+          totalSubjects: learner.subjectData.length,
+          rank: learner.rank,
+          totalStudents: reportData.length,
+          subjectData: learner.subjectData.map((s: any) => ({
+            name: s.name, score: s.score, maxScore: s.maxScore,
+          })),
+          schoolName,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      setPrincipalComments(prev => ({ ...prev, [learner.id]: data.remark }));
+      toast.success('Principal remark generated');
+    } catch (err: any) {
+      console.error('Failed to generate principal remark:', err);
+      toast.error('Failed to generate remark. Please try again.');
+    } finally {
+      setGeneratingPrincipalRemark(null);
+    }
   };
 
   const handlePrint = () => window.print();
@@ -854,11 +896,25 @@ export default function ReportsPage() {
                     />
                   </div>
                   <div className="space-y-2 no-print">
-                    <Label>Principal's Comment</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Principal's Comment</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => generatePrincipalRemark(selectedLearnerData)}
+                        disabled={generatingPrincipalRemark === selectedLearnerData.id}
+                      >
+                        {generatingPrincipalRemark === selectedLearnerData.id ? (
+                          <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</>
+                        ) : (
+                          <><Sparkles className="h-3 w-3 mr-1" /> AI Generate</>
+                        )}
+                      </Button>
+                    </div>
                     <Textarea
                       value={principalComments[selectedLearnerData.id] || ''}
                       onChange={e => setPrincipalComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
-                      placeholder="Enter principal's comment..."
+                      placeholder="Enter principal's comment or click AI Generate..."
                       rows={2}
                     />
                   </div>
