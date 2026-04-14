@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
         return s + (sub?.max_score || 100);
       }, 0);
       const pct = totalMax > 0 ? Number((total / totalMax * 100).toFixed(1)) : 0;
-      const grade = ls.length > 0 ? getGradeForLevel(total, totalMax, selectedGrade) : '-' as AnyGrade;
+      const grade: AnyGrade | '-' = ls.length > 0 ? getGradeForLevel(total, totalMax, selectedGrade) : '-';
       return { ...l, total, totalMax, pct, grade, subjectCount: ls.length };
     }).filter(l => l.subjectCount > 0).sort((a, b) => b.pct - a.pct);
   }, [learners, scores, subjects, selectedGrade]);
