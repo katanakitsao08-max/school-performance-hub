@@ -128,6 +128,47 @@ export default function LearnersPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const [creatingParentFor, setCreatingParentFor] = useState<string | null>(null);
+
+  const createParentAccount = useMutation({
+    mutationFn: async (learner: any) => {
+      const firstName = learner.full_name.trim().split(/\s+/)[0];
+      if (firstName.length < 6) {
+        throw new Error(`Password "${firstName}" is too short (min 6 chars). Please update the student name.`);
+      }
+      const email = `${learner.admission_number.toLowerCase().replace(/\s+/g, '')}@school.local`;
+      const parentName = learner.parent_name || learner.full_name + ' Parent';
+
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, password: firstName, full_name: parentName, role: 'parent', school_id: schoolId },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      // Link parent to learner
+      const { error: linkError } = await supabase.from('parent_learners').insert({
+        parent_user_id: data.user_id,
+        learner_id: learner.id,
+        school_id: schoolId,
+        relationship: 'parent',
+      });
+      if (linkError) throw linkError;
+
+      return { admNo: learner.admission_number, firstName };
+    },
+    onSuccess: (result) => {
+      setCreatingParentFor(null);
+      toast({
+        title: 'Parent Account Created',
+        description: `Username: ${result.admNo} | Password: ${result.firstName}`,
+      });
+    },
+    onError: (error: any) => {
+      setCreatingParentFor(null);
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const resetForm = () => setForm({
     admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
@@ -255,6 +296,17 @@ export default function LearnersPage() {
                      <TableCell>{l.parent_phone || '-'}</TableCell>
                     <TableCell className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(l)}><Edit className="h-4 w-4" /></Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Create Parent Login"
+                          disabled={creatingParentFor === l.id}
+                          onClick={() => { setCreatingParentFor(l.id); createParentAccount.mutate(l); }}
+                        >
+                          <UserPlus className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
                       {isAdmin && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
