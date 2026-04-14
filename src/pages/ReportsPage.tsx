@@ -235,8 +235,34 @@ export default function ReportsPage() {
     });
   };
 
-  const addPdfHeader = (doc: jsPDF, y: number) => {
+  const loadImageAsBase64 = (url: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!url) { resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  };
+
+  const addPdfHeader = async (doc: jsPDF, y: number) => {
     const cx = doc.internal.pageSize.getWidth() / 2;
+    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
+    
+    if (logoBase64) {
+      const logoSize = 18;
+      doc.addImage(logoBase64, 'PNG', cx - logoSize / 2, y - 4, logoSize, logoSize);
+      y += logoSize + 2;
+    }
+    
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
