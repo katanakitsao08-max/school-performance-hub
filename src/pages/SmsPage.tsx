@@ -109,12 +109,12 @@ export default function SmsPage() {
 
         <div className="flex gap-4 flex-wrap">
           <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+            <SelectContent>{dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={selectedStream} onValueChange={setSelectedStream}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>{STREAMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-[120px]"><SelectValue placeholder="Stream" /></SelectTrigger>
+            <SelectContent>{dynamicStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>

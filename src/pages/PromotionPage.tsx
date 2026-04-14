@@ -83,8 +83,8 @@ export default function PromotionPage() {
           <div>
             <label className="text-xs text-muted-foreground">From Grade</label>
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{GRADES.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Grade" /></SelectTrigger>
+              <SelectContent>{dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
