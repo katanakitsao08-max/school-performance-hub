@@ -655,6 +655,7 @@ export default function ReportsPage() {
       logoBase64,
       classAvgPerSubject,
       termHistory: getTermHistory(ld.id),
+      gradeDistribution,
       appUrl: window.location.origin,
     };
 
