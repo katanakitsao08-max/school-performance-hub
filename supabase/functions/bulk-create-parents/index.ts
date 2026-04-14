@@ -44,9 +44,8 @@ serve(async (req) => {
 
       const names = full_name.trim().split(/\s+/);
       const longestName = names.reduce((a: string, b: string) => b.length > a.length ? b : a, names[0]);
-      const password = longestName.length >= 6 ? longestName : longestName.padEnd(6, '0');
-        continue;
-      }
+
+
 
       const email = `${admission_number.toLowerCase().replace(/\s+/g, '')}@school.local`;
       const displayName = parent_name || full_name + ' Parent';
