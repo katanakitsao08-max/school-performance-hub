@@ -10,7 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, getGradeForLevel, getGradeColor } from '@/lib/cbc-utils';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { downloadClassPerformancePdf, downloadIndividualPerformancePdf } from '@/lib/performance-tracking-pdf';
 
 export default function PerformanceTrackingPage() {
   const { user, schoolId } = useAuth();
