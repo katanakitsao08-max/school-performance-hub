@@ -24,6 +24,15 @@ export default function PerformanceTrackingPage() {
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
   const [trackingMode, setTrackingMode] = useState<'individual' | 'class' | 'grade'>('class');
 
+  const { data: schoolName } = useQuery({
+    queryKey: ['school-name', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).single();
+      return data?.school_name || '';
+    },
+    enabled: !!schoolId,
+  });
+
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
     queryFn: async () => {
