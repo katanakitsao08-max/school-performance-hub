@@ -325,7 +325,52 @@ export default function PerformanceTrackingPage() {
                         });
                       })}
                     </TableRow>
-                  ))}
+                  {/* Totals row */}
+                  <TableRow className="bg-muted/30 font-bold border-t-2">
+                    <TableCell>TOTAL</TableCell>
+                    {TERMS.map(term =>
+                      ASSESSMENT_TYPES.map(at => {
+                        const total = subjects.reduce((sum, sub) => {
+                          const sc = allScores.find((s: any) =>
+                            s.learner_id === selectedLearner.id &&
+                            s.learning_area_id === sub.id &&
+                            s.term === term &&
+                            (s.assessment_type || 'end_term') === at
+                          );
+                          return sum + (sc?.score || 0);
+                        }, 0);
+                        return (
+                          <TableCell key={`total-T${term}-${at}`} className="text-center font-bold">
+                            {total > 0 ? total : '-'}
+                          </TableCell>
+                        );
+                      })
+                    )}
+                  </TableRow>
+                  {/* Average row */}
+                  <TableRow className="bg-muted/30 font-bold">
+                    <TableCell>AVERAGE</TableCell>
+                    {TERMS.map(term =>
+                      ASSESSMENT_TYPES.map(at => {
+                        let total = 0, count = 0;
+                        subjects.forEach(sub => {
+                          const sc = allScores.find((s: any) =>
+                            s.learner_id === selectedLearner.id &&
+                            s.learning_area_id === sub.id &&
+                            s.term === term &&
+                            (s.assessment_type || 'end_term') === at
+                          );
+                          if (sc?.score) { total += sc.score; count++; }
+                        });
+                        const avg = count > 0 ? total / count : 0;
+                        return (
+                          <TableCell key={`avg-T${term}-${at}`} className="text-center font-bold">
+                            {avg > 0 ? avg.toFixed(1) : '-'}
+                          </TableCell>
+                        );
+                      })
+                    )}
+                  </TableRow>
                 </TableBody>
               </Table>
             </CardContent>
