@@ -219,6 +219,9 @@ export default function PerformanceTrackingPage() {
                         </TableHead>
                       ))
                     )}
+                    <TableHead className="text-center min-w-[60px] font-bold">Total</TableHead>
+                    <TableHead className="text-center min-w-[60px] font-bold">Avg</TableHead>
+                    <TableHead className="text-center min-w-[50px] font-bold">Rank</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -244,6 +247,9 @@ export default function PerformanceTrackingPage() {
                           );
                         });
                       })}
+                      <TableCell className="text-center font-semibold">{l.grandTotal > 0 ? l.grandTotal.toFixed(1) : '-'}</TableCell>
+                      <TableCell className="text-center font-semibold">{l.average > 0 ? l.average.toFixed(1) : '-'}</TableCell>
+                      <TableCell className="text-center font-bold">{l.average > 0 ? l.rank : '-'}</TableCell>
                     </TableRow>
                   ))}
                   {/* Class average row */}
@@ -257,6 +263,9 @@ export default function PerformanceTrackingPage() {
                         </TableCell>
                       ))
                     )}
+                    <TableCell className="text-center">-</TableCell>
+                    <TableCell className="text-center">-</TableCell>
+                    <TableCell className="text-center">-</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
