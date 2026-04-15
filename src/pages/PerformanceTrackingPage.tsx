@@ -10,7 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, getGradeForLevel, getGradeColor } from '@/lib/cbc-utils';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { downloadClassPerformancePdf, downloadIndividualPerformancePdf } from '@/lib/performance-tracking-pdf';
 
 export default function PerformanceTrackingPage() {
   const { user, schoolId } = useAuth();
@@ -21,6 +23,15 @@ export default function PerformanceTrackingPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
   const [trackingMode, setTrackingMode] = useState<'individual' | 'class' | 'grade'>('class');
+
+  const { data: schoolName } = useQuery({
+    queryKey: ['school-name', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).single();
+      return data?.school_name || '';
+    },
+    enabled: !!schoolId,
+  });
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
@@ -174,8 +185,11 @@ export default function PerformanceTrackingPage() {
 
         {trackingMode === 'class' && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream}, {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream, selectedYear, schoolName)}>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Button>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -237,8 +251,11 @@ export default function PerformanceTrackingPage() {
 
         {trackingMode === 'individual' && selectedLearner && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">{selectedLearner.full_name} — Performance Tracking {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadIndividualPerformancePdf(selectedLearner.full_name, subjects, allScores, selectedLearner.id, selectedGrade, selectedYear, schoolName)}>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Button>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
