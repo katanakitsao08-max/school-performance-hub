@@ -185,8 +185,11 @@ export default function PerformanceTrackingPage() {
 
         {trackingMode === 'class' && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream}, {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream, selectedYear, schoolName)}>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Button>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
@@ -248,8 +251,11 @@ export default function PerformanceTrackingPage() {
 
         {trackingMode === 'individual' && selectedLearner && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm">{selectedLearner.full_name} — Performance Tracking {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadIndividualPerformancePdf(selectedLearner.full_name, subjects, allScores, selectedLearner.id, selectedGrade, selectedYear, schoolName)}>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Button>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <Table>
