@@ -38,6 +38,8 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   const { user, role, loading } = useAuth();
   if (loading) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   if (!user) return <Navigate to="/login" replace />;
+  // Wait for role to load before enforcing role-based access
+  if (allowedRoles && !role) return <div className="flex min-h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     if (role === 'parent') return <Navigate to="/parent" replace />;
     return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
