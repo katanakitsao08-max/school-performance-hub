@@ -50,7 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
       if (profileRes.data) {
         setProfile(profileRes.data as Profile);
-        // Fetch school subscription status
         if (profileRes.data.school_id) {
           const { data: schoolData } = await supabase
             .from('schools')
@@ -67,27 +66,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let initialSessionHandled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          setTimeout(() => fetchUserData(session.user.id), 0);
+          // Use setTimeout to avoid Supabase deadlock, but await the result before clearing loading
+          setTimeout(async () => {
+            await fetchUserData(session.user.id);
+            setLoading(false);
+          }, 0);
         } else {
           setProfile(null);
           setRole(null);
           setSchoolStatus(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (initialSessionHandled) return;
+      initialSessionHandled = true;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserData(session.user.id);
+        await fetchUserData(session.user.id);
       }
       setLoading(false);
     });
