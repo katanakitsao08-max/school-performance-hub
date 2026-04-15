@@ -325,6 +325,7 @@ export default function PerformanceTrackingPage() {
                         });
                       })}
                     </TableRow>
+                  ))}
                   {/* Totals row */}
                   <TableRow className="bg-muted/30 font-bold border-t-2">
                     <TableCell>TOTAL</TableCell>
