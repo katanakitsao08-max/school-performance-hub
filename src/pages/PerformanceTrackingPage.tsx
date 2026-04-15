@@ -85,24 +85,39 @@ export default function PerformanceTrackingPage() {
   const performanceData = useMemo(() => {
     if (!learners.length || !subjects.length) return [];
 
-    return learners.map(l => {
+    const raw = learners.map(l => {
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const termData: Record<string, Record<string, { mean: number; total: number; count: number }>> = {};
 
+      let grandTotal = 0;
+      let grandCount = 0;
+
       TERMS.forEach(term => {
         ASSESSMENT_TYPES.forEach(at => {
-          const key = `T${term}-${at}`;
           const scores = learnerScores.filter(s => s.term === term && (s.assessment_type || 'end_term') === at);
           const total = scores.reduce((sum, s) => sum + s.score, 0);
           const count = scores.length;
           const mean = count > 0 ? total / count : 0;
           if (!termData[`T${term}`]) termData[`T${term}`] = {};
           termData[`T${term}`][at] = { mean, total, count };
+          grandTotal += total;
+          grandCount += count;
         });
       });
 
-      return { ...l, termData };
+      const average = grandCount > 0 ? grandTotal / grandCount : 0;
+      return { ...l, termData, grandTotal, average, rank: 0 };
     });
+
+    // Sort by average descending to assign ranks
+    const sorted = [...raw].sort((a, b) => b.average - a.average);
+    sorted.forEach((l, i) => { l.rank = i + 1; });
+    // Map ranks back
+    const rankMap: Record<string, number> = {};
+    sorted.forEach(l => { rankMap[l.id] = l.rank; });
+    raw.forEach(l => { l.rank = rankMap[l.id]; });
+
+    return raw;
   }, [learners, allScores, subjects]);
 
   const selectedLearner = selectedLearnerId ? performanceData.find(l => l.id === selectedLearnerId) : null;
@@ -204,6 +219,9 @@ export default function PerformanceTrackingPage() {
                         </TableHead>
                       ))
                     )}
+                    <TableHead className="text-center min-w-[60px] font-bold">Total</TableHead>
+                    <TableHead className="text-center min-w-[60px] font-bold">Avg</TableHead>
+                    <TableHead className="text-center min-w-[50px] font-bold">Rank</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -229,6 +247,9 @@ export default function PerformanceTrackingPage() {
                           );
                         });
                       })}
+                      <TableCell className="text-center font-semibold">{l.grandTotal > 0 ? l.grandTotal.toFixed(1) : '-'}</TableCell>
+                      <TableCell className="text-center font-semibold">{l.average > 0 ? l.average.toFixed(1) : '-'}</TableCell>
+                      <TableCell className="text-center font-bold">{l.average > 0 ? l.rank : '-'}</TableCell>
                     </TableRow>
                   ))}
                   {/* Class average row */}
@@ -242,6 +263,9 @@ export default function PerformanceTrackingPage() {
                         </TableCell>
                       ))
                     )}
+                    <TableCell className="text-center">-</TableCell>
+                    <TableCell className="text-center">-</TableCell>
+                    <TableCell className="text-center">-</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -302,6 +326,52 @@ export default function PerformanceTrackingPage() {
                       })}
                     </TableRow>
                   ))}
+                  {/* Totals row */}
+                  <TableRow className="bg-muted/30 font-bold border-t-2">
+                    <TableCell>TOTAL</TableCell>
+                    {TERMS.map(term =>
+                      ASSESSMENT_TYPES.map(at => {
+                        const total = subjects.reduce((sum, sub) => {
+                          const sc = allScores.find((s: any) =>
+                            s.learner_id === selectedLearner.id &&
+                            s.learning_area_id === sub.id &&
+                            s.term === term &&
+                            (s.assessment_type || 'end_term') === at
+                          );
+                          return sum + (sc?.score || 0);
+                        }, 0);
+                        return (
+                          <TableCell key={`total-T${term}-${at}`} className="text-center font-bold">
+                            {total > 0 ? total : '-'}
+                          </TableCell>
+                        );
+                      })
+                    )}
+                  </TableRow>
+                  {/* Average row */}
+                  <TableRow className="bg-muted/30 font-bold">
+                    <TableCell>AVERAGE</TableCell>
+                    {TERMS.map(term =>
+                      ASSESSMENT_TYPES.map(at => {
+                        let total = 0, count = 0;
+                        subjects.forEach(sub => {
+                          const sc = allScores.find((s: any) =>
+                            s.learner_id === selectedLearner.id &&
+                            s.learning_area_id === sub.id &&
+                            s.term === term &&
+                            (s.assessment_type || 'end_term') === at
+                          );
+                          if (sc?.score) { total += sc.score; count++; }
+                        });
+                        const avg = count > 0 ? total / count : 0;
+                        return (
+                          <TableCell key={`avg-T${term}-${at}`} className="text-center font-bold">
+                            {avg > 0 ? avg.toFixed(1) : '-'}
+                          </TableCell>
+                        );
+                      })
+                    )}
+                  </TableRow>
                 </TableBody>
               </Table>
             </CardContent>

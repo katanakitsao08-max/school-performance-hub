@@ -4,6 +4,9 @@ import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS } from './cbc-utils';
 
 interface PerformanceRow {
   full_name: string;
+  grandTotal: number;
+  average: number;
+  rank: number;
   termData: Record<string, Record<string, { mean: number; total: number; count: number }>>;
 }
 
@@ -32,6 +35,7 @@ export function downloadClassPerformancePdf(
       headers.push(`T${term} ${ASSESSMENT_TYPE_LABELS[at]}`);
     });
   });
+  headers.push('Total', 'Avg', 'Rank');
 
   const body = performanceData.map((l, idx) => {
     const row: string[] = [String(idx + 1), l.full_name];
@@ -41,6 +45,9 @@ export function downloadClassPerformancePdf(
         row.push(d && d.mean > 0 ? d.mean.toFixed(1) : '-');
       });
     });
+    row.push(l.grandTotal > 0 ? l.grandTotal.toFixed(1) : '-');
+    row.push(l.average > 0 ? l.average.toFixed(1) : '-');
+    row.push(l.average > 0 ? String(l.rank) : '-');
     return row;
   });
 
@@ -52,6 +59,7 @@ export function downloadClassPerformancePdf(
       avgRow.push(v && v > 0 ? v.toFixed(1) : '-');
     });
   });
+  avgRow.push('-', '-', '-');
   body.push(avgRow);
 
   autoTable(doc, {
@@ -116,6 +124,38 @@ export function downloadIndividualPerformancePdf(
     return row;
   });
 
+  // Total row
+  const totalRow: string[] = ['TOTAL'];
+  TERMS.forEach(term => {
+    ASSESSMENT_TYPES.forEach(at => {
+      const total = subjects.reduce((sum, sub) => {
+        const sc = allScores.find(
+          (s: any) => s.learner_id === learnerId && s.learning_area_id === sub.id && s.term === term && (s.assessment_type || 'end_term') === at,
+        );
+        return sum + (sc?.score || 0);
+      }, 0);
+      totalRow.push(total > 0 ? String(total) : '-');
+    });
+  });
+  body.push(totalRow);
+
+  // Average row
+  const avgRow: string[] = ['AVERAGE'];
+  TERMS.forEach(term => {
+    ASSESSMENT_TYPES.forEach(at => {
+      let total = 0, count = 0;
+      subjects.forEach(sub => {
+        const sc = allScores.find(
+          (s: any) => s.learner_id === learnerId && s.learning_area_id === sub.id && s.term === term && (s.assessment_type || 'end_term') === at,
+        );
+        if (sc?.score) { total += sc.score; count++; }
+      });
+      const avg = count > 0 ? total / count : 0;
+      avgRow.push(avg > 0 ? avg.toFixed(1) : '-');
+    });
+  });
+  body.push(avgRow);
+
   autoTable(doc, {
     startY: 22,
     head: [headers],
@@ -123,6 +163,12 @@ export function downloadIndividualPerformancePdf(
     styles: { fontSize: 7, cellPadding: 1.5 },
     headStyles: { fillColor: [34, 120, 60], textColor: 255, fontSize: 7 },
     columnStyles: { 0: { cellWidth: 35 } },
+    didParseCell: (data) => {
+      if (data.row.index >= body.length - 2 && data.section === 'body') {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [230, 240, 230];
+      }
+    },
   });
 
   doc.save(`Performance_${learnerName.replace(/\s+/g, '_')}_${year}.pdf`);
