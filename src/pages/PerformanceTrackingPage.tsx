@@ -85,24 +85,39 @@ export default function PerformanceTrackingPage() {
   const performanceData = useMemo(() => {
     if (!learners.length || !subjects.length) return [];
 
-    return learners.map(l => {
+    const raw = learners.map(l => {
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const termData: Record<string, Record<string, { mean: number; total: number; count: number }>> = {};
 
+      let grandTotal = 0;
+      let grandCount = 0;
+
       TERMS.forEach(term => {
         ASSESSMENT_TYPES.forEach(at => {
-          const key = `T${term}-${at}`;
           const scores = learnerScores.filter(s => s.term === term && (s.assessment_type || 'end_term') === at);
           const total = scores.reduce((sum, s) => sum + s.score, 0);
           const count = scores.length;
           const mean = count > 0 ? total / count : 0;
           if (!termData[`T${term}`]) termData[`T${term}`] = {};
           termData[`T${term}`][at] = { mean, total, count };
+          grandTotal += total;
+          grandCount += count;
         });
       });
 
-      return { ...l, termData };
+      const average = grandCount > 0 ? grandTotal / grandCount : 0;
+      return { ...l, termData, grandTotal, average, rank: 0 };
     });
+
+    // Sort by average descending to assign ranks
+    const sorted = [...raw].sort((a, b) => b.average - a.average);
+    sorted.forEach((l, i) => { l.rank = i + 1; });
+    // Map ranks back
+    const rankMap: Record<string, number> = {};
+    sorted.forEach(l => { rankMap[l.id] = l.rank; });
+    raw.forEach(l => { l.rank = rankMap[l.id]; });
+
+    return raw;
   }, [learners, allScores, subjects]);
 
   const selectedLearner = selectedLearnerId ? performanceData.find(l => l.id === selectedLearnerId) : null;
