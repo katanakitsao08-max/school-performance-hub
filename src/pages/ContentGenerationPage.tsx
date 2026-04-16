@@ -1,0 +1,420 @@
+import { useState, useMemo } from 'react';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getGrades, getSubjects, getTerms, getStrands, getSubStrands, getSLOs, getAllStrandsForTerm } from '@/data/cbc-curriculum';
+import { generateSchemeOfWork, generateLessonPlan, type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
+import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
+import { toast } from 'sonner';
+
+export default function ContentGenerationPage() {
+  const { profile } = useAuth();
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [term, setTerm] = useState('');
+  const [strand, setStrand] = useState('');
+  const [subStrand, setSubStrand] = useState('');
+  const [slo, setSlo] = useState('');
+  const [activeTab, setActiveTab] = useState('scheme');
+
+  // Generated content state
+  const [schemeRows, setSchemeRows] = useState<SchemeRow[] | null>(null);
+  const [lessonPlan, setLessonPlan] = useState<LessonPlanData | null>(null);
+  const [editingScheme, setEditingScheme] = useState(false);
+  const [editingLesson, setEditingLesson] = useState(false);
+  const [lessonDate, setLessonDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lessonDuration, setLessonDuration] = useState('40 minutes');
+  const [schoolName, setSchoolName] = useState('');
+
+  const grades = useMemo(() => getGrades(), []);
+  const subjects = useMemo(() => grade ? getSubjects(grade) : [], [grade]);
+  const terms = useMemo(() => grade && subject ? getTerms(grade, subject) : [], [grade, subject]);
+  const strands = useMemo(() => grade && subject && term ? getStrands(grade, subject, term) : [], [grade, subject, term]);
+  const subStrands = useMemo(() => grade && subject && term && strand ? getSubStrands(grade, subject, term, strand) : [], [grade, subject, term, strand]);
+  const slos = useMemo(() => grade && subject && term && strand && subStrand ? getSLOs(grade, subject, term, strand, subStrand) : [], [grade, subject, term, strand, subStrand]);
+
+  const resetBelow = (level: 'grade' | 'subject' | 'term' | 'strand' | 'subStrand') => {
+    if (level === 'grade') { setSubject(''); setTerm(''); setStrand(''); setSubStrand(''); setSlo(''); }
+    if (level === 'subject') { setTerm(''); setStrand(''); setSubStrand(''); setSlo(''); }
+    if (level === 'term') { setStrand(''); setSubStrand(''); setSlo(''); }
+    if (level === 'strand') { setSubStrand(''); setSlo(''); }
+    if (level === 'subStrand') { setSlo(''); }
+    setSchemeRows(null);
+    setLessonPlan(null);
+  };
+
+  const handleGenerateScheme = () => {
+    if (!grade || !subject || !term) {
+      toast.error('Please select Grade, Subject, and Term');
+      return;
+    }
+    const allStrands = getAllStrandsForTerm(grade, subject, term);
+    const rows = generateSchemeOfWork(grade, subject, term, allStrands);
+    setSchemeRows(rows);
+    setEditingScheme(false);
+    toast.success('Scheme of Work generated successfully');
+  };
+
+  const handleGenerateLesson = () => {
+    if (!grade || !subject || !term || !strand || !subStrand || !slo) {
+      toast.error('Please select all fields including SLO');
+      return;
+    }
+    const plan = generateLessonPlan(
+      schoolName || 'My School', profile?.full_name || 'Teacher', grade, subject, term, strand, subStrand, slo, lessonDate, lessonDuration
+    );
+    setLessonPlan(plan);
+    setEditingLesson(false);
+    toast.success('Lesson Plan generated successfully');
+  };
+
+  const handleSchemeEdit = (idx: number, field: keyof SchemeRow, value: string) => {
+    if (!schemeRows) return;
+    const updated = [...schemeRows];
+    (updated[idx] as any)[field] = value;
+    setSchemeRows(updated);
+  };
+
+  const handleLessonEdit = (field: string, value: any) => {
+    if (!lessonPlan) return;
+    setLessonPlan({ ...lessonPlan, [field]: value });
+  };
+
+  const handleDownloadSchemePdf = () => {
+    if (!schemeRows) return;
+    downloadSchemeOfWorkPdf(schemeRows, grade, subject, term, schoolName || 'My School', profile?.full_name || 'Teacher');
+  };
+
+  const handleDownloadLessonPdf = () => {
+    if (!lessonPlan) return;
+    downloadLessonPlanPdf(lessonPlan);
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-4 sm:space-y-6 pb-24 md:pb-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            Content Generation
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Generate CBC-aligned Schemes of Work and Lesson Plans</p>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Select Curriculum Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Grade</Label>
+                <Select value={grade} onValueChange={(v) => { setGrade(v); resetBelow('grade'); }}>
+                  <SelectTrigger><SelectValue placeholder="Select Grade" /></SelectTrigger>
+                  <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Subject</Label>
+                <Select value={subject} onValueChange={(v) => { setSubject(v); resetBelow('subject'); }} disabled={!grade}>
+                  <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
+                  <SelectContent>{subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Term</Label>
+                <Select value={term} onValueChange={(v) => { setTerm(v); resetBelow('term'); }} disabled={!subject}>
+                  <SelectTrigger><SelectValue placeholder="Select Term" /></SelectTrigger>
+                  <SelectContent>{terms.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Strand</Label>
+                <Select value={strand} onValueChange={(v) => { setStrand(v); resetBelow('strand'); }} disabled={!term}>
+                  <SelectTrigger><SelectValue placeholder="Select Strand" /></SelectTrigger>
+                  <SelectContent>{strands.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Sub-Strand</Label>
+                <Select value={subStrand} onValueChange={(v) => { setSubStrand(v); resetBelow('subStrand'); }} disabled={!strand}>
+                  <SelectTrigger><SelectValue placeholder="Select Sub-Strand" /></SelectTrigger>
+                  <SelectContent>{subStrands.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Specific Learning Outcome</Label>
+                <Select value={slo} onValueChange={setSlo} disabled={!subStrand}>
+                  <SelectTrigger><SelectValue placeholder="Select SLO" /></SelectTrigger>
+                  <SelectContent>{slos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Additional fields for lesson plan */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">School Name</Label>
+                <Input value={schoolName} onChange={e => setSchoolName(e.target.value)} placeholder="Enter school name" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Date</Label>
+                <Input type="date" value={lessonDate} onChange={e => setLessonDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Lesson Duration</Label>
+                <Select value={lessonDuration} onValueChange={setLessonDuration}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30 minutes">30 minutes</SelectItem>
+                    <SelectItem value="35 minutes">35 minutes</SelectItem>
+                    <SelectItem value="40 minutes">40 minutes</SelectItem>
+                    <SelectItem value="45 minutes">45 minutes</SelectItem>
+                    <SelectItem value="60 minutes">60 minutes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="scheme" className="flex items-center gap-1.5">
+              <FileText className="h-4 w-4" /> Scheme of Work
+            </TabsTrigger>
+            <TabsTrigger value="lesson" className="flex items-center gap-1.5">
+              <BookOpen className="h-4 w-4" /> Lesson Plan
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Scheme of Work */}
+          <TabsContent value="scheme" className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleGenerateScheme} disabled={!grade || !subject || !term}>
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Generate Scheme
+              </Button>
+              {schemeRows && (
+                <>
+                  <Button variant="outline" onClick={() => setEditingScheme(!editingScheme)}>
+                    <Pencil className="h-4 w-4 mr-1.5" /> {editingScheme ? 'Done Editing' : 'Edit'}
+                  </Button>
+                  <Button variant="outline" onClick={handleDownloadSchemePdf}>
+                    <Download className="h-4 w-4 mr-1.5" /> Download PDF
+                  </Button>
+                  <Button variant="outline" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4 mr-1.5" /> Print
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {schemeRows && (
+              <Card className="print-area">
+                <CardHeader className="text-center border-b pb-4">
+                  <p className="text-lg font-bold">{schoolName || 'School Name'}</p>
+                  <CardTitle className="text-base">SCHEME OF WORK — {grade} | {subject} | {term}</CardTitle>
+                  <p className="text-sm text-muted-foreground">Teacher: {profile?.full_name || 'N/A'}</p>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-primary/10">
+                          <TableHead className="font-bold text-foreground w-16">Week</TableHead>
+                          <TableHead className="font-bold text-foreground">Strand</TableHead>
+                          <TableHead className="font-bold text-foreground">Sub-Strand</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[180px]">SLO</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[200px]">Activities</TableHead>
+                          <TableHead className="font-bold text-foreground">Resources</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[160px]">Assessment</TableHead>
+                          <TableHead className="font-bold text-foreground w-24">Remarks</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {schemeRows.map((row, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-semibold text-center">{row.week}</TableCell>
+                            {editingScheme ? (
+                              <>
+                                <TableCell><Input value={row.strand} onChange={e => handleSchemeEdit(i, 'strand', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell><Input value={row.subStrand} onChange={e => handleSchemeEdit(i, 'subStrand', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell><Textarea value={row.slo} onChange={e => handleSchemeEdit(i, 'slo', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
+                                <TableCell><Textarea value={row.activities} onChange={e => handleSchemeEdit(i, 'activities', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
+                                <TableCell><Input value={row.resources} onChange={e => handleSchemeEdit(i, 'resources', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell><Input value={row.assessment} onChange={e => handleSchemeEdit(i, 'assessment', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell><Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" /></TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell className="text-sm">{row.strand}</TableCell>
+                                <TableCell className="text-sm">{row.subStrand}</TableCell>
+                                <TableCell className="text-sm">{row.slo}</TableCell>
+                                <TableCell className="text-sm">{row.activities}</TableCell>
+                                <TableCell className="text-sm">{row.resources}</TableCell>
+                                <TableCell className="text-sm">{row.assessment}</TableCell>
+                                <TableCell className="text-sm">{row.remarks}</TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!schemeRows && (
+              <Card className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Select Grade, Subject, and Term, then click "Generate Scheme" to create a Scheme of Work.</p>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Lesson Plan */}
+          <TabsContent value="lesson" className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleGenerateLesson} disabled={!grade || !subject || !term || !strand || !subStrand || !slo}>
+                <RotateCcw className="h-4 w-4 mr-1.5" /> Generate Lesson Plan
+              </Button>
+              {lessonPlan && (
+                <>
+                  <Button variant="outline" onClick={() => setEditingLesson(!editingLesson)}>
+                    <Pencil className="h-4 w-4 mr-1.5" /> {editingLesson ? 'Done Editing' : 'Edit'}
+                  </Button>
+                  <Button variant="outline" onClick={handleDownloadLessonPdf}>
+                    <Download className="h-4 w-4 mr-1.5" /> Download PDF
+                  </Button>
+                  <Button variant="outline" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4 mr-1.5" /> Print
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {lessonPlan && (
+              <Card className="print-area">
+                <CardContent className="p-4 sm:p-6 space-y-6">
+                  {/* Header */}
+                  <div className="text-center border-b pb-4">
+                    <h2 className="text-lg font-bold">{lessonPlan.school}</h2>
+                    <h3 className="text-base font-semibold mt-1">LESSON PLAN</h3>
+                  </div>
+
+                  {/* Meta Info Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm border rounded-lg p-4 bg-muted/30">
+                    <div><span className="font-semibold">Teacher:</span> {editingLesson ? <Input value={lessonPlan.teacher} onChange={e => handleLessonEdit('teacher', e.target.value)} className="mt-1" /> : <span className="ml-1">{lessonPlan.teacher}</span>}</div>
+                    <div><span className="font-semibold">Grade:</span><span className="ml-1">{lessonPlan.grade}</span></div>
+                    <div><span className="font-semibold">Subject:</span><span className="ml-1">{lessonPlan.subject}</span></div>
+                    <div><span className="font-semibold">Term:</span><span className="ml-1">{lessonPlan.term}</span></div>
+                    <div><span className="font-semibold">Date:</span><span className="ml-1">{lessonPlan.date}</span></div>
+                    <div><span className="font-semibold">Duration:</span><span className="ml-1">{lessonPlan.duration}</span></div>
+                    <div className="col-span-2"><span className="font-semibold">Strand:</span><span className="ml-1">{lessonPlan.strand}</span></div>
+                    <div className="col-span-2"><span className="font-semibold">Sub-Strand:</span><span className="ml-1">{lessonPlan.subStrand}</span></div>
+                    <div className="col-span-2 sm:col-span-4"><span className="font-semibold">SLO:</span><span className="ml-1">{lessonPlan.slo}</span></div>
+                  </div>
+
+                  {/* Sections */}
+                  <LessonSection title="INTRODUCTION" editing={editingLesson}
+                    content={lessonPlan.introduction}
+                    onEdit={(v) => handleLessonEdit('introduction', v)} />
+
+                  <LessonSection title="LESSON DEVELOPMENT" editing={editingLesson}
+                    list={lessonPlan.development}
+                    onEditList={(v) => handleLessonEdit('development', v)} />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <LessonSection title="LEARNER ACTIVITIES" editing={editingLesson}
+                      list={lessonPlan.learnerActivities}
+                      onEditList={(v) => handleLessonEdit('learnerActivities', v)} />
+                    <LessonSection title="TEACHER ACTIVITIES" editing={editingLesson}
+                      list={lessonPlan.teacherActivities}
+                      onEditList={(v) => handleLessonEdit('teacherActivities', v)} />
+                  </div>
+
+                  <LessonSection title="RESOURCES" editing={editingLesson}
+                    list={lessonPlan.resources}
+                    onEditList={(v) => handleLessonEdit('resources', v)} />
+
+                  <LessonSection title="ASSESSMENT" editing={editingLesson}
+                    content={lessonPlan.assessment}
+                    onEdit={(v) => handleLessonEdit('assessment', v)} />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <LessonSection title="CORE COMPETENCIES" editing={editingLesson}
+                      list={lessonPlan.coreCompetencies}
+                      onEditList={(v) => handleLessonEdit('coreCompetencies', v)} />
+                    <LessonSection title="VALUES" editing={editingLesson}
+                      list={lessonPlan.values}
+                      onEditList={(v) => handleLessonEdit('values', v)} />
+                  </div>
+
+                  <LessonSection title="REFLECTION" editing={editingLesson}
+                    content={lessonPlan.reflection}
+                    onEdit={(v) => handleLessonEdit('reflection', v)} />
+                </CardContent>
+              </Card>
+            )}
+
+            {!lessonPlan && (
+              <Card className="p-12 text-center">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Select all fields down to the SLO, then click "Generate Lesson Plan".</p>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// Reusable section component
+function LessonSection({ title, editing, content, list, onEdit, onEditList }: {
+  title: string;
+  editing: boolean;
+  content?: string;
+  list?: string[];
+  onEdit?: (v: string) => void;
+  onEditList?: (v: string[]) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-bold text-primary border-b pb-1">{title}</h4>
+      {content !== undefined && (
+        editing && onEdit ? (
+          <Textarea value={content} onChange={e => onEdit(e.target.value)} className="text-sm" />
+        ) : (
+          <p className="text-sm leading-relaxed">{content}</p>
+        )
+      )}
+      {list && (
+        <ul className="list-disc list-inside space-y-1">
+          {list.map((item, i) => (
+            <li key={i} className="text-sm">
+              {editing && onEditList ? (
+                <Input value={item} onChange={e => {
+                  const updated = [...list];
+                  updated[i] = e.target.value;
+                  onEditList(updated);
+                }} className="inline-block w-[calc(100%-20px)] text-sm" />
+              ) : item}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
