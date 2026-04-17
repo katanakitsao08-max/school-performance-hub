@@ -226,7 +226,7 @@ export default function TimetablePage() {
             <h1 className="text-3xl font-bold">Timetable Generator</h1>
             <p className="text-muted-foreground">ASC-style auto scheduling. Teachers are auto-selected from subject assignments.</p>
           </div>
-          <Badge className="bg-green-600"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
+          <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
         </div>
 
         <Card>

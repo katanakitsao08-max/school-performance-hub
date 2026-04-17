@@ -72,7 +72,7 @@ export default function TimetableKeysPage() {
   const status = (k: KeyRow) => {
     if (k.is_revoked) return <Badge variant="destructive">Revoked</Badge>;
     if (k.expires_at && new Date(k.expires_at) < new Date()) return <Badge variant="secondary">Expired</Badge>;
-    if (k.activated_at) return <Badge className="bg-green-600">Active</Badge>;
+    if (k.activated_at) return <Badge className="bg-primary">Active</Badge>;
     return <Badge variant="outline">Pending</Badge>;
   };
 
