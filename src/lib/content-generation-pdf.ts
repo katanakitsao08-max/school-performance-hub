@@ -38,22 +38,32 @@ export function downloadSchemeOfWorkPdf(
     startY: 35,
     margin: { left: mx, right: mx },
     tableWidth: cw,
-    head: [['Wk', 'Strand', 'Sub-Strand', 'Specific Learning Outcome', 'Learning Activities', 'Resources', 'Assessment', 'Remarks']],
+    head: [['Wk', 'Lsn', 'Strand', 'Sub-Strand', 'Specific Learning Outcomes', 'Learning Experiences', 'Key Inquiry Question(s)', 'Resources', 'Assessment', 'Remarks']],
     body: rows.map(r => [
-      String(r.week), r.strand, r.subStrand, r.slo, r.activities, r.resources, r.assessment, r.remarks
+      String(r.week), String(r.lesson), r.strand, r.subStrand, r.slo, r.experiences, r.inquiry, r.resources, r.assessment, r.remarks
     ]),
-    styles: { fontSize: 7.5, cellPadding: 2.5, lineWidth: 0.2, lineColor: [200, 200, 200] },
-    headStyles: { fillColor: BRAND, fontSize: 7.5, cellPadding: 3, fontStyle: 'bold', textColor: [255, 255, 255] },
+    styles: { fontSize: 7, cellPadding: 2, lineWidth: 0.2, lineColor: [200, 200, 200], valign: 'top' },
+    headStyles: { fillColor: BRAND, fontSize: 7, cellPadding: 2.5, fontStyle: 'bold', textColor: [255, 255, 255], halign: 'center' },
     alternateRowStyles: { fillColor: BRAND_LIGHT },
+    didParseCell: (data) => {
+      const row = rows[data.row.index];
+      if (row?.isBreak && data.section === 'body') {
+        data.cell.styles.fillColor = [255, 243, 205];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.halign = 'center';
+      }
+    },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 55 },
-      5: { cellWidth: 35 },
-      6: { cellWidth: 40 },
-      7: { cellWidth: 22 },
+      0: { cellWidth: 10, halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 8, halign: 'center' },
+      2: { cellWidth: 24 },
+      3: { cellWidth: 26 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 45 },
+      6: { cellWidth: 32 },
+      7: { cellWidth: 28 },
+      8: { cellWidth: 24 },
+      9: { cellWidth: 18 },
     },
     didDrawPage: () => {
       doc.setFillColor(...BRAND);

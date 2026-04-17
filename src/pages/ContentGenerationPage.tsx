@@ -231,39 +231,44 @@ export default function ContentGenerationPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-primary/10">
-                          <TableHead className="font-bold text-foreground w-16">Week</TableHead>
+                          <TableHead className="font-bold text-foreground w-12">Wk</TableHead>
+                          <TableHead className="font-bold text-foreground w-12">Lsn</TableHead>
                           <TableHead className="font-bold text-foreground">Strand</TableHead>
                           <TableHead className="font-bold text-foreground">Sub-Strand</TableHead>
-                          <TableHead className="font-bold text-foreground min-w-[180px]">SLO</TableHead>
-                          <TableHead className="font-bold text-foreground min-w-[200px]">Activities</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[220px] whitespace-pre-line">Specific Learning Outcomes</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[200px]">Learning Experiences</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[160px]">Key Inquiry Question(s)</TableHead>
                           <TableHead className="font-bold text-foreground">Resources</TableHead>
-                          <TableHead className="font-bold text-foreground min-w-[160px]">Assessment</TableHead>
+                          <TableHead className="font-bold text-foreground min-w-[140px]">Assessment</TableHead>
                           <TableHead className="font-bold text-foreground w-24">Remarks</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {schemeRows.map((row, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-semibold text-center">{row.week}</TableCell>
-                            {editingScheme ? (
+                          <TableRow key={i} className={row.isBreak ? 'bg-amber-50 dark:bg-amber-950/30 font-semibold' : ''}>
+                            <TableCell className="font-semibold text-center align-top">{row.week}</TableCell>
+                            <TableCell className="font-semibold text-center align-top">{row.lesson}</TableCell>
+                            {editingScheme && !row.isBreak ? (
                               <>
                                 <TableCell><Input value={row.strand} onChange={e => handleSchemeEdit(i, 'strand', e.target.value)} className="text-sm" /></TableCell>
                                 <TableCell><Input value={row.subStrand} onChange={e => handleSchemeEdit(i, 'subStrand', e.target.value)} className="text-sm" /></TableCell>
-                                <TableCell><Textarea value={row.slo} onChange={e => handleSchemeEdit(i, 'slo', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
-                                <TableCell><Textarea value={row.activities} onChange={e => handleSchemeEdit(i, 'activities', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
+                                <TableCell><Textarea value={row.slo} onChange={e => handleSchemeEdit(i, 'slo', e.target.value)} className="text-sm min-h-[100px] whitespace-pre-line" /></TableCell>
+                                <TableCell><Textarea value={row.experiences} onChange={e => handleSchemeEdit(i, 'experiences', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
+                                <TableCell><Textarea value={row.inquiry} onChange={e => handleSchemeEdit(i, 'inquiry', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
                                 <TableCell><Input value={row.resources} onChange={e => handleSchemeEdit(i, 'resources', e.target.value)} className="text-sm" /></TableCell>
                                 <TableCell><Input value={row.assessment} onChange={e => handleSchemeEdit(i, 'assessment', e.target.value)} className="text-sm" /></TableCell>
                                 <TableCell><Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" /></TableCell>
                               </>
                             ) : (
                               <>
-                                <TableCell className="text-sm">{row.strand}</TableCell>
-                                <TableCell className="text-sm">{row.subStrand}</TableCell>
-                                <TableCell className="text-sm">{row.slo}</TableCell>
-                                <TableCell className="text-sm">{row.activities}</TableCell>
-                                <TableCell className="text-sm">{row.resources}</TableCell>
-                                <TableCell className="text-sm">{row.assessment}</TableCell>
-                                <TableCell className="text-sm">{row.remarks}</TableCell>
+                                <TableCell className="text-sm align-top">{row.strand}</TableCell>
+                                <TableCell className="text-sm align-top">{row.subStrand}</TableCell>
+                                <TableCell className="text-sm align-top whitespace-pre-line">{row.slo}</TableCell>
+                                <TableCell className="text-sm align-top">{row.experiences}</TableCell>
+                                <TableCell className="text-sm align-top">{row.inquiry}</TableCell>
+                                <TableCell className="text-sm align-top">{row.resources}</TableCell>
+                                <TableCell className="text-sm align-top">{row.assessment}</TableCell>
+                                <TableCell className="text-sm align-top">{row.remarks}</TableCell>
                               </>
                             )}
                           </TableRow>
