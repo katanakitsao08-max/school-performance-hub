@@ -1,15 +1,18 @@
-// Structured templates for Scheme of Work and Lesson Plan generation
+// KLB/KICD-aligned CBC Scheme of Work + Lesson Plan generator
 import type { StrandEntry } from '@/data/cbc-curriculum';
 
 export interface SchemeRow {
-  week: number;
+  week: number | string;
+  lesson: number | string;
   strand: string;
   subStrand: string;
-  slo: string;
-  activities: string;
+  slo: string;             // formatted as "By the end of the lesson... a)... b)... c)..."
+  experiences: string;     // Learning Experiences
+  inquiry: string;         // Key Inquiry Question(s)
   resources: string;
   assessment: string;
   remarks: string;
+  isBreak?: boolean;
 }
 
 export interface LessonPlanData {
@@ -34,76 +37,96 @@ export interface LessonPlanData {
   reflection: string;
 }
 
-const ACTIVITY_TEMPLATES: Record<string, string[]> = {
+// ---------------- Content banks ----------------
+const EXPERIENCE_BANK: Record<string, string[]> = {
   default: [
-    "Learners discuss {sub_strand} in groups",
-    "Learners practice through guided exercises",
-    "Learners demonstrate understanding through presentations",
-    "Learners complete individual assignments",
-    "Learners engage in peer-to-peer learning activities",
-    "Learners participate in hands-on activities",
-    "Learners use real-life examples to explore concepts",
-    "Learners work in pairs to solve problems",
+    'In groups, learners discuss {sub_strand} using guiding questions',
+    'In pairs, learners explore {sub_strand} through practical tasks',
+    'Individually, learners practise {sub_strand} using worked examples',
+    'Learners watch a short demonstration and respond to questions',
+    'Learners use digital devices/charts to research {sub_strand}',
+    'Learners role-play scenarios linked to {sub_strand}',
+    'Learners brainstorm and share findings on {sub_strand}',
+    'Learners create simple models/illustrations of {sub_strand}',
   ],
   Mathematics: [
-    "Learners solve problems on {sub_strand} using manipulatives",
-    "Learners work in groups to complete mathematical exercises",
-    "Learners use number charts and models to explore concepts",
-    "Learners apply {sub_strand} in real-life word problems",
-    "Learners practice mental arithmetic strategies",
-    "Learners create visual representations of mathematical concepts",
+    'In groups, learners use manipulatives to model {sub_strand}',
+    'Learners solve real-life problems involving {sub_strand}',
+    'Learners draw and interpret diagrams related to {sub_strand}',
+    'Learners play number games to consolidate {sub_strand}',
+    'Learners record findings on {sub_strand} in their exercise books',
   ],
   English: [
-    "Learners read passages and identify key information",
-    "Learners write compositions related to {sub_strand}",
-    "Learners engage in role-play and oral presentations",
-    "Learners use dictionaries to build vocabulary",
-    "Learners work in groups to discuss texts and share ideas",
-    "Learners practice sentence construction exercises",
+    'Learners read a passage on {sub_strand} and answer questions',
+    'In pairs, learners role-play short dialogues on {sub_strand}',
+    'Learners write short paragraphs applying {sub_strand}',
+    'Learners listen to a recording and discuss {sub_strand}',
+    'Learners use a dictionary to build vocabulary linked to {sub_strand}',
   ],
   Science: [
-    "Learners conduct simple experiments on {sub_strand}",
-    "Learners observe and record findings in science journals",
-    "Learners discuss scientific phenomena in groups",
-    "Learners use models and diagrams to explain concepts",
-    "Learners make predictions and test hypotheses",
+    'Learners carry out a simple experiment on {sub_strand}',
+    'Learners observe and record findings on {sub_strand}',
+    'Learners use charts/models to explain {sub_strand}',
+    'Learners discuss real-life applications of {sub_strand}',
   ],
 };
 
-const RESOURCE_TEMPLATES: Record<string, string[]> = {
-  default: ["Textbooks", "Charts", "Flash cards", "Writing materials", "Realia"],
-  Mathematics: ["Number charts", "Textbooks", "Calculators", "Geometric models", "Grid paper", "Counters"],
-  English: ["Storybooks", "Dictionaries", "Newspapers", "Textbooks", "Writing materials", "Audio recordings"],
-  Science: ["Lab equipment", "Specimens", "Charts and models", "Textbooks", "Measuring tools"],
-  "Language Activities": ["Picture cards", "Storybooks", "Puppets", "Charts", "Crayons"],
-  "Mathematical Activities": ["Counters", "Number cards", "Shapes cutouts", "Beads", "Charts"],
+const INQUIRY_BANK: Record<string, string[]> = {
+  default: [
+    'Why is {sub_strand} important in our daily lives?',
+    'How can we apply {sub_strand} at home and in school?',
+    'What happens when we ignore {sub_strand}?',
+    'How does {sub_strand} help us solve problems around us?',
+  ],
+  Mathematics: [
+    'How do we use {sub_strand} in everyday life?',
+    'Why is accuracy important when working with {sub_strand}?',
+    'Where else can we apply {sub_strand}?',
+  ],
+  English: [
+    'How does {sub_strand} help us communicate effectively?',
+    'Why is {sub_strand} important in language learning?',
+  ],
+  Science: [
+    'How does {sub_strand} occur in nature?',
+    'Why should we care about {sub_strand} in our environment?',
+  ],
 };
 
-const ASSESSMENT_TEMPLATES = [
-  "Oral questions on {slo}",
-  "Written exercises on {sub_strand}",
-  "Group presentations and peer assessment",
-  "Individual practice and workbook exercises",
-  "Observation of learner participation",
-  "Portfolio assessment of completed tasks",
+const RESOURCE_BANK: Record<string, string[]> = {
+  default: ['Course book pg ___', 'Charts', 'Realia', 'Flash cards', 'Manila paper'],
+  Mathematics: ['Course book pg ___', 'Number cards', 'Counters', 'Geometric shapes', 'Manila paper'],
+  English: ['Course book pg ___', 'Storybooks', 'Dictionaries', 'Charts', 'Pictures'],
+  Science: ['Course book pg ___', 'Charts', 'Lab apparatus', 'Specimens', 'Digital devices'],
+  'Language Activities': ['Picture cards', 'Storybooks', 'Charts', 'Crayons', 'Realia'],
+  'Mathematical Activities': ['Counters', 'Number cards', 'Shape cut-outs', 'Beads', 'Charts'],
+};
+
+const ASSESSMENT_BANK = [
+  'Oral questions',
+  'Written exercise',
+  'Observation',
+  'Checklist',
+  'Portfolio',
+  'Peer assessment',
+  'Practical activity',
 ];
 
 const CORE_COMPETENCIES = [
-  "Communication and collaboration",
-  "Critical thinking and problem solving",
-  "Creativity and imagination",
-  "Citizenship",
-  "Digital literacy",
-  "Learning to learn",
-  "Self-efficacy",
+  'Communication and collaboration',
+  'Critical thinking and problem solving',
+  'Creativity and imagination',
+  'Citizenship',
+  'Digital literacy',
+  'Learning to learn',
+  'Self-efficacy',
 ];
 
-const VALUES = [
-  "Respect", "Responsibility", "Love", "Unity", "Peace",
-  "Integrity", "Patriotism", "Social justice",
-];
+const VALUES = ['Respect', 'Responsibility', 'Love', 'Unity', 'Peace', 'Integrity', 'Patriotism', 'Social justice'];
 
+// ---------------- Helpers ----------------
 function pickRandom<T>(arr: T[], count: number): T[] {
+  if (arr.length === 0) return [];
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, arr.length));
 }
@@ -119,6 +142,37 @@ function getSubjectCategory(subject: string): string {
   return 'default';
 }
 
+// Build EXACTLY 3 SLOs from a sub-strand's SLO list. If fewer exist, synthesise complementary ones.
+function buildThreeSLOs(subStrand: string, baseSlos: string[]): string[] {
+  const cleaned = baseSlos.map(s => s.replace(/^By the end.*?to:?\s*/i, '').trim()).filter(Boolean);
+  const result: string[] = [];
+  // Take up to 2 from dataset
+  for (let i = 0; i < Math.min(2, cleaned.length); i++) result.push(cleaned[i]);
+  // Synthesise the remainder
+  const fallbacks = [
+    `identify key concepts in ${subStrand}`,
+    `apply ${subStrand} in real-life situations`,
+    `appreciate the importance of ${subStrand} in daily life`,
+    `discuss the relevance of ${subStrand}`,
+    `demonstrate skills related to ${subStrand}`,
+  ];
+  let fi = 0;
+  while (result.length < 3) {
+    const candidate = fallbacks[fi++ % fallbacks.length];
+    if (!result.includes(candidate)) result.push(candidate);
+  }
+  return result.slice(0, 3);
+}
+
+function formatSLOBlock(threeSlos: string[]): string {
+  const letters = ['a)', 'b)', 'c)'];
+  return [
+    'By the end of the lesson, the learner should be able to:',
+    ...threeSlos.map((s, i) => `${letters[i]} ${s}`),
+  ].join('\n');
+}
+
+// ---------------- Scheme of Work (KLB style) ----------------
 export function generateSchemeOfWork(
   grade: string,
   subject: string,
@@ -126,67 +180,95 @@ export function generateSchemeOfWork(
   strands: StrandEntry[]
 ): SchemeRow[] {
   const rows: SchemeRow[] = [];
-  const totalWeeks = 13;
-  let week = 1;
+  const TOTAL_WEEKS = 13;
+  const MID_TERM_WEEK = 8;
+  const LESSONS_PER_WEEK = 5;
   const cat = getSubjectCategory(subject);
 
-  const allItems: { strand: string; subStrand: string; slo: string }[] = [];
+  // Flatten dataset → ordered list of (strand, subStrand)
+  const items: { strand: string; subStrand: string; slos: string[] }[] = [];
   for (const strand of strands) {
     for (const ss of strand.sub_strands) {
-      for (const slo of ss.slos) {
-        allItems.push({ strand: strand.name, subStrand: ss.name, slo });
-      }
+      items.push({ strand: strand.name, subStrand: ss.name, slos: ss.slos });
     }
   }
 
-  if (allItems.length === 0) return rows;
+  if (items.length === 0) return rows;
 
-  // Distribute SLOs across weeks
-  const itemsPerWeek = Math.max(1, Math.ceil(allItems.length / totalWeeks));
-  let idx = 0;
+  const expBank = EXPERIENCE_BANK[cat] || EXPERIENCE_BANK.default;
+  const inqBank = INQUIRY_BANK[cat] || INQUIRY_BANK.default;
+  const resBank = RESOURCE_BANK[subject] || RESOURCE_BANK[cat] || RESOURCE_BANK.default;
 
-  while (week <= totalWeeks && idx < allItems.length) {
-    const batch = allItems.slice(idx, idx + itemsPerWeek);
-    for (const item of batch) {
-      const vars = { sub_strand: item.subStrand, slo: item.slo };
-      const acts = ACTIVITY_TEMPLATES[cat] || ACTIVITY_TEMPLATES.default;
-      const res = RESOURCE_TEMPLATES[cat] || RESOURCE_TEMPLATES.default;
+  let itemIdx = 0;
+
+  for (let week = 1; week <= TOTAL_WEEKS; week++) {
+    // Mid-term break row
+    if (week === MID_TERM_WEEK) {
       rows.push({
         week,
+        lesson: '-',
+        strand: 'MID TERM BREAK',
+        subStrand: '-',
+        slo: '— No lessons this week —',
+        experiences: '-',
+        inquiry: '-',
+        resources: '-',
+        assessment: '-',
+        remarks: 'Mid-term break',
+        isBreak: true,
+      });
+      continue;
+    }
+
+    // Last week → revision
+    if (week === TOTAL_WEEKS) {
+      for (let l = 1; l <= LESSONS_PER_WEEK; l++) {
+        rows.push({
+          week,
+          lesson: l,
+          strand: 'Revision',
+          subStrand: 'End-term consolidation',
+          slo: formatSLOBlock([
+            'revise key concepts covered during the term',
+            'apply learnt skills in mixed exercises',
+            'prepare adequately for end-of-term assessment',
+          ]),
+          experiences: 'Learners attempt revision exercises; teacher conducts remedial sessions; group discussions on challenging topics',
+          inquiry: 'What have we learnt this term and how can we apply it?',
+          resources: pickRandom(resBank, 3).join(', '),
+          assessment: 'End-of-term assessment',
+          remarks: l === LESSONS_PER_WEEK ? 'End of term' : '',
+        });
+      }
+      continue;
+    }
+
+    // Regular teaching week
+    for (let l = 1; l <= LESSONS_PER_WEEK; l++) {
+      const item = items[itemIdx % items.length];
+      itemIdx++;
+      const vars = { sub_strand: item.subStrand };
+      const threeSlos = buildThreeSLOs(item.subStrand, item.slos);
+
+      rows.push({
+        week,
+        lesson: l,
         strand: item.strand,
         subStrand: item.subStrand,
-        slo: item.slo,
-        activities: pickRandom(acts, 2).map(a => fillTemplate(a, vars)).join('; '),
-        resources: pickRandom(res, 3).join(', '),
-        assessment: fillTemplate(pickRandom(ASSESSMENT_TEMPLATES, 1)[0], vars),
+        slo: formatSLOBlock(threeSlos),
+        experiences: pickRandom(expBank, 2).map(e => fillTemplate(e, vars)).join('; '),
+        inquiry: fillTemplate(pickRandom(inqBank, 1)[0] || '', vars),
+        resources: pickRandom(resBank, 3).join(', '),
+        assessment: pickRandom(ASSESSMENT_BANK, 2).join(', '),
         remarks: '',
       });
     }
-    idx += itemsPerWeek;
-    week++;
-  }
-
-  // Fill remaining weeks
-  while (rows.length < totalWeeks) {
-    const last = allItems[allItems.length - 1];
-    const vars = { sub_strand: last.subStrand, slo: last.slo };
-    const acts = ACTIVITY_TEMPLATES[cat] || ACTIVITY_TEMPLATES.default;
-    const res = RESOURCE_TEMPLATES[cat] || RESOURCE_TEMPLATES.default;
-    rows.push({
-      week: rows.length + 1,
-      strand: last.strand,
-      subStrand: last.subStrand,
-      slo: 'Revision and consolidation',
-      activities: 'Revision exercises; Remedial and enrichment activities',
-      resources: pickRandom(res, 3).join(', '),
-      assessment: 'End-of-term assessment',
-      remarks: week === totalWeeks ? 'End of term' : '',
-    });
   }
 
   return rows;
 }
 
+// ---------------- Lesson Plan (unchanged shape, KLB-aligned content) ----------------
 export function generateLessonPlan(
   school: string,
   teacher: string,
@@ -200,9 +282,11 @@ export function generateLessonPlan(
   duration: string = '40 minutes'
 ): LessonPlanData {
   const cat = getSubjectCategory(subject);
-  const acts = ACTIVITY_TEMPLATES[cat] || ACTIVITY_TEMPLATES.default;
-  const res = RESOURCE_TEMPLATES[cat] || RESOURCE_TEMPLATES.default;
-  const vars = { sub_strand: subStrand, slo };
+  const expBank = EXPERIENCE_BANK[cat] || EXPERIENCE_BANK.default;
+  const resBank = RESOURCE_BANK[subject] || RESOURCE_BANK[cat] || RESOURCE_BANK.default;
+  const vars = { sub_strand: subStrand };
+
+  const threeSlos = buildThreeSLOs(subStrand, [slo]);
 
   return {
     school,
@@ -212,18 +296,18 @@ export function generateLessonPlan(
     term,
     strand,
     subStrand,
-    slo,
+    slo: formatSLOBlock(threeSlos),
     date,
     duration,
-    introduction: `Begin by reviewing previous knowledge on ${subStrand}. Engage learners through a brief discussion or question-and-answer session to activate prior knowledge. Introduce the topic: "${slo}".`,
+    introduction: `Review previous knowledge on ${subStrand} through Q&A. Introduce today's focus and link it to learners' real-life experiences.`,
     development: [
-      `Step 1: Explain the key concepts of ${subStrand} using appropriate examples and visual aids.`,
+      `Step 1: Explain the key concepts of ${subStrand} using examples and visual aids.`,
       `Step 2: Demonstrate the concept through guided practice with the whole class.`,
-      `Step 3: Provide learners with practice exercises to apply the concept individually or in pairs.`,
-      `Step 4: Allow learners to share their work and discuss different approaches.`,
-      `Step 5: Summarize the key points and address any misconceptions.`,
+      `Step 3: Learners practise in pairs/groups while the teacher monitors and supports.`,
+      `Step 4: Learners share their work; teacher addresses misconceptions.`,
+      `Step 5: Summarise key points and connect to the next lesson.`,
     ],
-    learnerActivities: pickRandom(acts, 4).map(a => fillTemplate(a, vars)),
+    learnerActivities: pickRandom(expBank, 4).map(a => fillTemplate(a, vars)),
     teacherActivities: [
       `Guide learners through the concept of ${subStrand}`,
       'Monitor group discussions and provide feedback',
@@ -231,10 +315,10 @@ export function generateLessonPlan(
       'Assess learner understanding through observation',
       'Provide remedial support to struggling learners',
     ],
-    resources: pickRandom(res, 4),
-    assessment: `Assess learner understanding of "${slo}" through oral questions, written exercises, and observation of practical activities.`,
+    resources: pickRandom(resBank, 4),
+    assessment: `Assess learner achievement of the SLOs through ${pickRandom(ASSESSMENT_BANK, 2).join(' and ').toLowerCase()}.`,
     coreCompetencies: pickRandom(CORE_COMPETENCIES, 3),
     values: pickRandom(VALUES, 3),
-    reflection: `Reflect on learner achievement of the SLO: "${slo}". Note areas that need reinforcement and plan for remediation or enrichment as needed.`,
+    reflection: `Reflect on learner achievement of the SLOs on "${subStrand}". Note areas for reinforcement and plan remediation/enrichment.`,
   };
 }
