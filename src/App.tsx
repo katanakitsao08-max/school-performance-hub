@@ -29,6 +29,8 @@ import StrandsPage from "./pages/StrandsPage";
 import PerformanceTrackingPage from "./pages/PerformanceTrackingPage";
 import MorePage from "./pages/MorePage";
 import ContentGenerationPage from "./pages/ContentGenerationPage";
+import TimetablePage from "./pages/TimetablePage";
+import TimetableKeysPage from "./pages/TimetableKeysPage";
 import FeesPage from "./pages/FeesPage";
 import ParentDashboard from "./pages/ParentDashboard";
 import NotFound from "./pages/NotFound";
@@ -73,6 +75,8 @@ const App = () => (
               {/* Super Admin routes */}
               <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
+              <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><TimetableKeysPage /></ProtectedRoute>} />
+              <Route path="/timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><TimetablePage /></ProtectedRoute>} />
               {/* School-level routes */}
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><Dashboard /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><UsersPage /></ProtectedRoute>} />
