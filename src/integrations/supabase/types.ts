@@ -791,6 +791,109 @@ export type Database = {
           },
         ]
       }
+      timetable_activation_keys: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          activation_key: string
+          created_at: string
+          expires_at: string | null
+          generated_by: string
+          id: string
+          is_revoked: boolean
+          notes: string | null
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          activation_key: string
+          created_at?: string
+          expires_at?: string | null
+          generated_by: string
+          id?: string
+          is_revoked?: boolean
+          notes?: string | null
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          activation_key?: string
+          created_at?: string
+          expires_at?: string | null
+          generated_by?: string
+          id?: string
+          is_revoked?: boolean
+          notes?: string | null
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_activation_keys_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetables: {
+        Row: {
+          break_period: number | null
+          created_at: string
+          data: Json
+          days: string[]
+          generated_by: string
+          grade: string | null
+          id: string
+          name: string
+          periods_per_day: number
+          school_id: string
+          stream: string | null
+          updated_at: string
+        }
+        Insert: {
+          break_period?: number | null
+          created_at?: string
+          data?: Json
+          days?: string[]
+          generated_by: string
+          grade?: string | null
+          id?: string
+          name: string
+          periods_per_day?: number
+          school_id: string
+          stream?: string | null
+          updated_at?: string
+        }
+        Update: {
+          break_period?: number | null
+          created_at?: string
+          data?: Json
+          days?: string[]
+          generated_by?: string
+          grade?: string | null
+          id?: string
+          name?: string
+          periods_per_day?: number
+          school_id?: string
+          stream?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetables_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

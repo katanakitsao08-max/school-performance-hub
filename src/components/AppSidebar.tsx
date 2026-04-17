@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen
+  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import performTrackLogo from "@/assets/performtrack-logo.png";
 const superAdminItems = [
   { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
   { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+  { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
 ];
 
 const adminItems = [
@@ -36,6 +37,7 @@ const adminItems = [
   { title: "SMS", url: "/sms", icon: MessageSquare },
   { title: "Fees", url: "/fees", icon: Wallet },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
+  { title: "Timetable", url: "/timetable", icon: CalendarClock },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -48,6 +50,7 @@ const teacherItems = [
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
+  { title: "Timetable", url: "/timetable", icon: CalendarClock },
 ];
 
 const headteacherItems = [
