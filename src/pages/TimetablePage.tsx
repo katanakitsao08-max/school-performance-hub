@@ -40,6 +40,9 @@ export default function TimetablePage() {
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [result, setResult] = useState<ReturnType<typeof generateTimetable> | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchClasses, setBatchClasses] = useState<{ grade: string; stream: string }[]>([]);
+  const [savingBatch, setSavingBatch] = useState(false);
 
   // Check activation status
   useEffect(() => {
