@@ -232,12 +232,30 @@ export default function CurriculumDesignManagerPage() {
   };
 
   const handleSaveDraft = async () => {
-    if (!extracted) return;
     setSavingDraft(true);
     try {
-      await persistDesign(extracted, "ai_pdf");
-      toast.success("Draft saved. Move to Approved → Active when ready.");
+      // Year-coverage path: persist 3 per-term designs from the review board
+      if (yearReview) {
+        const perTerm = reviewToPerTermDesigns(yearReview);
+        if (perTerm.length === 0) throw new Error("Assign at least one sub-strand to a term.");
+        for (const d of perTerm) {
+          await persistDesign({
+            grade: d.grade,
+            subject: d.subject,
+            term: d.term,
+            title: d.title,
+            strands: d.strands,
+          }, "ai_pdf");
+        }
+        toast.success(`Saved ${perTerm.length} term draft${perTerm.length === 1 ? "" : "s"}. Approve → set Active when ready.`);
+      } else if (extracted) {
+        await persistDesign(extracted, "ai_pdf");
+        toast.success("Draft saved. Move to Approved → Active when ready.");
+      } else {
+        return;
+      }
       setExtracted(null);
+      setYearReview(null);
       setPdfText("");
       setPdfFile(null);
       load();
@@ -246,6 +264,22 @@ export default function CurriculumDesignManagerPage() {
     } finally {
       setSavingDraft(false);
     }
+  };
+
+  // Move one sub-strand to a different term in the year-review board
+  const moveSubStrandToTerm = (key: string, term: 1 | 2 | 3) => {
+    setYearReview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        strands: prev.strands.map((s) => ({
+          ...s,
+          sub_strands: s.sub_strands.map((ss) =>
+            ss.__key === key ? { ...ss, term_hint: term } : ss,
+          ),
+        })),
+      };
+    });
   };
 
   const handleSaveManual = async () => {
