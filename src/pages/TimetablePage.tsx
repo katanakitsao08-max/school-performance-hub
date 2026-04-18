@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Lock, Unlock, Sparkles, Download, AlertTriangle } from 'lucide-react';
+import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import {
@@ -40,6 +40,9 @@ export default function TimetablePage() {
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [result, setResult] = useState<ReturnType<typeof generateTimetable> | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchClasses, setBatchClasses] = useState<{ grade: string; stream: string }[]>([]);
+  const [savingBatch, setSavingBatch] = useState(false);
 
   // Check activation status
   useEffect(() => {
@@ -124,6 +127,7 @@ export default function TimetablePage() {
     if (!grade || !stream) return toast({ title: 'Select grade and stream' });
     if (assignments.length === 0) return toast({ title: 'No teacher assignments found', description: 'Assign teachers to subjects first.', variant: 'destructive' });
     setGenerating(true);
+    setBatchMode(false);
     const reqMap: Record<string, SubjectRequirement[]> = {};
     reqMap[`${grade}|${stream}`] = requirements.filter(r => r.lessonsPerWeek > 0);
     const r = generateTimetable({
@@ -141,6 +145,98 @@ export default function TimetablePage() {
     } else {
       toast({ title: 'Generated with warnings', description: `${r.conflicts.length} conflicts, ${r.unfilled.length} unfilled.` });
     }
+  };
+
+  const generateAllClasses = async () => {
+    if (!schoolId) return;
+    setGenerating(true);
+    setBatchMode(true);
+    setResult(null);
+    try {
+      // 1. Discover every (grade, stream) that has at least one teacher assignment
+      const { data: ta, error: taErr } = await supabase
+        .from('teacher_assignments')
+        .select('teacher_id, learning_area_id, grade, stream, profiles!inner(full_name)')
+        .eq('school_id', schoolId);
+      if (taErr) throw taErr;
+      const allAssignments: TeacherAssignmentRow[] = ((ta as any) || []).map((r: any) => ({
+        teacher_id: r.teacher_id,
+        teacher_name: r.profiles?.full_name || 'Teacher',
+        learning_area_id: r.learning_area_id,
+        grade: r.grade,
+        stream: r.stream,
+      }));
+      if (allAssignments.length === 0) {
+        toast({ title: 'No teacher assignments', description: 'Assign teachers to subjects first.', variant: 'destructive' });
+        return;
+      }
+      const classSet = new Map<string, { grade: string; stream: string }>();
+      allAssignments.forEach(a => classSet.set(`${a.grade}|${a.stream}`, { grade: a.grade, stream: a.stream }));
+      const classList = Array.from(classSet.values());
+
+      // 2. Load learning areas for every grade involved
+      const grades = Array.from(new Set(classList.map(c => c.grade)));
+      const { data: la, error: laErr } = await supabase
+        .from('learning_areas')
+        .select('id, name, grade')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .in('grade', grades);
+      if (laErr) throw laErr;
+      const areasByGrade: Record<string, { id: string; name: string }[]> = {};
+      ((la as any) || []).forEach((l: any) => {
+        if (!areasByGrade[l.grade]) areasByGrade[l.grade] = [];
+        areasByGrade[l.grade].push({ id: l.id, name: l.name });
+      });
+
+      // 3. Build per-class requirements (default 5 lessons/week per subject)
+      const reqMap: Record<string, SubjectRequirement[]> = {};
+      classList.forEach(c => {
+        const areas = areasByGrade[c.grade] || [];
+        reqMap[`${c.grade}|${c.stream}`] = areas.map(a => ({
+          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
+        }));
+      });
+
+      // 4. Single engine run — shared teacherBusy prevents cross-class double-booking
+      const r = generateTimetable({
+        classes: classList,
+        days: DAYS,
+        periodsPerDay,
+        breakPeriod,
+        requirementsByClass: reqMap,
+        assignments: allAssignments,
+      });
+      setResult(r);
+      setBatchClasses(classList);
+      toast({
+        title: `Batch complete: ${classList.length} classes`,
+        description: `${r.conflicts.length} conflicts, ${r.unfilled.length} unfilled.`,
+      });
+    } catch (e: any) {
+      toast({ title: 'Batch failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const saveBatch = async () => {
+    if (!result || !schoolId || !user || !batchMode) return;
+    setSavingBatch(true);
+    const rows = batchClasses.map(c => ({
+      school_id: schoolId,
+      name: `${c.grade} ${c.stream} Timetable`,
+      grade: c.grade, stream: c.stream,
+      days: DAYS,
+      periods_per_day: periodsPerDay,
+      break_period: breakPeriod,
+      data: result.grids[`${c.grade}|${c.stream}`] as any,
+      generated_by: user.id,
+    }));
+    const { error } = await supabase.from('timetables').insert(rows);
+    setSavingBatch(false);
+    if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    toast({ title: `Saved ${rows.length} timetables` });
   };
 
   const save = async () => {
@@ -273,16 +369,25 @@ export default function TimetablePage() {
           </Card>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={generate} disabled={generating || !grade || !stream}>
             <Sparkles className="h-4 w-4 mr-2" />
-            {generating ? 'Generating…' : 'Generate Timetable'}
+            {generating && !batchMode ? 'Generating…' : 'Generate (Single Class)'}
           </Button>
-          {result && (
+          <Button variant="secondary" onClick={generateAllClasses} disabled={generating}>
+            <Layers className="h-4 w-4 mr-2" />
+            {generating && batchMode ? 'Generating all…' : 'Generate ALL Classes'}
+          </Button>
+          {result && !batchMode && (
             <>
               <Button variant="outline" onClick={save}>Save</Button>
               <Button variant="outline" onClick={downloadClass}><Download className="h-4 w-4 mr-2" />Class PDF</Button>
             </>
+          )}
+          {result && batchMode && (
+            <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
+              {savingBatch ? 'Saving…' : `Save All (${batchClasses.length})`}
+            </Button>
           )}
         </div>
 
@@ -299,7 +404,56 @@ export default function TimetablePage() {
           </Alert>
         )}
 
-        {classGrid && (
+        {result && batchMode && (
+          <Tabs defaultValue="classes">
+            <TabsList>
+              <TabsTrigger value="classes">All Classes ({batchClasses.length})</TabsTrigger>
+              <TabsTrigger value="teachers">Teacher Views ({Object.keys(result.teacherGrids).length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="classes" className="space-y-4">
+              {batchClasses.map(c => {
+                const ck = `${c.grade}|${c.stream}`;
+                const g = result.grids[ck];
+                if (!g) return null;
+                return (
+                  <Card key={ck}>
+                    <CardHeader className="flex flex-row items-center justify-between py-3">
+                      <CardTitle className="text-base">{c.grade} — {c.stream}</CardTitle>
+                      <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
+                        schoolName,
+                        title: `Class Timetable — ${c.grade} ${c.stream}`,
+                        days: DAYS, periodsPerDay, breakPeriod,
+                        grid: g, showTeacher: true,
+                      })}>
+                        <Download className="h-3 w-3 mr-1" /> PDF
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-x-auto">
+                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} showTeacher />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </TabsContent>
+            <TabsContent value="teachers" className="space-y-4">
+              {Object.entries(result.teacherGrids).map(([tid, t]) => (
+                <Card key={tid}>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                    <Button size="sm" variant="outline" onClick={() => downloadTeacher(tid)}>
+                      <Download className="h-3 w-3 mr-1" /> PDF
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} />
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {classGrid && !batchMode && (
           <Tabs defaultValue="class">
             <TabsList>
               <TabsTrigger value="class">Class View</TabsTrigger>
