@@ -404,7 +404,56 @@ export default function TimetablePage() {
           </Alert>
         )}
 
-        {classGrid && (
+        {result && batchMode && (
+          <Tabs defaultValue="classes">
+            <TabsList>
+              <TabsTrigger value="classes">All Classes ({batchClasses.length})</TabsTrigger>
+              <TabsTrigger value="teachers">Teacher Views ({Object.keys(result.teacherGrids).length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="classes" className="space-y-4">
+              {batchClasses.map(c => {
+                const ck = `${c.grade}|${c.stream}`;
+                const g = result.grids[ck];
+                if (!g) return null;
+                return (
+                  <Card key={ck}>
+                    <CardHeader className="flex flex-row items-center justify-between py-3">
+                      <CardTitle className="text-base">{c.grade} — {c.stream}</CardTitle>
+                      <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
+                        schoolName,
+                        title: `Class Timetable — ${c.grade} ${c.stream}`,
+                        days: DAYS, periodsPerDay, breakPeriod,
+                        grid: g, showTeacher: true,
+                      })}>
+                        <Download className="h-3 w-3 mr-1" /> PDF
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-x-auto">
+                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} showTeacher />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </TabsContent>
+            <TabsContent value="teachers" className="space-y-4">
+              {Object.entries(result.teacherGrids).map(([tid, t]) => (
+                <Card key={tid}>
+                  <CardHeader className="flex flex-row items-center justify-between py-3">
+                    <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                    <Button size="sm" variant="outline" onClick={() => downloadTeacher(tid)}>
+                      <Download className="h-3 w-3 mr-1" /> PDF
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} />
+                  </CardContent>
+                </Card>
+              ))}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {classGrid && !batchMode && (
           <Tabs defaultValue="class">
             <TabsList>
               <TabsTrigger value="class">Class View</TabsTrigger>
