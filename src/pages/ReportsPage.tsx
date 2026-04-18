@@ -217,13 +217,13 @@ export default function ReportsPage() {
   const { data: termHistoryScores = [] } = useQuery({
     queryKey: ['term-history-scores', selectedYear, schoolId],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllPaged(() => supabase
         .from('scores')
         .select('learner_id, score, term, year, assessment_type, learning_area_id')
         .eq('year', selectedYear)
         .eq('assessment_type', 'end_term')
-        .eq('school_id', schoolId!);
-      return data || [];
+        .eq('school_id', schoolId!));
+      return data;
     },
     enabled: !!schoolId,
   });
@@ -232,8 +232,9 @@ export default function ReportsPage() {
   const { data: reportStrands = [] } = useQuery({
     queryKey: ['report-strands', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order');
-      return data || [];
+      const data = await fetchAllPaged(() =>
+        supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order'));
+      return data;
     },
     enabled: !!schoolId,
   });
@@ -243,11 +244,17 @@ export default function ReportsPage() {
     queryFn: async () => {
       const learnerIds = learners.map(l => l.id);
       if (!learnerIds.length) return [];
-      const { data } = await supabase.from('strand_scores').select('*')
-        .in('learner_id', learnerIds)
-        .eq('term', selectedTerm).eq('year', selectedYear)
-        .eq('assessment_type', selectedAssessment);
-      return data || [];
+      const CHUNK = 200;
+      const all: any[] = [];
+      for (let i = 0; i < learnerIds.length; i += CHUNK) {
+        const slice = learnerIds.slice(i, i + CHUNK);
+        const rows = await fetchAllPaged(() => supabase.from('strand_scores').select('*')
+          .in('learner_id', slice)
+          .eq('term', selectedTerm).eq('year', selectedYear)
+          .eq('assessment_type', selectedAssessment));
+        all.push(...rows);
+      }
+      return all;
     },
     enabled: learners.length > 0 && !!schoolId,
   });
