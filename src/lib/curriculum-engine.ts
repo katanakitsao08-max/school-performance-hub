@@ -146,7 +146,7 @@ export async function generateCurriculumScheme(
 
   for (let week = 1; week <= totalWeeks; week++) {
     // Mid-term break
-    if (week === midTermWeek) {
+    if (hasBreak && week === midTermWeek) {
       rows.push({
         week,
         lesson: '-',
