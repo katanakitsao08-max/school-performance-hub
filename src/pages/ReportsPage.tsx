@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
+import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
