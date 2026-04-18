@@ -35,13 +35,24 @@ export interface CurriculumGenerateOptions {
   grade: string;
   subject: string;
   term: string;
-  totalWeeks?: number;        // default 13 (10 teaching + 1 break + 1 assessment + 1 revision)
-  midTermWeek?: number;       // default 8
+  /** Default weeks per term: T1=14, T2=13, T3=11. Teacher can override. */
+  totalWeeks?: number;
+  /** Which week is the mid-term break. Defaults to middle of term. Pass 0 to disable break. */
+  midTermWeek?: number;
   lessonsPerWeek?: number;    // default 5
   mode?: CurriculumMode;      // default 'lock'
   flex?: FlexAdditions;
   /** When provided, only these sub-strand IDs (from the loaded design) are scheduled. */
   selectedSubStrandIds?: string[];
+}
+
+/** Official KICD default weeks per term. */
+export function defaultWeeksForTerm(term: string): number {
+  const t = term.toLowerCase();
+  if (t.includes('1')) return 14;
+  if (t.includes('2')) return 13;
+  if (t.includes('3')) return 11;
+  return 13;
 }
 
 function formatThreeSLOs(slos: string[]): string {
@@ -108,8 +119,9 @@ export async function generateCurriculumScheme(
   const design = await findActiveCurriculumDesign(opts.grade, opts.subject, opts.term);
   if (!design) return null;
 
-  const totalWeeks = opts.totalWeeks ?? 13;
-  const midTermWeek = opts.midTermWeek ?? 8;
+  const totalWeeks = opts.totalWeeks ?? defaultWeeksForTerm(opts.term);
+  const midTermWeek = opts.midTermWeek ?? Math.max(1, Math.floor(totalWeeks / 2));
+  const hasBreak = midTermWeek > 0 && midTermWeek < totalWeeks;
   const lessonsPerWeek = opts.lessonsPerWeek ?? 5;
   const mode: CurriculumMode = opts.mode ?? 'lock';
   const flex = opts.flex ?? {};
@@ -117,9 +129,9 @@ export async function generateCurriculumScheme(
   const lessons = expandLessons(design, opts.selectedSubStrandIds);
   const totalCurriculumLessons = lessons.length;
 
-  // Teaching weeks = totalWeeks − mid-term break − final revision week
-  const teachingWeeks = totalWeeks - 2; // last week is revision, mid-term week 8 is break
-  const teachingCapacity = teachingWeeks * lessonsPerWeek;
+  // Teaching weeks = totalWeeks − (mid-term break, if any) − final revision week
+  const teachingWeeks = totalWeeks - (hasBreak ? 1 : 0) - 1;
+  const teachingCapacity = Math.max(0, teachingWeeks * lessonsPerWeek);
   const warnings: string[] = [];
   if (totalCurriculumLessons > teachingCapacity) {
     warnings.push(
@@ -134,7 +146,7 @@ export async function generateCurriculumScheme(
 
   for (let week = 1; week <= totalWeeks; week++) {
     // Mid-term break
-    if (week === midTermWeek) {
+    if (hasBreak && week === midTermWeek) {
       rows.push({
         week,
         lesson: '-',

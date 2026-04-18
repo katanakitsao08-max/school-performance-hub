@@ -15,7 +15,7 @@ import { FileText, BookOpen, Download, Printer, Pencil, RotateCcw, Lock, Unlock,
 import { useAuth } from '@/contexts/AuthContext';
 import { getCbcSubjectsForGrade } from '@/data/cbc-subjects';
 import { type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
-import { generateCurriculumScheme, generateCurriculumLessonPlan, type CurriculumMode } from '@/lib/curriculum-engine';
+import { generateCurriculumScheme, generateCurriculumLessonPlan, defaultWeeksForTerm, type CurriculumMode } from '@/lib/curriculum-engine';
 import { findActiveCurriculumDesign, type DbCurriculumDesign, type DbSubStrand } from '@/lib/curriculum-db';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
 import { Switch } from '@/components/ui/switch';
@@ -55,6 +55,19 @@ export default function ContentGenerationPage() {
   const [extraResources, setExtraResources] = useState('');
   const [design, setDesign] = useState<DbCurriculumDesign | null>(null);
   const [loadingDesign, setLoadingDesign] = useState(false);
+
+  // --- Term scheduling (teacher-customisable) ---
+  const [totalWeeks, setTotalWeeks] = useState<number>(13);
+  const [midTermWeek, setMidTermWeek] = useState<number>(7);
+
+  // Reset weeks/mid-term when term changes (use KICD defaults)
+  useEffect(() => {
+    if (term) {
+      const w = defaultWeeksForTerm(term);
+      setTotalWeeks(w);
+      setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+    }
+  }, [term]);
 
   // Subjects come strictly from CBC official list for the selected grade
   const subjects = useMemo(() => grade ? getCbcSubjectsForGrade(grade) : [], [grade]);
@@ -136,6 +149,8 @@ export default function ContentGenerationPage() {
     const result = await generateCurriculumScheme({
       grade, subject, term, mode: curriculumMode, flex,
       selectedSubStrandIds,
+      totalWeeks,
+      midTermWeek,
     });
     if (!result) {
       toast.error('Could not load the curriculum design');
@@ -381,6 +396,63 @@ export default function ContentGenerationPage() {
                       onCheckedChange={(v) => setCurriculumMode(v ? 'flex' : 'lock')}
                     />
                   </div>
+
+                  {/* Term scheduling — teacher overrides KICD defaults */}
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <p className="text-sm font-medium">Term scheduling</p>
+                        <p className="text-xs text-muted-foreground">
+                          KICD default for {term}: <strong>{defaultWeeksForTerm(term)} weeks</strong>. Adjust if your calendar differs.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7"
+                        onClick={() => {
+                          const w = defaultWeeksForTerm(term);
+                          setTotalWeeks(w);
+                          setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+                        }}
+                      >
+                        Reset to KICD
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Total weeks in this term</Label>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={20}
+                          value={totalWeeks}
+                          onChange={(e) => {
+                            const n = Math.max(2, Math.min(20, Number(e.target.value) || 2));
+                            setTotalWeeks(n);
+                            if (midTermWeek >= n) setMidTermWeek(Math.max(1, Math.floor(n / 2)));
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Mid-term break week <span className="text-muted-foreground">(0 = no break)</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={totalWeeks - 1}
+                          value={midTermWeek}
+                          onChange={(e) => {
+                            const n = Math.max(0, Math.min(totalWeeks - 1, Number(e.target.value) || 0));
+                            setMidTermWeek(n);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {curriculumMode === 'flex' && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
