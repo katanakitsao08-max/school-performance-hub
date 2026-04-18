@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, FileDown, User, School, Archive, Loader2, Sparkles } from 'lucide-react';
+import { Printer, FileDown, User, School, Archive, Loader2, Sparkles, MessageCircle } from 'lucide-react';
+import { WhatsAppSendDialog, type WhatsAppRecipient } from '@/components/WhatsAppSendDialog';
 import { toast } from 'sonner';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
@@ -41,6 +42,9 @@ export default function ReportsPage() {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [generatingPrincipalRemark, setGeneratingPrincipalRemark] = useState<string | null>(null);
   const [batchGeneratingRemarks, setBatchGeneratingRemarks] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [waRecipients, setWaRecipients] = useState<WhatsAppRecipient[]>([]);
+  const [waTitle, setWaTitle] = useState<string>('Send Reports via WhatsApp');
   const reportRef = useRef<HTMLDivElement>(null);
 
   // For headteacher/admin: school-wide report
@@ -812,6 +816,20 @@ export default function ReportsPage() {
                     <><Archive className="mr-2 h-4 w-4" /> Batch Report Cards (ZIP)</>
                   )}
                 </Button>
+                <Button
+                  variant="secondary"
+                  disabled={reportData.length === 0}
+                  onClick={() => {
+                    setWaRecipients(reportData.map((l: any) => ({
+                      learner_id: l.id, full_name: l.full_name, grade: l.grade,
+                      recipient: (l as any).parent_phone || '',
+                    })));
+                    setWaTitle(`Send ${reportData.length} report${reportData.length === 1 ? '' : 's'} via WhatsApp`);
+                    setWaOpen(true);
+                  }}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" /> Send via WhatsApp
+                </Button>
                 <Button variant="secondary" onClick={batchGeneratePrincipalRemarks} disabled={batchGeneratingRemarks || reportData.length === 0}>
                   {batchGeneratingRemarks ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Remarks...</>
@@ -821,12 +839,40 @@ export default function ReportsPage() {
                 </Button>
               </>
             ) : selectedLearnerData && (
-              <Button variant="outline" onClick={() => exportIndividualPDF()}>
-                <User className="mr-2 h-4 w-4" /> Download Report Card
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => exportIndividualPDF()}>
+                  <User className="mr-2 h-4 w-4" /> Download Report Card
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setWaRecipients([{
+                      learner_id: selectedLearnerData.id,
+                      full_name: selectedLearnerData.full_name,
+                      grade: selectedLearnerData.grade,
+                      recipient: (selectedLearnerData as any).parent_phone || '',
+                    }]);
+                    setWaTitle(`Send ${selectedLearnerData.full_name}'s report via WhatsApp`);
+                    setWaOpen(true);
+                  }}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" /> Send via WhatsApp
+                </Button>
+              </>
             )}
           </div>
         </div>
+        <WhatsAppSendDialog
+          open={waOpen}
+          onOpenChange={setWaOpen}
+          recipients={waRecipients}
+          term={selectedTerm}
+          year={selectedYear}
+          assessmentType={selectedAssessment}
+          schoolName={schoolName}
+          title={waTitle}
+        />
+
 
         <div className="flex gap-4 flex-wrap no-print items-end">
           <div className="space-y-1">

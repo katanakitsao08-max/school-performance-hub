@@ -438,6 +438,130 @@ export type Database = {
           },
         ]
       }
+      report_delivery_log: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          learner_id: string
+          provider_message_id: string | null
+          recipient: string
+          school_id: string
+          sent_by: string
+          share_link_id: string | null
+          status: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          learner_id: string
+          provider_message_id?: string | null
+          recipient: string
+          school_id: string
+          sent_by: string
+          share_link_id?: string | null
+          status?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          learner_id?: string
+          provider_message_id?: string | null
+          recipient?: string
+          school_id?: string
+          sent_by?: string
+          share_link_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_delivery_log_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_delivery_log_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_delivery_log_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "report_share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_share_links: {
+        Row: {
+          assessment_type: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          learner_id: string
+          school_id: string
+          term: number
+          token: string
+          view_count: number
+          year: number
+        }
+        Insert: {
+          assessment_type?: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          learner_id: string
+          school_id: string
+          term: number
+          token: string
+          view_count?: number
+          year: number
+        }
+        Update: {
+          assessment_type?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          learner_id?: string
+          school_id?: string
+          term?: number
+          token?: string
+          view_count?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_share_links_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_share_links_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_settings: {
         Row: {
           created_at: string

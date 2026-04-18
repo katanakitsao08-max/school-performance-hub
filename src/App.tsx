@@ -33,6 +33,7 @@ import TimetablePage from "./pages/TimetablePage";
 import TimetableKeysPage from "./pages/TimetableKeysPage";
 import FeesPage from "./pages/FeesPage";
 import ParentDashboard from "./pages/ParentDashboard";
+import SharedReportPage from "./pages/SharedReportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/r/:token" element={<SharedReportPage />} />
               <Route path="/" element={<SmartRedirect />} />
               {/* Super Admin routes */}
               <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
