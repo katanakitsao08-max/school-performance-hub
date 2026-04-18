@@ -35,13 +35,24 @@ export interface CurriculumGenerateOptions {
   grade: string;
   subject: string;
   term: string;
-  totalWeeks?: number;        // default 13 (10 teaching + 1 break + 1 assessment + 1 revision)
-  midTermWeek?: number;       // default 8
+  /** Default weeks per term: T1=14, T2=13, T3=11. Teacher can override. */
+  totalWeeks?: number;
+  /** Which week is the mid-term break. Defaults to middle of term. Pass 0 to disable break. */
+  midTermWeek?: number;
   lessonsPerWeek?: number;    // default 5
   mode?: CurriculumMode;      // default 'lock'
   flex?: FlexAdditions;
   /** When provided, only these sub-strand IDs (from the loaded design) are scheduled. */
   selectedSubStrandIds?: string[];
+}
+
+/** Official KICD default weeks per term. */
+export function defaultWeeksForTerm(term: string): number {
+  const t = term.toLowerCase();
+  if (t.includes('1')) return 14;
+  if (t.includes('2')) return 13;
+  if (t.includes('3')) return 11;
+  return 13;
 }
 
 function formatThreeSLOs(slos: string[]): string {
