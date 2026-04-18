@@ -402,7 +402,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     const leftW = hasDist ? cw * 0.55 : (hasTermHistory ? cw * 0.58 : cw - 4);
     const graphX = mx + 2;
 
-    doc.setFontSize(10);
+    doc.setFontSize(isKJSEAOnePage ? 8 : 10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...BRAND);
     doc.text('SUBJECT PERFORMANCE GRAPH', graphX, y);
@@ -412,7 +412,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     } else if (hasTermHistory) {
       doc.text('PERFORMANCE TREND', mx + cw * 0.62, y);
     }
-    y += 5;
+    y += isKJSEAOnePage ? 3 : 5;
 
     const barAreaW = leftW - 18;
     const barCount = data.subjectData.length;
