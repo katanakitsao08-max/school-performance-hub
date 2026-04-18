@@ -70,11 +70,34 @@ export default function ContentGenerationPage() {
       toast.error('Please select Grade, Subject, and Term');
       return;
     }
+
+    // 1. KICD-locked path — pull EVERYTHING from the curriculum design
+    if (kicdAvailable) {
+      const flex = curriculumMode === 'flex' ? {
+        extraActivities: extraActivities.split('\n').map(s => s.trim()).filter(Boolean),
+        extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
+      } : undefined;
+      const result = generateCurriculumScheme({
+        grade, subject, term, mode: curriculumMode, flex,
+      });
+      if (result) {
+        setSchemeRows(result.rows);
+        setEditingScheme(false);
+        if (result.warnings.length > 0) {
+          toast.warning(result.warnings[0]);
+        } else {
+          toast.success(`KICD curriculum loaded — ${result.scheduledLessons} lessons scheduled (${curriculumMode === 'lock' ? 'Lock' : 'Flex'} mode)`);
+        }
+        return;
+      }
+    }
+
+    // 2. Fallback to legacy generic generator (uses cbcCurriculum starter dataset)
     const allStrands = getAllStrandsForTerm(grade, subject, term);
     const rows = generateSchemeOfWork(grade, subject, term, allStrands);
     setSchemeRows(rows);
     setEditingScheme(false);
-    toast.success('Scheme of Work generated successfully');
+    toast.success('Scheme of Work generated (generic template)');
   };
 
   const handleGenerateLesson = () => {
