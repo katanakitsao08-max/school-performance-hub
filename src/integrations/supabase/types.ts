@@ -100,6 +100,148 @@ export type Database = {
           },
         ]
       }
+      curriculum_designs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          grade: string
+          id: string
+          notes: string | null
+          source: Database["public"]["Enums"]["curriculum_source"]
+          status: Database["public"]["Enums"]["curriculum_status"]
+          subject: string
+          term: number
+          title: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          grade: string
+          id?: string
+          notes?: string | null
+          source?: Database["public"]["Enums"]["curriculum_source"]
+          status?: Database["public"]["Enums"]["curriculum_status"]
+          subject: string
+          term: number
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          grade?: string
+          id?: string
+          notes?: string | null
+          source?: Database["public"]["Enums"]["curriculum_source"]
+          status?: Database["public"]["Enums"]["curriculum_status"]
+          subject?: string
+          term?: number
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      curriculum_strands: {
+        Row: {
+          created_at: string
+          design_id: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          design_id: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          design_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_strands_design_id_fkey"
+            columns: ["design_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curriculum_sub_strands: {
+        Row: {
+          activities: string[]
+          assessment_methods: string[]
+          competencies: string[]
+          created_at: string
+          id: string
+          inquiry_questions: string[]
+          lesson_allocation: number
+          name: string
+          pcis: string[]
+          resources: string[]
+          slos: string[]
+          sort_order: number
+          strand_id: string
+          values: string[]
+        }
+        Insert: {
+          activities?: string[]
+          assessment_methods?: string[]
+          competencies?: string[]
+          created_at?: string
+          id?: string
+          inquiry_questions?: string[]
+          lesson_allocation?: number
+          name: string
+          pcis?: string[]
+          resources?: string[]
+          slos?: string[]
+          sort_order?: number
+          strand_id: string
+          values?: string[]
+        }
+        Update: {
+          activities?: string[]
+          assessment_methods?: string[]
+          competencies?: string[]
+          created_at?: string
+          id?: string
+          inquiry_questions?: string[]
+          lesson_allocation?: number
+          name?: string
+          pcis?: string[]
+          resources?: string[]
+          slos?: string[]
+          sort_order?: number
+          strand_id?: string
+          values?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_sub_strands_strand_id_fkey"
+            columns: ["strand_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_strands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_records: {
         Row: {
           amount_charged: number
@@ -1074,6 +1216,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "teacher" | "headteacher" | "super_admin" | "parent"
+      curriculum_source: "manual" | "ai_pdf"
+      curriculum_status: "draft" | "review" | "approved" | "active" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1202,6 +1346,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "headteacher", "super_admin", "parent"],
+      curriculum_source: ["manual", "ai_pdf"],
+      curriculum_status: ["draft", "review", "approved", "active", "archived"],
     },
   },
 } as const
