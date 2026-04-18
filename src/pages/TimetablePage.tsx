@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Lock, Unlock, Sparkles, Download, AlertTriangle } from 'lucide-react';
+import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import {
