@@ -73,7 +73,7 @@ export default function ReportsPage() {
   }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
 
   // Drop any selected streams that are no longer valid for the current grade level.
-  useMemo(() => {
+  useEffect(() => {
     if (isSchoolWide) return;
     const valid = new Set(dbStreams);
     setSelectedStreams(prev => {
