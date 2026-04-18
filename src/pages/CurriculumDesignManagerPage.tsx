@@ -437,11 +437,22 @@ export default function CurriculumDesignManagerPage() {
               <CardHeader><CardTitle className="text-base">Auto-seed from KICD PDF</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Upload a KICD curriculum PDF directly — it'll be parsed on the server and structured by AI
-                  into Grade, Subject, Term, Strands, Sub-strands, SLOs and activities. Or paste raw text as a fallback.
-                  Scanned/image-only PDFs aren't supported (use a text PDF). Max 25 MB.
+                  Upload a KICD curriculum PDF — it'll be parsed on the server and structured by AI into
+                  Strands, Sub-strands, SLOs and activities. Choose <strong>Whole year</strong> if the PDF
+                  covers all 3 terms — the system will split it into Term 1 (14 wks), Term 2 (13 wks) and
+                  Term 3 (12 wks). Max 25 MB; scanned image-only PDFs aren't supported.
                 </p>
-                <div className="grid md:grid-cols-3 gap-3">
+                <div className="grid md:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Coverage</Label>
+                    <Select value={hintCoverage} onValueChange={(v) => setHintCoverage(v as "year" | "term")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="year">Whole year (auto-split T1/T2/T3)</SelectItem>
+                        <SelectItem value="term">Single term</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div>
                     <Label className="text-xs">Grade hint (optional)</Label>
                     <Input value={hintGrade} onChange={(e) => setHintGrade(e.target.value)} placeholder="e.g. Grade 3" />
@@ -451,8 +462,8 @@ export default function CurriculumDesignManagerPage() {
                     <Input value={hintSubject} onChange={(e) => setHintSubject(e.target.value)} placeholder="e.g. Mathematics" />
                   </div>
                   <div>
-                    <Label className="text-xs">Term hint (optional)</Label>
-                    <Select value={hintTerm} onValueChange={setHintTerm}>
+                    <Label className="text-xs">Term hint {hintCoverage === "year" ? "(disabled — whole year)" : "(optional)"}</Label>
+                    <Select value={hintTerm} onValueChange={setHintTerm} disabled={hintCoverage === "year"}>
                       <SelectTrigger><SelectValue placeholder="Auto-detect" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">Term 1</SelectItem>
