@@ -16,7 +16,12 @@ You will be given the raw text of an official KICD curriculum design document.
 Extract the curriculum into a strict JSON structure.
 
 Rules:
-- Identify ONE grade (e.g. "Grade 3"), ONE subject (e.g. "Mathematics"), ONE term (1, 2, or 3).
+- Identify ONE grade (e.g. "Grade 3"), ONE subject (e.g. "Mathematics").
+- Detect the document's coverage: "year" if it covers the WHOLE YEAR (all three terms),
+  or "term" if it covers a single term (1, 2, or 3).
+- If coverage = "year", set "term" to 0 and, for EACH sub-strand, set its "term_hint"
+  to 1, 2 or 3 if the document indicates which term it belongs to. If unclear, leave term_hint as 0.
+- If coverage = "term", set "term" to that term number and leave every sub-strand's "term_hint" as 0.
 - Group content by Strand → Sub-strand.
 - For every sub-strand, capture: lesson_allocation (integer, default 1 if unclear),
   specific learning outcomes (slos), suggested learning experiences (activities),
@@ -81,7 +86,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { pdfText, pdfBase64, hintGrade, hintSubject, hintTerm } = body ?? {};
+    const { pdfText, pdfBase64, hintGrade, hintSubject, hintTerm, hintCoverage } = body ?? {};
 
     let workingText: string = typeof pdfText === "string" ? pdfText : "";
 
@@ -122,7 +127,7 @@ Deno.serve(async (req) => {
       hintGrade ? `Hint - Grade: ${hintGrade}\n` : ""
     }${hintSubject ? `Hint - Subject: ${hintSubject}\n` : ""}${
       hintTerm ? `Hint - Term: ${hintTerm}\n` : ""
-    }\nKICD Curriculum Document Text:\n---\n${trimmedText}\n---`;
+    }${hintCoverage ? `Hint - Coverage: ${hintCoverage} (the user says this document covers ${hintCoverage === 'year' ? 'the WHOLE year' : 'a single term'})\n` : ""}\nKICD Curriculum Document Text:\n---\n${trimmedText}\n---`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -147,7 +152,8 @@ Deno.serve(async (req) => {
                 properties: {
                   grade: { type: "string" },
                   subject: { type: "string" },
-                  term: { type: "integer" },
+                  coverage: { type: "string", enum: ["year", "term"] },
+                  term: { type: "integer", description: "0 if coverage=year, else 1|2|3" },
                   title: { type: "string" },
                   strands: {
                     type: "array",
@@ -161,6 +167,7 @@ Deno.serve(async (req) => {
                             type: "object",
                             properties: {
                               name: { type: "string" },
+                              term_hint: { type: "integer", description: "1|2|3 when coverage=year and the document says which term, else 0" },
                               lesson_allocation: { type: "integer" },
                               slos: { type: "array", items: { type: "string" } },
                               activities: { type: "array", items: { type: "string" } },
@@ -179,7 +186,7 @@ Deno.serve(async (req) => {
                     },
                   },
                 },
-                required: ["grade", "subject", "term", "strands"],
+                required: ["grade", "subject", "coverage", "term", "strands"],
               },
             },
           },
