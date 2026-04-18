@@ -51,7 +51,7 @@ export default function SharedReportPage() {
     const mean = subjectData.length ? total / subjectData.length : 0;
     const avgMax = subjectData.length ? maxTotal / subjectData.length : 100;
     const overallGrade = subjectData.length ? getGradeForLevel(mean, avgMax, learner.grade) : '-';
-    const totalPoints = subjectData.reduce((s, d) => s + getGradePoints(d.grade as any, learner.grade), 0);
+    const totalPoints = subjectData.reduce((s, d) => s + getGradePoints(d.grade as any), 0);
 
     return {
       learner: {

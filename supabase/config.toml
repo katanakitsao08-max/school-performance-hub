@@ -1,1 +1,4 @@
 project_id = "eumfdhxgwyahphlogbrz"
+
+[functions.view-shared-report]
+verify_jwt = false
