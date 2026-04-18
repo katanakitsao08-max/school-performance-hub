@@ -86,12 +86,12 @@ export default function MarksEntryPage() {
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // For privileged users, fetch all streams
+  // For privileged users, fetch all streams (with level for filtering)
   const { data: dbStreams = [] } = useQuery({
-    queryKey: ['streams', schoolId],
+    queryKey: ['streams-with-level', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('name').eq('school_id', schoolId!).order('name');
-      return (data || []).map((s: any) => s.name);
+      const { data } = await supabase.from('streams').select('name, level').eq('school_id', schoolId!).order('name');
+      return (data || []) as { name: string; level: string }[];
     },
     enabled: isPrivileged && !!schoolId,
   });
@@ -103,7 +103,11 @@ export default function MarksEntryPage() {
   }, [isPrivileged, dynamicGrades, assignmentCombos]);
 
   const availableStreams = useMemo(() => {
-    if (isPrivileged) return dbStreams;
+    if (isPrivileged) {
+      if (!selectedGrade) return [] as string[];
+      const lvl = getGradeLevel(selectedGrade);
+      return dbStreams.filter(s => (s.level || 'primary') === lvl).map(s => s.name);
+    }
     return [...new Set(assignmentCombos.filter(c => c.grade === selectedGrade).map(c => c.stream))];
   }, [isPrivileged, dbStreams, assignmentCombos, selectedGrade]);
 
