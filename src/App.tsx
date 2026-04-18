@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
@@ -62,6 +63,47 @@ function SmartRedirect() {
   return <Navigate to="/dashboard" replace />;
 }
 
+/**
+ * On a hard refresh (initial app mount), send the user back to their dashboard
+ * instead of staying on the deep-linked page. Public routes (login, shared
+ * report links, root) are exempt so they keep working on direct visits.
+ */
+function RefreshRedirector() {
+  const { user, role, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (handled.current) return;
+    if (loading) return;
+
+    const path = location.pathname;
+    const exempt =
+      path === '/' ||
+      path === '/login' ||
+      path === '/forgot-password' ||
+      path === '/reset-password' ||
+      path.startsWith('/r/');
+
+    handled.current = true;
+
+    if (exempt || !user) return;
+
+    const target =
+      role === 'super_admin' ? '/super-admin' :
+      role === 'parent' ? '/parent' :
+      '/dashboard';
+
+    if (path !== target) {
+      navigate(target, { replace: true });
+    }
+  }, [loading, user, role, location.pathname, navigate]);
+
+  return null;
+}
+
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -70,6 +112,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <RefreshRedirector />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
