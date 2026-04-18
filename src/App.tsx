@@ -102,7 +102,7 @@ const App = () => (
               <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
               {/* Parent routes */}
               <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<SmartRedirect />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
