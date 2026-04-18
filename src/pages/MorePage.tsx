@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, BookOpen, GraduationCap, Columns, UserCog, BarChart3,
   MessageSquare, ArrowUpCircle, Settings, PieChart, Activity,
-  CalendarCheck, LogOut, ChevronRight, Building2, Wallet
+  CalendarCheck, LogOut, ChevronRight, Building2, Wallet, Calendar, FileEdit
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -35,6 +35,13 @@ const adminMenuSections = [
     ],
   },
   {
+    title: "Planning",
+    items: [
+      { title: "Timetable", icon: Calendar, to: "/timetable" },
+      { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
+    ],
+  },
+  {
     title: "Other",
     items: [
       { title: "SMS", icon: MessageSquare, to: "/sms" },
@@ -50,6 +57,8 @@ const teacherMenuSections = [
     items: [
       { title: "Attendance", icon: CalendarCheck, to: "/attendance" },
       { title: "Performance Tracking", icon: Activity, to: "/performance-tracking" },
+      { title: "Timetable", icon: Calendar, to: "/timetable" },
+      { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
     ],
   },
 ];
@@ -61,6 +70,13 @@ const headteacherMenuSections = [
       { title: "Grade Analysis", icon: PieChart, to: "/grade-analysis" },
       { title: "Performance Tracking", icon: Activity, to: "/performance-tracking" },
       { title: "Analytics", icon: BarChart3, to: "/analytics" },
+    ],
+  },
+  {
+    title: "Planning",
+    items: [
+      { title: "Timetable", icon: Calendar, to: "/timetable" },
+      { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
     ],
   },
 ];
