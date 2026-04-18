@@ -179,13 +179,32 @@ serve(async (req) => {
         `View/Download: ${url}\n` +
         `(Link expires in 48 hours)`;
 
-      // 2. Try WhatsApp, fall back to SMS
-      let send = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
+      // 2. Try WhatsApp, fall back to SMS on ANY failure (404, auth, network, etc.)
+      let send: { ok: boolean; providerId: string | null; error: string | null };
       let usedChannel: 'whatsapp' | 'sms' = 'whatsapp';
-      if (!send.ok) {
-        // fallback
-        const smsSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'sms' });
-        if (smsSend.ok) { send = smsSend; usedChannel = 'sms'; }
+      let waError: string | null = null;
+      try {
+        const waSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
+        if (waSend.ok) {
+          send = waSend;
+        } else {
+          waError = waSend.error;
+          throw new Error(waSend.error || 'whatsapp failed');
+        }
+      } catch (waErr: any) {
+        if (!waError) waError = waErr?.message || 'whatsapp failed';
+        // Always fall back to SMS — sandbox plans don't support WhatsApp
+        usedChannel = 'sms';
+        try {
+          const smsSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'sms' });
+          if (smsSend.ok) {
+            send = { ok: true, providerId: smsSend.providerId, error: null };
+          } else {
+            send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS also failed: ${smsSend.error}` };
+          }
+        } catch (smsErr: any) {
+          send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS error: ${smsErr?.message || smsErr}` };
+        }
       }
 
       await supabaseAdmin.from('report_delivery_log').insert({
