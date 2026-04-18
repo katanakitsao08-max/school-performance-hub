@@ -185,23 +185,27 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   }
 
   // Info fields — two rows, three columns
-  const infoStartX = photoX + photoSize + 8;
+  const infoStartX = photoX + photoSize + (isKJSEAOnePage ? 5 : 8);
   const col2X = mx + cw * 0.42;
   const col3X = mx + cw * 0.72;
 
   const infoField = (label: string, value: string, x: number, iy: number) => {
-    doc.setFontSize(7);
+    doc.setFontSize(isKJSEAOnePage ? 6 : 7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...MID);
     doc.text(label.toUpperCase(), x, iy);
-    doc.setFontSize(10);
+    doc.setFontSize(isKJSEAOnePage ? 8.5 : 10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...DARK);
-    doc.text(value, x, iy + 5);
+    const maxW = (col2X - infoStartX) - 2;
+    const truncated = isKJSEAOnePage && doc.getTextWidth(value) > maxW
+      ? doc.splitTextToSize(value, maxW)[0]
+      : value;
+    doc.text(truncated, x, iy + (isKJSEAOnePage ? 4 : 5));
   };
 
-  const row1Y = y + 7;
-  const row2Y = y + 18;
+  const row1Y = y + (isKJSEAOnePage ? 5 : 7);
+  const row2Y = y + (isKJSEAOnePage ? 13 : 18);
   infoField('Student Name', data.learner.full_name, infoStartX, row1Y);
   infoField('Adm No.', data.learner.admission_number, col2X, row1Y);
   infoField('Gender', data.learner.gender, col3X, row1Y);
@@ -209,16 +213,16 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   infoField('Stream Pos.', `${data.streamRank} of ${data.totalInStream}`, col2X, row2Y);
   infoField('Overall Pos.', `${data.rank} of ${data.totalInClass}`, col3X, row2Y);
 
-  y += infoH + 5;
+  y += infoH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── SUBJECT PERFORMANCE TABLE ──
   // ═══════════════════════════════════════════════════
-  doc.setFontSize(11);
+  doc.setFontSize(isKJSEAOnePage ? 9 : 11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...BRAND);
   doc.text('SUBJECT PERFORMANCE', mx, y + 1);
-  y += 5;
+  y += isKJSEAOnePage ? 3.5 : 5;
 
   const subjectHeaders = ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
   const subjectBody = data.subjectData.map((s, i) => {
