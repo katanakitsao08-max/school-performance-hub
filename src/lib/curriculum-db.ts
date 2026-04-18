@@ -69,6 +69,17 @@ function gradeCandidates(grade: string): string[] {
   return Array.from(out);
 }
 
+/** Normalize a subject name so "Creative Arts Activities" ≈ "Creative Activities" ≈ "creative-arts". */
+function normalizeSubject(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\bactivities\b/g, "")
+    .replace(/\band\b/g, "")
+    .replace(/\bthe\b/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
 /** Find the ACTIVE curriculum design for a given grade/subject/term. */
 export async function findActiveCurriculumDesign(
   grade: string,
@@ -78,17 +89,28 @@ export async function findActiveCurriculumDesign(
   const termInt = termToInt(term);
   const grades = gradeCandidates(grade);
 
-  const { data: design, error } = await supabase
+  // Pull all active designs for this grade-band & term, then match subject by
+  // normalized name (so "Creative Activities" matches "Creative Arts Activities", etc.).
+  const { data: candidates, error } = await supabase
     .from("curriculum_designs")
     .select("id, grade, subject, term, version, title")
     .in("grade", grades)
-    .ilike("subject", subject)
     .eq("term", termInt)
     .eq("status", "active")
-    .order("version", { ascending: false })
-    .maybeSingle();
+    .order("version", { ascending: false });
 
-  if (error || !design) return null;
+  if (error || !candidates?.length) return null;
+
+  const wanted = normalizeSubject(subject);
+  let design = candidates.find((d) => normalizeSubject(d.subject) === wanted);
+  if (!design) {
+    // Loose fallback: substring either direction
+    design = candidates.find((d) => {
+      const n = normalizeSubject(d.subject);
+      return n.includes(wanted) || wanted.includes(n);
+    });
+  }
+  if (!design) return null;
 
   const { data: strands } = await supabase
     .from("curriculum_strands")
@@ -136,16 +158,6 @@ export async function hasActiveCurriculumDesign(
   subject: string,
   term: string | number,
 ): Promise<boolean> {
-  const termInt = termToInt(term);
-  const grades = gradeCandidates(grade);
-  const { data } = await supabase
-    .from("curriculum_designs")
-    .select("id")
-    .in("grade", grades)
-    .ilike("subject", subject)
-    .eq("term", termInt)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-  return !!data;
+  const d = await findActiveCurriculumDesign(grade, subject, term);
+  return !!d;
 }
