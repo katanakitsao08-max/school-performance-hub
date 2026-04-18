@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StrandMarksEntry from '@/components/StrandMarksEntry';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
+import { getGradeLevel } from '@/lib/grade-levels';
 
 interface AssignmentOption {
   grade: string;
