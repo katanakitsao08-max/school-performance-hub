@@ -53,13 +53,22 @@ export default function ReportsPage() {
   const selectedStream = selectedStreams[0] || '';
   const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join('+');
 
-  const { data: dbStreams = [] } = useQuery({
-    queryKey: ['streams'],
+  const { data: dbStreamsRaw = [] } = useQuery({
+    queryKey: ['streams-with-level', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('name').order('name');
-      return (data || []).map((s: any) => s.name as string);
+      const { data } = await supabase.from('streams').select('name, level').eq('school_id', schoolId!).order('name');
+      return (data || []) as { name: string; level: string }[];
     },
+    enabled: !!schoolId,
   });
+
+  // When not school-wide: filter streams to only those matching the selected grade's level.
+  const dbStreams = useMemo(() => {
+    if (isSchoolWide) return dbStreamsRaw.map(s => s.name);
+    if (!selectedGrade) return [] as string[];
+    const lvl = getGradeLevel(selectedGrade);
+    return dbStreamsRaw.filter(s => (s.level || 'primary') === lvl).map(s => s.name);
+  }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
 
   const { data: schoolSettings = {} } = useQuery({
     queryKey: ['school-settings-map', schoolId],
