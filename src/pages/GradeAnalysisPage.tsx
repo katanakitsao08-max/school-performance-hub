@@ -97,15 +97,10 @@ export default function GradeAnalysisPage() {
     enabled: learners.length > 0,
   });
 
-  // Exclude learners with no scores
-  const filteredLearners = useMemo(() => {
-    const learnerIdsWithScores = new Set(scores.map(s => s.learner_id));
-    return learners.filter(l => learnerIdsWithScores.has(l.id));
-  }, [learners, scores]);
-
+  // Use ALL enrolled learners in scope for counts; computeGradeAnalysis handles per-subject entries
   const analysis: GradeAnalysisReport = useMemo(
-    () => computeGradeAnalysis(filteredLearners, subjects, scores),
-    [filteredLearners, subjects, scores]
+    () => computeGradeAnalysis(learners, subjects, scores),
+    [learners, subjects, scores]
   );
 
   const { data: schoolSettings = {} } = useQuery({
