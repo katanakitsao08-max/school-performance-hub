@@ -104,13 +104,13 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   // ═══════════════════════════════════════════════════
   // ── HEADER BAND ──
   // ═══════════════════════════════════════════════════
-  const headerH = 32;
+  const headerH = isKJSEAOnePage ? 22 : 32;
   doc.setFillColor(...BRAND);
   doc.rect(0, 0, pw, headerH, 'F');
 
   // Logo
-  const logoSize = 22;
-  const logoX = mx + 3;
+  const logoSize = isKJSEAOnePage ? 16 : 22;
+  const logoX = mx + 2;
   const logoY = (headerH - logoSize) / 2;
   if (data.logoBase64) {
     doc.addImage(data.logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
@@ -120,13 +120,13 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   }
 
   // School name — large
-  const textX = logoX + logoSize + 6;
-  doc.setFontSize(18);
+  const textX = logoX + logoSize + 5;
+  doc.setFontSize(isKJSEAOnePage ? 14 : 18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text(schoolName.toUpperCase(), textX, 13);
+  doc.text(schoolName.toUpperCase(), textX, isKJSEAOnePage ? 9 : 13);
 
-  if (schoolMotto) {
+  if (schoolMotto && !isKJSEAOnePage) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(220, 235, 220);
@@ -135,28 +135,34 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
 
   const contactParts = [schoolAddress, schoolPhone, schoolEmail].filter(Boolean);
   if (contactParts.length) {
-    doc.setFontSize(7.5);
+    doc.setFontSize(isKJSEAOnePage ? 6.5 : 7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(200, 220, 200);
-    doc.text(contactParts.join('  •  '), textX, 25);
+    doc.text(contactParts.join('  •  '), textX, isKJSEAOnePage ? 14 : 25);
+  }
+  if (isKJSEAOnePage && schoolMotto) {
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(220, 235, 220);
+    doc.text(`"${schoolMotto}"`, textX, 19);
   }
 
   // Report title — right side
-  doc.setFontSize(10);
+  doc.setFontSize(isKJSEAOnePage ? 8.5 : 10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('ACADEMIC REPORT CARD', pw - mx - 2, 13, { align: 'right' });
-  doc.setFontSize(9);
+  doc.text('ACADEMIC REPORT CARD', pw - mx - 2, isKJSEAOnePage ? 9 : 13, { align: 'right' });
+  doc.setFontSize(isKJSEAOnePage ? 7.5 : 9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 220, 200);
-  doc.text(`Term ${data.selectedTerm}  •  ${data.assessmentLabel}  •  ${data.selectedYear}`, pw - mx - 2, 20, { align: 'right' });
+  doc.text(`Term ${data.selectedTerm}  •  ${data.assessmentLabel}  •  ${data.selectedYear}`, pw - mx - 2, isKJSEAOnePage ? 15 : 20, { align: 'right' });
 
-  y = headerH + 5;
+  y = headerH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── STUDENT INFO CARD ──
   // ═══════════════════════════════════════════════════
-  const infoH = 26;
+  const infoH = isKJSEAOnePage ? 18 : 26;
   doc.setFillColor(...LIGHT_BG);
   doc.roundedRect(mx, y, cw, infoH, 2, 2, 'F');
   doc.setDrawColor(...BORDER);
@@ -164,7 +170,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   doc.roundedRect(mx, y, cw, infoH, 2, 2, 'S');
 
   // Student photo / initials
-  const photoSize = 20;
+  const photoSize = isKJSEAOnePage ? 14 : 20;
   const photoX = mx + 4;
   const photoY = y + (infoH - photoSize) / 2;
   if (data.learner.photoBase64) {
