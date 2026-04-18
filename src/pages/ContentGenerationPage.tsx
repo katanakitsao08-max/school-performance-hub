@@ -8,11 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw } from 'lucide-react';
+import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw, Lock, Unlock, ShieldCheck, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getGrades, getSubjects, getTerms, getStrands, getSubStrands, getSLOs, getAllStrandsForTerm } from '@/data/cbc-curriculum';
 import { generateSchemeOfWork, generateLessonPlan, type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
+import { generateCurriculumScheme, type CurriculumMode } from '@/lib/curriculum-engine';
+import { hasCurriculumDesign } from '@/data/cbc-curriculum-designs';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function ContentGenerationPage() {
