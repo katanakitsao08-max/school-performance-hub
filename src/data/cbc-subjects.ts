@@ -40,26 +40,27 @@ const UPPER_PRIMARY: string[] = [
   'Social Studies',
 ];
 
-const JUNIOR_SECONDARY: string[] = [
-  'English',
-  'Kiswahili / Kenyan Sign Language',
-  'Mathematics',
-  'Integrated Science',
-  'Pre-Technical Studies',
-  'Social Studies',
-  'Religious Education (CRE/IRE/HRE)',
-  'Business Studies',
-  'Agriculture',
-  'Life Skills Education',
-  'Sports and Physical Education',
-  'Creative Arts and Sports',
-  'Visual Arts',
-  'Performing Arts',
-  'Computer Science',
-  'Home Science',
-  'Indigenous Languages',
-  'Foreign Languages (Arabic/French/German/Mandarin)',
-];
+// Official KICD Junior School (Grades 7–9) lesson allocation per week
+const JUNIOR_SECONDARY_ALLOCATION: Record<string, number> = {
+  'English': 5,
+  'Kiswahili / Kenya Sign Language': 4,
+  'Mathematics': 5,
+  'Religious Education': 4,
+  'Social Studies': 4,
+  'Integrated Science': 5,
+  'Pre-Technical Studies': 4,
+  'Agriculture and Nutrition': 4,
+  'Creative Arts and Sports': 5,
+};
+const JUNIOR_SECONDARY: string[] = Object.keys(JUNIOR_SECONDARY_ALLOCATION);
+
+/** Returns the official KICD lessons-per-week for a (grade, subject), or null if not specified. */
+export function getOfficialLessonsPerWeek(grade: string, subject: string): number | null {
+  if (getCbcBand(grade) === 'junior-secondary') {
+    return JUNIOR_SECONDARY_ALLOCATION[subject] ?? null;
+  }
+  return null;
+}
 
 export function getCbcBand(grade: string): CbcBand {
   const g = grade.trim().toLowerCase();
