@@ -1176,6 +1176,27 @@ export default function ReportsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
+                  {!isSchoolWide && selectedGrades.length === 1 && subjectMeans.length > 0 && (
+                    <tfoot className="bg-muted/40 font-semibold border-t-2">
+                      <TableRow>
+                        <TableCell colSpan={(isSchoolWide || selectedGrades.length > 1) ? 3 : 2} className="text-right uppercase text-xs tracking-wide">
+                          Subject Mean
+                        </TableCell>
+                        {gradeSubjects.map(sub => {
+                          const sm = subjectMeans.find(m => m.name === sub.name);
+                          return (
+                            <TableCell key={sub.id} className="text-center">
+                              {sm ? sm.mean.toFixed(1) : '-'}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-center">{reportData.reduce((a, l) => a + l.total, 0) ? (reportData.reduce((a, l) => a + l.total, 0) / reportData.length).toFixed(1) : '-'}</TableCell>
+                        <TableCell className="text-center">{classMean.toFixed(1)}</TableCell>
+                        <TableCell className="text-center">—</TableCell>
+                        <TableCell className="text-center">—</TableCell>
+                      </TableRow>
+                    </tfoot>
+                  )}
                 </Table>
                 <div className="p-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div><span className="text-muted-foreground">Class Mean:</span> <strong>{classMean.toFixed(1)}</strong></div>
@@ -1183,16 +1204,6 @@ export default function ReportsPage() {
                   <div><span className="text-muted-foreground">Lowest Total:</span> <strong>{lowest}</strong></div>
                   <div><span className="text-muted-foreground">Total Learners:</span> <strong>{reportData.length}</strong></div>
                 </div>
-                {!isSchoolWide && selectedGrades.length === 1 && subjectMeans.length > 0 && (
-                  <div className="p-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-2">Subject Means:</p>
-                    <div className="flex flex-wrap gap-3">
-                      {subjectMeans.map(s => (
-                        <Badge key={s.name} variant="secondary">{s.name}: {s.mean.toFixed(1)}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
