@@ -37,6 +37,38 @@ function termToInt(t: string | number): number {
   return m ? parseInt(m[0], 10) : 1;
 }
 
+/**
+ * Build the list of grade labels that should match a teacher's selection.
+ * KICD designs are often saved at a band level ("Junior Secondary",
+ * "Pre-Primary", "Upper Primary") while teachers pick a specific grade
+ * ("Grade 7"). We match either the exact grade or its parent band.
+ */
+function gradeCandidates(grade: string): string[] {
+  const g = grade.trim();
+  const out = new Set<string>([g]);
+  const lower = g.toLowerCase();
+  const num = parseInt((lower.match(/\d+/) ?? [""])[0], 10);
+
+  if (lower.startsWith("pp") || lower.includes("pre-primary") || lower.includes("pre primary")) {
+    out.add("Pre-Primary");
+    out.add("Pre Primary");
+  }
+  if (!Number.isNaN(num)) {
+    if (num >= 1 && num <= 3) {
+      out.add("Lower Primary");
+    } else if (num >= 4 && num <= 6) {
+      out.add("Upper Primary");
+    } else if (num >= 7 && num <= 9) {
+      out.add("Junior Secondary");
+      out.add("Junior School");
+    } else if (num >= 10 && num <= 12) {
+      out.add("Senior Secondary");
+      out.add("Senior School");
+    }
+  }
+  return Array.from(out);
+}
+
 /** Find the ACTIVE curriculum design for a given grade/subject/term. */
 export async function findActiveCurriculumDesign(
   grade: string,
@@ -44,11 +76,12 @@ export async function findActiveCurriculumDesign(
   term: string | number,
 ): Promise<DbCurriculumDesign | null> {
   const termInt = termToInt(term);
+  const grades = gradeCandidates(grade);
 
   const { data: design, error } = await supabase
     .from("curriculum_designs")
     .select("id, grade, subject, term, version, title")
-    .eq("grade", grade)
+    .in("grade", grades)
     .ilike("subject", subject)
     .eq("term", termInt)
     .eq("status", "active")
@@ -104,10 +137,11 @@ export async function hasActiveCurriculumDesign(
   term: string | number,
 ): Promise<boolean> {
   const termInt = termToInt(term);
+  const grades = gradeCandidates(grade);
   const { data } = await supabase
     .from("curriculum_designs")
     .select("id")
-    .eq("grade", grade)
+    .in("grade", grades)
     .ilike("subject", subject)
     .eq("term", termInt)
     .eq("status", "active")
