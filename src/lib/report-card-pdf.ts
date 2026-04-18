@@ -224,32 +224,35 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   doc.text('SUBJECT PERFORMANCE', mx, y + 1);
   y += isKJSEAOnePage ? 3.5 : 5;
 
-  const subjectHeaders = ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
+  // Use compact short headers in one-page mode
+  const subjectHeaders = isKJSEAOnePage
+    ? ['#', 'Subject', 'Mk', 'Out', '%', 'Gr', 'Pts', 'Avg', 'Tch']
+    : ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
   const subjectBody = data.subjectData.map((s, i) => {
     const pct = s.maxScore > 0 ? ((s.score / s.maxScore) * 100).toFixed(0) : '0';
     const classAvg = data.classAvgPerSubject[s.name] !== undefined ? data.classAvgPerSubject[s.name].toFixed(0) : '-';
     const points = s.grade !== '-' ? String(gradePoints(s.grade as AnyGrade, isKJSEA)) : '-';
+    const teacherInit = s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-');
+    if (isKJSEAOnePage) {
+      return [`${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`, s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit];
+    }
     return [
-      `${i + 1}`,
-      s.name,
-      `${s.score}`,
-      `${s.maxScore}`,
-      `${pct}%`,
-      s.grade !== '-' ? s.grade : '-',
-      points,
-      classAvg,
-      s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-'),
+      `${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`,
+      s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit,
       s.grade !== '-' ? getGradeLabel(s.grade as AnyGrade).split(' ')[0] : '-',
     ];
   });
+
+  const tblFont = ultra ? 7 : dense ? 7.5 : isKJSEAOnePage ? 8 : 8.5;
+  const tblPad = ultra ? 1.2 : dense ? 1.5 : isKJSEAOnePage ? 2 : 3;
 
   autoTable(doc, {
     head: [subjectHeaders],
     body: subjectBody,
     startY: y,
     styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
+      fontSize: tblFont,
+      cellPadding: tblPad,
       lineColor: [180, 180, 180],
       lineWidth: 0.3,
       textColor: DARK,
@@ -258,11 +261,21 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       fillColor: BRAND,
       textColor: WHITE,
       fontStyle: 'bold',
-      fontSize: 8.5,
-      cellPadding: 3.5,
+      fontSize: tblFont,
+      cellPadding: tblPad + 0.3,
     },
     alternateRowStyles: { fillColor: [250, 252, 254] },
-    columnStyles: {
+    columnStyles: isKJSEAOnePage ? {
+      0: { cellWidth: 6, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 11, halign: 'center' },
+      3: { cellWidth: 11, halign: 'center' },
+      4: { cellWidth: 11, halign: 'center' },
+      5: { cellWidth: 11, halign: 'center' },
+      6: { cellWidth: 11, halign: 'center' },
+      7: { cellWidth: 12, halign: 'center' },
+      8: { cellWidth: 12, halign: 'center' },
+    } : {
       0: { cellWidth: 8, halign: 'center' },
       1: { cellWidth: 'auto' },
       2: { cellWidth: 14, halign: 'center' },
@@ -286,11 +299,11 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 4;
+  y = (doc as any).lastAutoTable.finalY + (isKJSEAOnePage ? 2.5 : 4);
 
-  // ── STRAND BREAKDOWN ──
+  // ── STRAND BREAKDOWN ── (skipped in one-page KJSEA mode to preserve space)
   const subjectsWithStrands = data.subjectData.filter(s => s.strands && s.strands.length > 0);
-  if (subjectsWithStrands.length > 0) {
+  if (subjectsWithStrands.length > 0 && !isKJSEAOnePage) {
     // Check if strands will push us past the page — if so, add new page
     const estStrandRows = subjectsWithStrands.reduce((n, s) => n + (s.strands?.length || 0), 0);
     if (y + estStrandRows * 6 + 10 > ph - 80) {
