@@ -137,10 +137,11 @@ export async function hasActiveCurriculumDesign(
   term: string | number,
 ): Promise<boolean> {
   const termInt = termToInt(term);
+  const grades = gradeCandidates(grade);
   const { data } = await supabase
     .from("curriculum_designs")
     .select("id")
-    .eq("grade", grade)
+    .in("grade", grades)
     .ilike("subject", subject)
     .eq("term", termInt)
     .eq("status", "active")
