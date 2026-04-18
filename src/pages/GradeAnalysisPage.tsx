@@ -97,10 +97,15 @@ export default function GradeAnalysisPage() {
     enabled: learners.length > 0,
   });
 
-  // Use ALL enrolled learners in scope for counts; computeGradeAnalysis handles per-subject entries
+  // Exclude learners with NO marks entered for any subject in this term/assessment
+  const learnersWithScores = useMemo(() => {
+    const ids = new Set(scores.map((s: any) => s.learner_id));
+    return learners.filter((l: any) => ids.has(l.id));
+  }, [learners, scores]);
+
   const analysis: GradeAnalysisReport = useMemo(
-    () => computeGradeAnalysis(learners, subjects, scores),
-    [learners, subjects, scores]
+    () => computeGradeAnalysis(learnersWithScores, subjects, scores),
+    [learnersWithScores, subjects, scores]
   );
 
   const { data: schoolSettings = {} } = useQuery({

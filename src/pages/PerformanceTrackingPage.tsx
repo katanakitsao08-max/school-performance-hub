@@ -106,8 +106,8 @@ export default function PerformanceTrackingPage() {
       });
 
       const average = grandCount > 0 ? grandTotal / grandCount : 0;
-      return { ...l, termData, grandTotal, average, rank: 0 };
-    });
+      return { ...l, termData, grandTotal, average, rank: 0, hasAnyScore: grandCount > 0 };
+    }).filter(l => l.hasAnyScore); // Exclude learners with no marks entered in any subject
 
     // Sort by average descending to assign ranks
     const sorted = [...raw].sort((a, b) => b.average - a.average);
