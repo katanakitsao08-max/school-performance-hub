@@ -224,6 +224,91 @@ export default function ContentGenerationPage() {
           </CardContent>
         </Card>
 
+        {/* Curriculum-Driven Engine panel */}
+        {grade && subject && term && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Curriculum-Driven Engine
+                {kicdAvailable ? (
+                  <Badge className="bg-primary">KICD design loaded</Badge>
+                ) : (
+                  <Badge variant="outline">No KICD design — using template</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {kicdAvailable ? (
+                <>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>100% KICD-aligned</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      SLOs, strands, sub-strands, activities and lesson allocations are pulled
+                      verbatim from the official curriculum design for {grade} — {subject} — {term}.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <div className="flex items-center gap-2">
+                      {curriculumMode === 'lock'
+                        ? <Lock className="h-4 w-4 text-primary" />
+                        : <Unlock className="h-4 w-4 text-amber-600" />}
+                      <div>
+                        <p className="text-sm font-medium">
+                          {curriculumMode === 'lock' ? 'Lock mode' : 'Smart Flex mode'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {curriculumMode === 'lock'
+                            ? 'SLOs and structure are read-only — printed exactly as KICD specifies.'
+                            : 'Append extra activities/resources only. SLOs and structure stay locked.'}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={curriculumMode === 'flex'}
+                      onCheckedChange={(v) => setCurriculumMode(v ? 'flex' : 'lock')}
+                    />
+                  </div>
+                  {curriculumMode === 'flex' && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Extra activities (one per line)</Label>
+                        <Textarea
+                          rows={3}
+                          placeholder={'e.g. Watch YouTube clip on…\nVisit nearby market for survey…'}
+                          value={extraActivities}
+                          onChange={e => setExtraActivities(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Extra resources (comma-separated)</Label>
+                        <Textarea
+                          rows={3}
+                          placeholder="e.g. Projector, weather chart, real flowers"
+                          value={extraResources}
+                          onChange={e => setExtraResources(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Alert variant="default">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    No official KICD design seeded for this combination yet — the system will fall
+                    back to the generic CBC template. Lock/Flex mode applies only when a KICD design
+                    is available.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full sm:w-auto">
