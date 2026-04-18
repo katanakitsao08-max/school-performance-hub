@@ -39,6 +39,15 @@ export default function ContentGenerationPage() {
   const [lessonDuration, setLessonDuration] = useState('40 minutes');
   const [schoolName, setSchoolName] = useState('');
 
+  // --- Curriculum-Driven Engine state ---
+  const [curriculumMode, setCurriculumMode] = useState<CurriculumMode>('lock');
+  const [extraActivities, setExtraActivities] = useState('');
+  const [extraResources, setExtraResources] = useState('');
+  const kicdAvailable = useMemo(
+    () => grade && subject && term ? hasCurriculumDesign(grade, subject, term) : false,
+    [grade, subject, term],
+  );
+
   const grades = useMemo(() => getGrades(), []);
   const subjects = useMemo(() => grade ? getSubjects(grade) : [], [grade]);
   const terms = useMemo(() => grade && subject ? getTerms(grade, subject) : [], [grade, subject]);
