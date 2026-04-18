@@ -149,6 +149,8 @@ export default function ContentGenerationPage() {
     const result = await generateCurriculumScheme({
       grade, subject, term, mode: curriculumMode, flex,
       selectedSubStrandIds,
+      totalWeeks,
+      midTermWeek,
     });
     if (!result) {
       toast.error('Could not load the curriculum design');
