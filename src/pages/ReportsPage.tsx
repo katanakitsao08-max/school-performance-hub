@@ -1190,10 +1190,23 @@ export default function ReportsPage() {
                             </TableCell>
                           );
                         })}
-                        <TableCell className="text-center">{reportData.reduce((a, l) => a + l.total, 0) ? (reportData.reduce((a, l) => a + l.total, 0) / reportData.length).toFixed(1) : '-'}</TableCell>
-                        <TableCell className="text-center">{classMean.toFixed(1)}</TableCell>
-                        <TableCell className="text-center">—</TableCell>
-                        <TableCell className="text-center">—</TableCell>
+                        {(() => {
+                          const totalSum = reportData.reduce((a, l) => a + l.total, 0);
+                          const meanTotal = reportData.length ? totalSum / reportData.length : 0;
+                          const maxTotal = gradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
+                          const avgMax = gradeSubjects.length ? maxTotal / gradeSubjects.length : 100;
+                          const gradeForClass = gradeSubjects.length && reportData.length
+                            ? getGradeForLevel(classMean, avgMax, reportData[0].grade)
+                            : '-';
+                          return (
+                            <>
+                              <TableCell className="text-center">{reportData.length ? meanTotal.toFixed(1) : '-'}</TableCell>
+                              <TableCell className="text-center">{classMean.toFixed(1)}</TableCell>
+                              <TableCell className="text-center">{gradeForClass}</TableCell>
+                              <TableCell className="text-center">—</TableCell>
+                            </>
+                          );
+                        })()}
                       </TableRow>
                     </tfoot>
                   )}
