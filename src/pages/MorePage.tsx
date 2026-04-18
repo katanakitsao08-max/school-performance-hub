@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, BookOpen, GraduationCap, Columns, UserCog, BarChart3,
   MessageSquare, ArrowUpCircle, Settings, PieChart, Activity,
-  CalendarCheck, LogOut, ChevronRight, Building2, Wallet, Calendar, FileEdit
+  CalendarCheck, LogOut, ChevronRight, Building2, Wallet, Calendar, FileEdit, Library, BookMarked
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -39,6 +39,7 @@ const adminMenuSections = [
     items: [
       { title: "Timetable", icon: Calendar, to: "/timetable" },
       { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
+      { title: "Curriculum Library", icon: Library, to: "/curriculum-library" },
     ],
   },
   {
@@ -59,6 +60,7 @@ const teacherMenuSections = [
       { title: "Performance Tracking", icon: Activity, to: "/performance-tracking" },
       { title: "Timetable", icon: Calendar, to: "/timetable" },
       { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
+      { title: "Curriculum Library", icon: Library, to: "/curriculum-library" },
     ],
   },
 ];
@@ -77,6 +79,7 @@ const headteacherMenuSections = [
     items: [
       { title: "Timetable", icon: Calendar, to: "/timetable" },
       { title: "Content Generator", icon: FileEdit, to: "/content-generation" },
+      { title: "Curriculum Library", icon: Library, to: "/curriculum-library" },
     ],
   },
 ];
@@ -86,6 +89,7 @@ const superAdminMenuSections = [
     title: "Platform",
     items: [
       { title: "Manage Schools", icon: Building2, to: "/manage-schools" },
+      { title: "Curriculum Designs", icon: BookMarked, to: "/curriculum-manager" },
     ],
   },
 ];
