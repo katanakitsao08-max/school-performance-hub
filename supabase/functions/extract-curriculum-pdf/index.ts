@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userMessage },
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
                 properties: {
                   grade: { type: "string" },
                   subject: { type: "string" },
-                  term: { type: "integer", enum: [1, 2, 3] },
+                  term: { type: "integer" },
                   title: { type: "string" },
                   strands: {
                     type: "array",
