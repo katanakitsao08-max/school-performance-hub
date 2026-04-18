@@ -518,7 +518,7 @@ export default function CurriculumDesignManagerPage() {
               </CardContent>
             </Card>
 
-            {extracted && (
+            {extracted && !yearReview && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -553,7 +553,90 @@ export default function CurriculumDesignManagerPage() {
                       {savingDraft ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
                       Save as Draft (new version)
                     </Button>
-                    <Button variant="ghost" onClick={() => setExtracted(null)}>
+                    <Button variant="ghost" onClick={() => { setExtracted(null); setYearReview(null); }}>
+                      <X className="h-4 w-4 mr-1" />Discard
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {yearReview && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Eye className="h-4 w-4" /> Review whole-year split — assign each sub-strand to a term
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-sm">
+                    <strong>{yearReview.grade}</strong> · {yearReview.subject}
+                    {yearReview.title ? <span className="text-muted-foreground"> — {yearReview.title}</span> : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The AI assigned every sub-strand to a term using KICD lesson allocations
+                    (T1=14&nbsp;wks, T2=13&nbsp;wks, T3=12&nbsp;wks). Use the buttons to move any sub-strand
+                    to a different term before saving.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {([1, 2, 3] as const).map((t) => {
+                      const items: { strand: string; ss: SubStrandWithTerm }[] = [];
+                      yearReview.strands.forEach((s) =>
+                        s.sub_strands.filter((ss) => ss.term_hint === t).forEach((ss) =>
+                          items.push({ strand: s.name, ss }),
+                        ),
+                      );
+                      const totalLessons = items.reduce(
+                        (n, { ss }) => n + Math.max(1, ss.lesson_allocation ?? 1),
+                        0,
+                      );
+                      return (
+                        <div key={t} className="rounded-md border bg-muted/30 p-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold">Term {t}</p>
+                            <Badge variant="outline" className="text-[10px]">
+                              {items.length} sub-strand{items.length === 1 ? "" : "s"} · {totalLessons} lessons
+                            </Badge>
+                          </div>
+                          <div className="space-y-1.5 max-h-[360px] overflow-auto pr-1">
+                            {items.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic px-1 py-2">
+                                No sub-strands assigned.
+                              </p>
+                            ) : items.map(({ strand, ss }) => (
+                              <div key={ss.__key} className="rounded border bg-background p-2 text-xs space-y-1">
+                                <p className="font-medium leading-tight">{ss.name}</p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {strand} · {ss.lesson_allocation ?? 1} lesson{(ss.lesson_allocation ?? 1) > 1 ? "s" : ""}
+                                </p>
+                                <div className="flex gap-1 pt-1">
+                                  {([1, 2, 3] as const).filter((x) => x !== t).map((target) => (
+                                    <Button
+                                      key={target}
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => moveSubStrandToTerm(ss.__key, target)}
+                                    >
+                                      <ArrowLeftRight className="h-3 w-3 mr-1" />
+                                      To T{target}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button onClick={handleSaveDraft} disabled={savingDraft}>
+                      {savingDraft ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                      Save 3 term drafts
+                    </Button>
+                    <Button variant="ghost" onClick={() => { setExtracted(null); setYearReview(null); }}>
                       <X className="h-4 w-4 mr-1" />Discard
                     </Button>
                   </div>
