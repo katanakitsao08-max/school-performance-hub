@@ -63,15 +63,22 @@ function formatThreeSLOs(slos: string[]): string {
 /**
  * Expand the design into an ordered list of lesson "items", one per lesson,
  * respecting each sub-strand's KICD lessonAllocation and strand sequence.
+ * If `selectedIds` is provided, only those sub-strands are included
+ * (still in the design's strand/sub-strand order).
  */
-function expandLessons(design: CurriculumDesign): {
+function expandLessons(
+  design: CurriculumDesign,
+  selectedIds?: string[],
+): {
   strand: string;
   subStrand: CurriculumSubStrand;
   lessonIndexInSubStrand: number;
 }[] {
+  const allow = selectedIds && selectedIds.length > 0 ? new Set(selectedIds) : null;
   const out: ReturnType<typeof expandLessons> = [];
   for (const strand of design.strands) {
     for (const ss of strand.subStrands) {
+      if (allow && !allow.has(ss.id)) continue;
       const n = Math.max(1, Number(ss.lessonAllocation) || 1);
       for (let i = 0; i < n; i++) {
         out.push({ strand: strand.name, subStrand: ss, lessonIndexInSubStrand: i + 1 });
