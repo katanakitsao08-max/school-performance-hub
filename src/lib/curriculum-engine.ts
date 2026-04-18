@@ -40,6 +40,8 @@ export interface CurriculumGenerateOptions {
   lessonsPerWeek?: number;    // default 5
   mode?: CurriculumMode;      // default 'lock'
   flex?: FlexAdditions;
+  /** When provided, only these sub-strand IDs (from the loaded design) are scheduled. */
+  selectedSubStrandIds?: string[];
 }
 
 function formatThreeSLOs(slos: string[]): string {
