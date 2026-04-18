@@ -146,6 +146,98 @@ export default function TimetablePage() {
     }
   };
 
+  const generateAllClasses = async () => {
+    if (!schoolId) return;
+    setGenerating(true);
+    setBatchMode(true);
+    setResult(null);
+    try {
+      // 1. Discover every (grade, stream) that has at least one teacher assignment
+      const { data: ta, error: taErr } = await supabase
+        .from('teacher_assignments')
+        .select('teacher_id, learning_area_id, grade, stream, profiles!inner(full_name)')
+        .eq('school_id', schoolId);
+      if (taErr) throw taErr;
+      const allAssignments: TeacherAssignmentRow[] = ((ta as any) || []).map((r: any) => ({
+        teacher_id: r.teacher_id,
+        teacher_name: r.profiles?.full_name || 'Teacher',
+        learning_area_id: r.learning_area_id,
+        grade: r.grade,
+        stream: r.stream,
+      }));
+      if (allAssignments.length === 0) {
+        toast({ title: 'No teacher assignments', description: 'Assign teachers to subjects first.', variant: 'destructive' });
+        return;
+      }
+      const classSet = new Map<string, { grade: string; stream: string }>();
+      allAssignments.forEach(a => classSet.set(`${a.grade}|${a.stream}`, { grade: a.grade, stream: a.stream }));
+      const classList = Array.from(classSet.values());
+
+      // 2. Load learning areas for every grade involved
+      const grades = Array.from(new Set(classList.map(c => c.grade)));
+      const { data: la, error: laErr } = await supabase
+        .from('learning_areas')
+        .select('id, name, grade')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .in('grade', grades);
+      if (laErr) throw laErr;
+      const areasByGrade: Record<string, { id: string; name: string }[]> = {};
+      ((la as any) || []).forEach((l: any) => {
+        if (!areasByGrade[l.grade]) areasByGrade[l.grade] = [];
+        areasByGrade[l.grade].push({ id: l.id, name: l.name });
+      });
+
+      // 3. Build per-class requirements (default 5 lessons/week per subject)
+      const reqMap: Record<string, SubjectRequirement[]> = {};
+      classList.forEach(c => {
+        const areas = areasByGrade[c.grade] || [];
+        reqMap[`${c.grade}|${c.stream}`] = areas.map(a => ({
+          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
+        }));
+      });
+
+      // 4. Single engine run — shared teacherBusy prevents cross-class double-booking
+      const r = generateTimetable({
+        classes: classList,
+        days: DAYS,
+        periodsPerDay,
+        breakPeriod,
+        requirementsByClass: reqMap,
+        assignments: allAssignments,
+      });
+      setResult(r);
+      setBatchClasses(classList);
+      toast({
+        title: `Batch complete: ${classList.length} classes`,
+        description: `${r.conflicts.length} conflicts, ${r.unfilled.length} unfilled.`,
+      });
+    } catch (e: any) {
+      toast({ title: 'Batch failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const saveBatch = async () => {
+    if (!result || !schoolId || !user || !batchMode) return;
+    setSavingBatch(true);
+    const rows = batchClasses.map(c => ({
+      school_id: schoolId,
+      name: `${c.grade} ${c.stream} Timetable`,
+      grade: c.grade, stream: c.stream,
+      days: DAYS,
+      periods_per_day: periodsPerDay,
+      break_period: breakPeriod,
+      data: result.grids[`${c.grade}|${c.stream}`] as any,
+      generated_by: user.id,
+    }));
+    const { error } = await supabase.from('timetables').insert(rows);
+    setSavingBatch(false);
+    if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    toast({ title: `Saved ${rows.length} timetables` });
+  };
+
   const save = async () => {
     if (!result || !schoolId || !user) return;
     const ck = `${grade}|${stream}`;
