@@ -955,18 +955,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          level: string
           name: string
           school_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          level?: string
           name: string
           school_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          level?: string
           name?: string
           school_id?: string | null
         }
