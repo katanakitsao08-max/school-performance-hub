@@ -100,21 +100,43 @@ export default function CurriculumDesignManagerPage() {
 
   const grades = useMemo(() => Array.from(new Set(rows.map((r) => r.grade))).sort(), [rows]);
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // strip "data:application/pdf;base64,"
+        resolve(result.includes(",") ? result.split(",")[1] : result);
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
   // ---- AI PDF extraction ----
   const handleExtract = async () => {
-    if (pdfText.trim().length < 50) {
-      toast.error("Paste at least 50 chars of curriculum text from the PDF.");
+    if (!pdfFile && pdfText.trim().length < 50) {
+      toast.error("Upload a PDF file or paste at least 50 chars of curriculum text.");
       return;
     }
     setExtracting(true);
     try {
+      const payload: Record<string, unknown> = {
+        hintGrade: hintGrade || undefined,
+        hintSubject: hintSubject || undefined,
+        hintTerm: hintTerm ? parseInt(hintTerm, 10) : undefined,
+      };
+      if (pdfFile) {
+        if (pdfFile.size > 25 * 1024 * 1024) {
+          toast.error("PDF too large (max 25 MB).");
+          setExtracting(false);
+          return;
+        }
+        payload.pdfBase64 = await fileToBase64(pdfFile);
+      } else {
+        payload.pdfText = pdfText;
+      }
       const { data, error } = await supabase.functions.invoke("extract-curriculum-pdf", {
-        body: {
-          pdfText,
-          hintGrade: hintGrade || undefined,
-          hintSubject: hintSubject || undefined,
-          hintTerm: hintTerm ? parseInt(hintTerm, 10) : undefined,
-        },
+        body: payload,
       });
       if (error) throw error;
       if (!data?.design) throw new Error("AI did not return a design");
