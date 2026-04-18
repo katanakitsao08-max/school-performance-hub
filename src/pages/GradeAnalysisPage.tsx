@@ -30,6 +30,8 @@ export default function GradeAnalysisPage() {
   const [selectedTerm, setSelectedTerm] = useState(1);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [autoPdf, setAutoPdf] = useState(false);
+  const lastAutoKeyRef = useRef<string>('');
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
@@ -132,85 +134,39 @@ export default function GradeAnalysisPage() {
   const assessmentLabel = ASSESSMENT_TYPE_LABELS[selectedAssessment]?.toUpperCase() || selectedAssessment.toUpperCase();
   const title = `GRADE ${selectedGrade} ${assessmentLabel} TERM ${selectedTerm} ${selectedYear} RESULTS`;
 
-  const loadImageAsBase64 = (url: string): Promise<string | null> => {
-    return new Promise((resolve) => {
-      if (!url) { resolve(null); return; }
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-  };
-
-  const exportPDF = async () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const cx = doc.internal.pageSize.getWidth() / 2;
-    let y = 14;
-    
-    const logoBase64 = await loadImageAsBase64(schoolLogoUrl);
-    if (logoBase64) {
-      const logoSize = 16;
-      doc.addImage(logoBase64, 'PNG', cx - logoSize / 2, y - 4, logoSize, logoSize);
-      y += logoSize + 2;
+  const exportPDF = async (autoSave = true) => {
+    if (analysis.subjects.length === 0) {
+      toast.error('No data to export. Select a grade and stream with scores entered.');
+      return null;
     }
-    
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-    doc.text(schoolName.toUpperCase(), cx, y, { align: 'center' });
-    y += 8;
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text(`${title} — ${streamLabel}`, cx, y, { align: 'center' });
-    y += 4;
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`Entry: ${analysis.totalM} Male, ${analysis.totalF} Female, ${analysis.totalEntries} Total`, cx, y, { align: 'center' });
-    y += 6;
-
-    // Headers: two rows
-    const subHeaders = SUB_LEVELS.flatMap(lv => [`${lv} M`, `${lv} F`]);
-    const headers = ['SUBJECT', 'M', 'F', ...subHeaders, 'T.POINT', 'AV.PT', 'MEAN'];
-
-    const body = analysis.subjects.map(sa => [
-      sa.subjectName,
-      sa.entryM, sa.entryF,
-      ...SUB_LEVELS.flatMap(lv => [sa.genderDistribution[lv].M, sa.genderDistribution[lv].F]),
-      sa.totalPoints,
-      sa.meanGradePoint,
-      sa.meanGradeLabel,
-    ]);
-    body.push([
-      'OVERALL',
-      analysis.totalM, analysis.totalF,
-      ...SUB_LEVELS.flatMap(lv => [analysis.overallGenderDistribution[lv].M, analysis.overallGenderDistribution[lv].F]),
-      analysis.overallTotalPoints,
-      analysis.overallMean,
-      analysis.overallMeanLabel,
-    ]);
-
-    autoTable(doc, {
-      head: [headers],
-      body,
-      startY: y,
-      styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
-      headStyles: { fillColor: [41, 128, 185], halign: 'center', fontSize: 6 },
-      columnStyles: { 0: { halign: 'left' } },
-    });
-
-    // Insights
-    const finalY = (doc as any).lastAutoTable?.finalY || y + 40;
-    doc.setFontSize(9); doc.setFont('helvetica', 'italic');
-    doc.text(`• Highest band: ${analysis.insights.highestBand}`, 14, finalY + 8);
-    doc.text(`• ${analysis.insights.genderNote}`, 14, finalY + 14);
-    doc.text(`• ${analysis.insights.overallComment}`, 14, finalY + 20);
-
-    doc.save(`Analysis_G${selectedGrade}_${streamLabel}_T${selectedTerm}_${selectedYear}.pdf`);
+    try {
+      const doc = await generateGradeAnalysisPDF(analysis, {
+        schoolName,
+        schoolLogoUrl,
+        grade: selectedGrade,
+        streamLabel,
+        term: selectedTerm,
+        year: selectedYear,
+        assessmentLabel,
+      }, { autoSave });
+      if (autoSave) toast.success('Grade Analysis PDF generated');
+      return doc;
+    } catch (e: any) {
+      toast.error(`PDF generation failed: ${e?.message || 'unknown error'}`);
+      return null;
+    }
   };
+
+  // Auto-generate PDF when analysis completes (only if toggled on, and only once per data change)
+  useEffect(() => {
+    if (!autoPdf) return;
+    if (analysis.subjects.length === 0) return;
+    const key = `${selectedGrade}|${streamLabel}|${selectedTerm}|${selectedAssessment}|${selectedYear}|${analysis.totalEntries}|${analysis.subjects.length}|${analysis.overallTotalPoints}`;
+    if (key === lastAutoKeyRef.current) return;
+    lastAutoKeyRef.current = key;
+    exportPDF(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPdf, analysis, selectedGrade, streamLabel, selectedTerm, selectedAssessment, selectedYear]);
 
   const exportExcel = () => {
     const subHeaders = SUB_LEVELS.flatMap(lv => [`${lv} M`, `${lv} F`]);
