@@ -130,13 +130,8 @@ export default function ReportsPage() {
           query = query.in('stream', selectedStreams);
         }
       }
-      const { data } = await query;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch subjects for all selected grades
+      const data = await fetchAllPaged(() => query);
+      return data;
   const { data: subjects = [] } = useQuery({
     queryKey: ['learning-areas-report', selectedGrades, isSchoolWide],
     queryFn: async () => {
