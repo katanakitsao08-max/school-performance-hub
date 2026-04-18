@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Users, BookOpen, GraduationCap, Columns, UserCog, BarChart3,
   MessageSquare, ArrowUpCircle, Settings, PieChart, Activity,
-  CalendarCheck, LogOut, ChevronRight, Building2, Wallet
+  CalendarCheck, LogOut, ChevronRight, Building2, Wallet, Calendar, FileEdit
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
