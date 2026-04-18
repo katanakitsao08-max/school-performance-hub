@@ -396,6 +396,63 @@ export default function ContentGenerationPage() {
                       onCheckedChange={(v) => setCurriculumMode(v ? 'flex' : 'lock')}
                     />
                   </div>
+
+                  {/* Term scheduling — teacher overrides KICD defaults */}
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <p className="text-sm font-medium">Term scheduling</p>
+                        <p className="text-xs text-muted-foreground">
+                          KICD default for {term}: <strong>{defaultWeeksForTerm(term)} weeks</strong>. Adjust if your calendar differs.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7"
+                        onClick={() => {
+                          const w = defaultWeeksForTerm(term);
+                          setTotalWeeks(w);
+                          setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+                        }}
+                      >
+                        Reset to KICD
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Total weeks in this term</Label>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={20}
+                          value={totalWeeks}
+                          onChange={(e) => {
+                            const n = Math.max(2, Math.min(20, Number(e.target.value) || 2));
+                            setTotalWeeks(n);
+                            if (midTermWeek >= n) setMidTermWeek(Math.max(1, Math.floor(n / 2)));
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Mid-term break week <span className="text-muted-foreground">(0 = no break)</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={totalWeeks - 1}
+                          value={midTermWeek}
+                          onChange={(e) => {
+                            const n = Math.max(0, Math.min(totalWeeks - 1, Number(e.target.value) || 0));
+                            setMidTermWeek(n);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {curriculumMode === 'flex' && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
