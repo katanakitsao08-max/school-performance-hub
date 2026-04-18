@@ -15,7 +15,7 @@ import { FileText, BookOpen, Download, Printer, Pencil, RotateCcw, Lock, Unlock,
 import { useAuth } from '@/contexts/AuthContext';
 import { getCbcSubjectsForGrade } from '@/data/cbc-subjects';
 import { type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
-import { generateCurriculumScheme, generateCurriculumLessonPlan, type CurriculumMode } from '@/lib/curriculum-engine';
+import { generateCurriculumScheme, generateCurriculumLessonPlan, defaultWeeksForTerm, type CurriculumMode } from '@/lib/curriculum-engine';
 import { findActiveCurriculumDesign, type DbCurriculumDesign, type DbSubStrand } from '@/lib/curriculum-db';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
 import { Switch } from '@/components/ui/switch';
