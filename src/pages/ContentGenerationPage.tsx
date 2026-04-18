@@ -7,27 +7,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw, Lock, Unlock, ShieldCheck, Info } from 'lucide-react';
+import { FileText, BookOpen, Download, Printer, Pencil, RotateCcw, Lock, Unlock, ShieldCheck, Info, ChevronsUpDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getGrades, getSubjects, getTerms, getStrands, getSubStrands, getSLOs, getAllStrandsForTerm } from '@/data/cbc-curriculum';
-import { generateSchemeOfWork, generateLessonPlan, type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
-import { generateCurriculumScheme, type CurriculumMode } from '@/lib/curriculum-engine';
-import { hasActiveCurriculumDesign } from '@/lib/curriculum-db';
+import { getCbcSubjectsForGrade } from '@/data/cbc-subjects';
+import { type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
+import { generateCurriculumScheme, generateCurriculumLessonPlan, type CurriculumMode } from '@/lib/curriculum-engine';
+import { findActiveCurriculumDesign, type DbCurriculumDesign, type DbSubStrand } from '@/lib/curriculum-db';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
+// Hardcoded grade list (CBC scope) — independent of school config
+const ALL_GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'];
+const ALL_TERMS = ['Term 1', 'Term 2', 'Term 3'];
+
 export default function ContentGenerationPage() {
   const { profile } = useAuth();
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [term, setTerm] = useState('');
-  const [strand, setStrand] = useState('');
-  const [subStrand, setSubStrand] = useState('');
-  const [slo, setSlo] = useState('');
+
+  // Multi-select selection (sub-strand IDs from the loaded KICD design)
+  const [selectedSubStrandIds, setSelectedSubStrandIds] = useState<string[]>([]);
+  // Single sub-strand for lesson plan (must be one of the selected, or any from design)
+  const [lessonSubStrandId, setLessonSubStrandId] = useState('');
+
   const [activeTab, setActiveTab] = useState('scheme');
 
   // Generated content state
@@ -43,82 +53,127 @@ export default function ContentGenerationPage() {
   const [curriculumMode, setCurriculumMode] = useState<CurriculumMode>('lock');
   const [extraActivities, setExtraActivities] = useState('');
   const [extraResources, setExtraResources] = useState('');
-  const [kicdAvailable, setKicdAvailable] = useState(false);
+  const [design, setDesign] = useState<DbCurriculumDesign | null>(null);
+  const [loadingDesign, setLoadingDesign] = useState(false);
+
+  // Subjects come strictly from CBC official list for the selected grade
+  const subjects = useMemo(() => grade ? getCbcSubjectsForGrade(grade) : [], [grade]);
+
+  // Load the active KICD design whenever grade/subject/term changes
   useEffect(() => {
     let alive = true;
     if (grade && subject && term) {
-      hasActiveCurriculumDesign(grade, subject, term).then((ok) => {
-        if (alive) setKicdAvailable(ok);
-      });
+      setLoadingDesign(true);
+      findActiveCurriculumDesign(grade, subject, term)
+        .then((d) => {
+          if (!alive) return;
+          setDesign(d);
+          // Default-select every sub-strand when a design loads
+          if (d) {
+            const allIds = d.strands.flatMap((s) => s.subStrands.map((ss) => ss.id));
+            setSelectedSubStrandIds(allIds);
+          } else {
+            setSelectedSubStrandIds([]);
+          }
+          setLessonSubStrandId('');
+        })
+        .finally(() => { if (alive) setLoadingDesign(false); });
     } else {
-      setKicdAvailable(false);
+      setDesign(null);
+      setSelectedSubStrandIds([]);
+      setLessonSubStrandId('');
     }
     return () => { alive = false; };
   }, [grade, subject, term]);
 
-  const grades = useMemo(() => getGrades(), []);
-  const subjects = useMemo(() => grade ? getSubjects(grade) : [], [grade]);
-  const terms = useMemo(() => grade && subject ? getTerms(grade, subject) : [], [grade, subject]);
-  const strands = useMemo(() => grade && subject && term ? getStrands(grade, subject, term) : [], [grade, subject, term]);
-  const subStrands = useMemo(() => grade && subject && term && strand ? getSubStrands(grade, subject, term, strand) : [], [grade, subject, term, strand]);
-  const slos = useMemo(() => grade && subject && term && strand && subStrand ? getSLOs(grade, subject, term, strand, subStrand) : [], [grade, subject, term, strand, subStrand]);
+  const kicdAvailable = !!design;
 
-  const resetBelow = (level: 'grade' | 'subject' | 'term' | 'strand' | 'subStrand') => {
-    if (level === 'grade') { setSubject(''); setTerm(''); setStrand(''); setSubStrand(''); setSlo(''); }
-    if (level === 'subject') { setTerm(''); setStrand(''); setSubStrand(''); setSlo(''); }
-    if (level === 'term') { setStrand(''); setSubStrand(''); setSlo(''); }
-    if (level === 'strand') { setSubStrand(''); setSlo(''); }
-    if (level === 'subStrand') { setSlo(''); }
+  // Flat list (with strand label) for the multi-select & lesson dropdown
+  const allSubStrands = useMemo(() => {
+    if (!design) return [] as { id: string; label: string; strand: string; ss: DbSubStrand }[];
+    const out: { id: string; label: string; strand: string; ss: DbSubStrand }[] = [];
+    for (const s of design.strands) {
+      for (const ss of s.subStrands) {
+        out.push({ id: ss.id, label: ss.name, strand: s.name, ss });
+      }
+    }
+    return out;
+  }, [design]);
+
+  const resetBelow = (level: 'grade' | 'subject' | 'term') => {
+    if (level === 'grade') { setSubject(''); setTerm(''); }
+    if (level === 'subject') { setTerm(''); }
     setSchemeRows(null);
     setLessonPlan(null);
   };
+
+  const toggleSubStrand = (id: string) => {
+    setSelectedSubStrandIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+  const selectAllSubStrands = () => setSelectedSubStrandIds(allSubStrands.map((x) => x.id));
+  const clearSubStrands = () => setSelectedSubStrandIds([]);
 
   const handleGenerateScheme = async () => {
     if (!grade || !subject || !term) {
       toast.error('Please select Grade, Subject, and Term');
       return;
     }
-
-    // 1. KICD-locked path — pull EVERYTHING from the active DB curriculum design
-    if (kicdAvailable) {
-      const flex = curriculumMode === 'flex' ? {
-        extraActivities: extraActivities.split('\n').map(s => s.trim()).filter(Boolean),
-        extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
-      } : undefined;
-      const result = await generateCurriculumScheme({
-        grade, subject, term, mode: curriculumMode, flex,
-      });
-      if (result) {
-        setSchemeRows(result.rows);
-        setEditingScheme(false);
-        if (result.warnings.length > 0) {
-          toast.warning(result.warnings[0]);
-        } else {
-          toast.success(`KICD curriculum loaded — ${result.scheduledLessons} lessons scheduled (${curriculumMode === 'lock' ? 'Lock' : 'Flex'} mode)`);
-        }
-        return;
-      }
-    }
-
-    // 2. Fallback to legacy generic generator (uses cbcCurriculum starter dataset)
-    const allStrands = getAllStrandsForTerm(grade, subject, term);
-    const rows = generateSchemeOfWork(grade, subject, term, allStrands);
-    setSchemeRows(rows);
-    setEditingScheme(false);
-    toast.success('Scheme of Work generated (generic template)');
-  };
-
-  const handleGenerateLesson = () => {
-    if (!grade || !subject || !term || !strand || !subStrand || !slo) {
-      toast.error('Please select all fields including SLO');
+    if (!kicdAvailable) {
+      toast.error('No KICD curriculum design uploaded for this Grade/Subject/Term. Ask your administrator to upload one.');
       return;
     }
-    const plan = generateLessonPlan(
-      schoolName || 'My School', profile?.full_name || 'Teacher', grade, subject, term, strand, subStrand, slo, lessonDate, lessonDuration
-    );
+    if (selectedSubStrandIds.length === 0) {
+      toast.error('Pick at least one sub-strand to schedule');
+      return;
+    }
+    const flex = curriculumMode === 'flex' ? {
+      extraActivities: extraActivities.split('\n').map(s => s.trim()).filter(Boolean),
+      extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
+    } : undefined;
+
+    const result = await generateCurriculumScheme({
+      grade, subject, term, mode: curriculumMode, flex,
+      selectedSubStrandIds,
+    });
+    if (!result) {
+      toast.error('Could not load the curriculum design');
+      return;
+    }
+    setSchemeRows(result.rows);
+    setEditingScheme(false);
+    if (result.warnings.length > 0) {
+      toast.warning(result.warnings[0]);
+    } else {
+      toast.success(`KICD curriculum loaded — ${result.scheduledLessons} lessons scheduled (${curriculumMode === 'lock' ? 'Lock' : 'Flex'} mode)`);
+    }
+  };
+
+  const handleGenerateLesson = async () => {
+    if (!grade || !subject || !term || !lessonSubStrandId) {
+      toast.error('Select Grade, Subject, Term and a Sub-Strand');
+      return;
+    }
+    if (!kicdAvailable) {
+      toast.error('No KICD curriculum design uploaded for this combination.');
+      return;
+    }
+    const plan = await generateCurriculumLessonPlan({
+      grade, subject, term,
+      subStrandId: lessonSubStrandId,
+      school: schoolName || 'My School',
+      teacher: profile?.full_name || 'Teacher',
+      date: lessonDate,
+      duration: lessonDuration,
+    });
+    if (!plan) {
+      toast.error('Could not build lesson plan from the loaded design');
+      return;
+    }
     setLessonPlan(plan);
     setEditingLesson(false);
-    toast.success('Lesson Plan generated successfully');
+    toast.success('Lesson plan generated from KICD design');
   };
 
   const handleSchemeEdit = (idx: number, field: keyof SchemeRow, value: string) => {
@@ -143,6 +198,12 @@ export default function ContentGenerationPage() {
     downloadLessonPlanPdf(lessonPlan);
   };
 
+  const subStrandTriggerLabel = selectedSubStrandIds.length === 0
+    ? 'Select sub-strands…'
+    : selectedSubStrandIds.length === allSubStrands.length
+      ? `All ${allSubStrands.length} sub-strands`
+      : `${selectedSubStrandIds.length} sub-strand${selectedSubStrandIds.length === 1 ? '' : 's'} selected`;
+
   return (
     <DashboardLayout>
       <div className="space-y-4 sm:space-y-6 pb-24 md:pb-6">
@@ -151,7 +212,7 @@ export default function ContentGenerationPage() {
             <BookOpen className="h-6 w-6 text-primary" />
             Content Generation
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Generate CBC-aligned Schemes of Work and Lesson Plans</p>
+          <p className="text-sm text-muted-foreground mt-1">Generate KICD-aligned Schemes of Work and Lesson Plans</p>
         </div>
 
         {/* Filters */}
@@ -165,7 +226,7 @@ export default function ContentGenerationPage() {
                 <Label className="text-sm font-medium">Grade</Label>
                 <Select value={grade} onValueChange={(v) => { setGrade(v); resetBelow('grade'); }}>
                   <SelectTrigger><SelectValue placeholder="Select Grade" /></SelectTrigger>
-                  <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                  <SelectContent>{ALL_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
@@ -177,30 +238,70 @@ export default function ContentGenerationPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Term</Label>
-                <Select value={term} onValueChange={(v) => { setTerm(v); resetBelow('term'); }} disabled={!subject}>
+                <Select value={term} onValueChange={(v) => { setTerm(v); }} disabled={!subject}>
                   <SelectTrigger><SelectValue placeholder="Select Term" /></SelectTrigger>
-                  <SelectContent>{terms.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  <SelectContent>{ALL_TERMS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Strand</Label>
-                <Select value={strand} onValueChange={(v) => { setStrand(v); resetBelow('strand'); }} disabled={!term}>
-                  <SelectTrigger><SelectValue placeholder="Select Strand" /></SelectTrigger>
-                  <SelectContent>{strands.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
+
+              {/* Multi-select sub-strands (driven by uploaded design) */}
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
+                <Label className="text-sm font-medium">Sub-Strands (multi-select)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      disabled={!kicdAvailable || allSubStrands.length === 0}
+                      className="w-full justify-between font-normal"
+                    >
+                      {subStrandTriggerLabel}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[min(420px,90vw)] p-0" align="start">
+                    <div className="flex items-center justify-between border-b p-2 text-xs">
+                      <span className="text-muted-foreground">{selectedSubStrandIds.length}/{allSubStrands.length} selected</span>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={selectAllSubStrands}>Select all</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={clearSubStrands}>Clear</Button>
+                      </div>
+                    </div>
+                    <ScrollArea className="max-h-[300px]">
+                      <div className="p-1">
+                        {allSubStrands.map(({ id, label, strand }) => (
+                          <label
+                            key={id}
+                            className="flex items-start gap-2 rounded px-2 py-1.5 hover:bg-accent cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={selectedSubStrandIds.includes(id)}
+                              onCheckedChange={() => toggleSubStrand(id)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm leading-tight">{label}</p>
+                              <p className="text-[11px] text-muted-foreground">{strand}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
               </div>
+
+              {/* Single sub-strand picker for the LESSON PLAN tab */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Sub-Strand</Label>
-                <Select value={subStrand} onValueChange={(v) => { setSubStrand(v); resetBelow('subStrand'); }} disabled={!strand}>
-                  <SelectTrigger><SelectValue placeholder="Select Sub-Strand" /></SelectTrigger>
-                  <SelectContent>{subStrands.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Specific Learning Outcome</Label>
-                <Select value={slo} onValueChange={setSlo} disabled={!subStrand}>
-                  <SelectTrigger><SelectValue placeholder="Select SLO" /></SelectTrigger>
-                  <SelectContent>{slos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <Label className="text-sm font-medium">Sub-Strand for Lesson Plan</Label>
+                <Select value={lessonSubStrandId} onValueChange={setLessonSubStrandId} disabled={!kicdAvailable}>
+                  <SelectTrigger><SelectValue placeholder="Pick sub-strand" /></SelectTrigger>
+                  <SelectContent>
+                    {allSubStrands.map(({ id, label, strand }) => (
+                      <SelectItem key={id} value={id}>{strand} → {label}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
@@ -239,10 +340,12 @@ export default function ContentGenerationPage() {
               <CardTitle className="text-base flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 Curriculum-Driven Engine
-                {kicdAvailable ? (
+                {loadingDesign ? (
+                  <Badge variant="outline">Loading…</Badge>
+                ) : kicdAvailable ? (
                   <Badge className="bg-primary">KICD design loaded</Badge>
                 ) : (
-                  <Badge variant="outline">No KICD design — using template</Badge>
+                  <Badge variant="destructive">No KICD design</Badge>
                 )}
               </CardTitle>
             </CardHeader>
@@ -304,12 +407,14 @@ export default function ContentGenerationPage() {
                   )}
                 </>
               ) : (
-                <Alert variant="default">
+                <Alert variant="destructive">
                   <Info className="h-4 w-4" />
+                  <AlertTitle>No KICD curriculum uploaded</AlertTitle>
                   <AlertDescription className="text-xs">
-                    No official KICD design seeded for this combination yet — the system will fall
-                    back to the generic CBC template. Lock/Flex mode applies only when a KICD design
-                    is available.
+                    There is no official KICD design loaded for <strong>{grade} — {subject} — {term}</strong>.
+                    Schemes of Work and Lesson Plans can only be generated from an uploaded KICD design,
+                    so SLOs are 100% authentic. Please ask your administrator to upload the curriculum
+                    design PDF for this combination.
                   </AlertDescription>
                 </Alert>
               )}
@@ -331,7 +436,10 @@ export default function ContentGenerationPage() {
           {/* Scheme of Work */}
           <TabsContent value="scheme" className="mt-4 space-y-4">
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleGenerateScheme} disabled={!grade || !subject || !term}>
+              <Button
+                onClick={handleGenerateScheme}
+                disabled={!grade || !subject || !term || !kicdAvailable || selectedSubStrandIds.length === 0}
+              >
                 <RotateCcw className="h-4 w-4 mr-1.5" /> Generate Scheme
               </Button>
               {schemeRows && (
@@ -413,7 +521,11 @@ export default function ContentGenerationPage() {
             {!schemeRows && (
               <Card className="p-12 text-center">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">Select Grade, Subject, and Term, then click "Generate Scheme" to create a Scheme of Work.</p>
+                <p className="text-muted-foreground">
+                  {kicdAvailable
+                    ? 'Pick the sub-strands to schedule, then click "Generate Scheme".'
+                    : 'Select Grade, Subject, and Term — a KICD design must be uploaded for that combination before a scheme can be generated.'}
+                </p>
               </Card>
             )}
           </TabsContent>
@@ -421,7 +533,10 @@ export default function ContentGenerationPage() {
           {/* Lesson Plan */}
           <TabsContent value="lesson" className="mt-4 space-y-4">
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleGenerateLesson} disabled={!grade || !subject || !term || !strand || !subStrand || !slo}>
+              <Button
+                onClick={handleGenerateLesson}
+                disabled={!grade || !subject || !term || !kicdAvailable || !lessonSubStrandId}
+              >
                 <RotateCcw className="h-4 w-4 mr-1.5" /> Generate Lesson Plan
               </Button>
               {lessonPlan && (
@@ -442,13 +557,11 @@ export default function ContentGenerationPage() {
             {lessonPlan && (
               <Card className="print-area">
                 <CardContent className="p-4 sm:p-6 space-y-6">
-                  {/* Header */}
                   <div className="text-center border-b pb-4">
                     <h2 className="text-lg font-bold">{lessonPlan.school}</h2>
                     <h3 className="text-base font-semibold mt-1">LESSON PLAN</h3>
                   </div>
 
-                  {/* Meta Info Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm border rounded-lg p-4 bg-muted/30">
                     <div><span className="font-semibold">Teacher:</span> {editingLesson ? <Input value={lessonPlan.teacher} onChange={e => handleLessonEdit('teacher', e.target.value)} className="mt-1" /> : <span className="ml-1">{lessonPlan.teacher}</span>}</div>
                     <div><span className="font-semibold">Grade:</span><span className="ml-1">{lessonPlan.grade}</span></div>
@@ -458,10 +571,9 @@ export default function ContentGenerationPage() {
                     <div><span className="font-semibold">Duration:</span><span className="ml-1">{lessonPlan.duration}</span></div>
                     <div className="col-span-2"><span className="font-semibold">Strand:</span><span className="ml-1">{lessonPlan.strand}</span></div>
                     <div className="col-span-2"><span className="font-semibold">Sub-Strand:</span><span className="ml-1">{lessonPlan.subStrand}</span></div>
-                    <div className="col-span-2 sm:col-span-4"><span className="font-semibold">SLO:</span><span className="ml-1">{lessonPlan.slo}</span></div>
+                    <div className="col-span-2 sm:col-span-4 whitespace-pre-line"><span className="font-semibold">SLO:</span><span className="ml-1">{lessonPlan.slo}</span></div>
                   </div>
 
-                  {/* Sections */}
                   <LessonSection title="INTRODUCTION" editing={editingLesson}
                     content={lessonPlan.introduction}
                     onEdit={(v) => handleLessonEdit('introduction', v)} />
@@ -506,7 +618,11 @@ export default function ContentGenerationPage() {
             {!lessonPlan && (
               <Card className="p-12 text-center">
                 <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">Select all fields down to the SLO, then click "Generate Lesson Plan".</p>
+                <p className="text-muted-foreground">
+                  {kicdAvailable
+                    ? 'Pick a sub-strand for the lesson, then click "Generate Lesson Plan".'
+                    : 'A KICD curriculum design must be uploaded for this Grade/Subject/Term first.'}
+                </p>
               </Card>
             )}
           </TabsContent>
@@ -516,7 +632,6 @@ export default function ContentGenerationPage() {
   );
 }
 
-// Reusable section component
 function LessonSection({ title, editing, content, list, onEdit, onEditList }: {
   title: string;
   editing: boolean;
@@ -532,7 +647,7 @@ function LessonSection({ title, editing, content, list, onEdit, onEditList }: {
         editing && onEdit ? (
           <Textarea value={content} onChange={e => onEdit(e.target.value)} className="text-sm" />
         ) : (
-          <p className="text-sm leading-relaxed">{content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{content}</p>
         )
       )}
       {list && (
