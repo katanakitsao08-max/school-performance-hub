@@ -212,6 +212,7 @@ export default function CurriculumDesignManagerPage() {
       toast.success("Draft saved. Move to Approved → Active when ready.");
       setExtracted(null);
       setPdfText("");
+      setPdfFile(null);
       load();
     } catch (e: any) {
       toast.error(e?.message ?? "Save failed");
