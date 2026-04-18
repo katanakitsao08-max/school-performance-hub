@@ -357,9 +357,9 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   // ── SUMMARY CARDS ROW ──
   // ═══════════════════════════════════════════════════
   const cardCount = 5;
-  const cardGap = 3;
+  const cardGap = isKJSEAOnePage ? 2 : 3;
   const cardW = (cw - (cardCount - 1) * cardGap) / cardCount;
-  const cardH = 18;
+  const cardH = isKJSEAOnePage ? 12 : 18;
 
   const summaryCards = [
     { label: 'TOTAL', value: `${data.total}/${data.maxTotal}`, color: BRAND },
@@ -373,27 +373,27 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     const cardX = mx + i * (cardW + cardGap);
     doc.setFillColor(...card.color);
     doc.roundedRect(cardX, y, cardW, cardH, 2, 2, 'F');
-    doc.setFontSize(7);
+    doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(220, 235, 240);
-    doc.text(card.label, cardX + cardW / 2, y + 6.5, { align: 'center' });
-    doc.setFontSize(13);
+    doc.text(card.label, cardX + cardW / 2, y + (isKJSEAOnePage ? 4.5 : 6.5), { align: 'center' });
+    doc.setFontSize(isKJSEAOnePage ? 9.5 : 13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...WHITE);
-    doc.text(card.value, cardX + cardW / 2, y + 14, { align: 'center' });
+    doc.text(card.value, cardX + cardW / 2, y + (isKJSEAOnePage ? 10 : 14), { align: 'center' });
   });
 
-  y += cardH + 5;
+  y += cardH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── PERFORMANCE GRAPH + GRADE DISTRIBUTION ──
   // ═══════════════════════════════════════════════════
-  const graphSectionH = 42;
+  const graphSectionH = isKJSEAOnePage ? 28 : 42;
   const hasTermHistory = data.termHistory && data.termHistory.length > 1;
   const hasDist = data.gradeDistribution && data.gradeDistribution.some(d => d.count > 0);
 
-  // Check if we need a new page for graphs + remarks
-  if (y + graphSectionH + 60 > ph) {
+  // In one-page mode, NEVER add a new page — fit at all costs
+  if (!isKJSEAOnePage && y + graphSectionH + 60 > ph) {
     doc.addPage();
     y = mx;
   }
