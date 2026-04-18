@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType } from '@/lib/cbc-utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,12 +13,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { computeGradeAnalysis, SUB_LEVELS, type GradeAnalysisReport } from '@/lib/cbc-analysis-utils';
-import { FileDown, TrendingUp, Users, BarChart3 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateGradeAnalysisPDF } from '@/lib/grade-analysis-pdf';
+import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GradeAnalysisTable } from '@/components/GradeAnalysisTable';
 import { GradeAnalysisInsights } from '@/components/GradeAnalysisInsights';
+import { toast } from 'sonner';
 
 export default function GradeAnalysisPage() {
   const { user, schoolId } = useAuth();
