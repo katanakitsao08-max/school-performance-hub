@@ -56,6 +56,19 @@ export default function ContentGenerationPage() {
   const [design, setDesign] = useState<DbCurriculumDesign | null>(null);
   const [loadingDesign, setLoadingDesign] = useState(false);
 
+  // --- Term scheduling (teacher-customisable) ---
+  const [totalWeeks, setTotalWeeks] = useState<number>(13);
+  const [midTermWeek, setMidTermWeek] = useState<number>(7);
+
+  // Reset weeks/mid-term when term changes (use KICD defaults)
+  useEffect(() => {
+    if (term) {
+      const w = defaultWeeksForTerm(term);
+      setTotalWeeks(w);
+      setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+    }
+  }, [term]);
+
   // Subjects come strictly from CBC official list for the selected grade
   const subjects = useMemo(() => grade ? getCbcSubjectsForGrade(grade) : [], [grade]);
 
