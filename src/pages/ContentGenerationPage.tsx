@@ -146,11 +146,13 @@ export default function ContentGenerationPage() {
       extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
     } : undefined;
 
+    const officialLpw = getOfficialLessonsPerWeek(grade, subject);
     const result = await generateCurriculumScheme({
       grade, subject, term, mode: curriculumMode, flex,
       selectedSubStrandIds,
       totalWeeks,
       midTermWeek,
+      lessonsPerWeek: officialLpw ?? undefined,
     });
     if (!result) {
       toast.error('Could not load the curriculum design');
