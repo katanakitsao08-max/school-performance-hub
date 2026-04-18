@@ -1,4 +1,4 @@
-// Official KICD CBC learning areas per grade band.
+// Official KICD CBC learning areas + lessons-per-week per grade band.
 // Used by Content Generation so teachers always see every CBC subject for a grade,
 // regardless of what their school has configured locally in `learning_areas`.
 
@@ -6,41 +6,42 @@ import { getGradeLevel } from '@/lib/grade-levels';
 
 export type CbcBand = 'pre-primary' | 'lower-primary' | 'upper-primary' | 'junior-secondary';
 
-const PRE_PRIMARY: string[] = [
-  'Language Activities',
-  'Mathematical Activities',
-  'Environmental Activities',
-  'Psychomotor and Creative Activities',
-  'Religious Education Activities',
-  'Pastoral Programme of Instruction',
-];
+// Pre-Primary (PP1 / PP2)
+const PRE_PRIMARY_ALLOCATION: Record<string, number> = {
+  'Language Activities': 5,
+  'Mathematical Activities': 5,
+  'Environmental Activities': 5,
+  'Psychomotor and Creative Activities': 8,
+  'Religious Education Activities': 1,
+};
+const PRE_PRIMARY: string[] = Object.keys(PRE_PRIMARY_ALLOCATION);
 
-const LOWER_PRIMARY: string[] = [
-  'Literacy Activities',
-  'Kiswahili Language Activities / Kenyan Sign Language',
-  'English Language Activities',
-  'Indigenous Language Activities',
-  'Mathematical Activities',
-  'Environmental Activities',
-  'Hygiene and Nutrition Activities',
-  'Religious Education Activities (CRE/IRE/HRE)',
-  'Movement and Creative Activities',
-];
+// Lower Primary (Grades 1–3)
+const LOWER_PRIMARY_ALLOCATION: Record<string, number> = {
+  'Indigenous Language Activities': 2,
+  'Kiswahili Language Activities / Kenya Sign Language Activities': 4,
+  'English Language Activities': 5,
+  'Mathematical Activities': 5,
+  'Religious Education Activities': 3,
+  'Environmental Activities': 4,
+  'Creative Activities': 7,
+};
+const LOWER_PRIMARY: string[] = Object.keys(LOWER_PRIMARY_ALLOCATION);
 
-const UPPER_PRIMARY: string[] = [
-  'English',
-  'Kiswahili / Kenyan Sign Language',
-  'Mathematics',
-  'Home Science',
-  'Agriculture',
-  'Science and Technology',
-  'Creative Arts',
-  'Physical and Health Education',
-  'Religious Education (CRE/IRE/HRE)',
-  'Social Studies',
-];
+// Upper Primary (Grades 4–6)
+const UPPER_PRIMARY_ALLOCATION: Record<string, number> = {
+  'English': 5,
+  'Kiswahili / Kenya Sign Language': 4,
+  'Mathematics': 5,
+  'Religious Education': 3,
+  'Science & Technology': 4,
+  'Agriculture and Nutrition': 4,
+  'Social Studies': 3,
+  'Creative Arts': 6,
+};
+const UPPER_PRIMARY: string[] = Object.keys(UPPER_PRIMARY_ALLOCATION);
 
-// Official KICD Junior School (Grades 7–9) lesson allocation per week
+// Junior School (Grades 7–9)
 const JUNIOR_SECONDARY_ALLOCATION: Record<string, number> = {
   'English': 5,
   'Kiswahili / Kenya Sign Language': 4,
@@ -54,14 +55,6 @@ const JUNIOR_SECONDARY_ALLOCATION: Record<string, number> = {
 };
 const JUNIOR_SECONDARY: string[] = Object.keys(JUNIOR_SECONDARY_ALLOCATION);
 
-/** Returns the official KICD lessons-per-week for a (grade, subject), or null if not specified. */
-export function getOfficialLessonsPerWeek(grade: string, subject: string): number | null {
-  if (getCbcBand(grade) === 'junior-secondary') {
-    return JUNIOR_SECONDARY_ALLOCATION[subject] ?? null;
-  }
-  return null;
-}
-
 export function getCbcBand(grade: string): CbcBand {
   const g = grade.trim().toLowerCase();
   if (g.startsWith('pp') || g.includes('pre')) return 'pre-primary';
@@ -71,7 +64,6 @@ export function getCbcBand(grade: string): CbcBand {
     if (n >= 4 && n <= 6) return 'upper-primary';
     if (n >= 7 && n <= 9) return 'junior-secondary';
   }
-  // Fallback via existing helper
   const lvl = getGradeLevel(grade);
   if (lvl === 'ecde') return 'pre-primary';
   if (lvl === 'junior') return 'junior-secondary';
@@ -84,5 +76,15 @@ export function getCbcSubjectsForGrade(grade: string): string[] {
     case 'lower-primary': return LOWER_PRIMARY;
     case 'upper-primary': return UPPER_PRIMARY;
     case 'junior-secondary': return JUNIOR_SECONDARY;
+  }
+}
+
+/** Returns the official KICD lessons-per-week for a (grade, subject), or null if unspecified. */
+export function getOfficialLessonsPerWeek(grade: string, subject: string): number | null {
+  switch (getCbcBand(grade)) {
+    case 'pre-primary': return PRE_PRIMARY_ALLOCATION[subject] ?? null;
+    case 'lower-primary': return LOWER_PRIMARY_ALLOCATION[subject] ?? null;
+    case 'upper-primary': return UPPER_PRIMARY_ALLOCATION[subject] ?? null;
+    case 'junior-secondary': return JUNIOR_SECONDARY_ALLOCATION[subject] ?? null;
   }
 }
