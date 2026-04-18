@@ -132,6 +132,11 @@ export default function ReportsPage() {
       }
       const data = await fetchAllPaged(() => query);
       return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch subjects for all selected grades
   const { data: subjects = [] } = useQuery({
     queryKey: ['learning-areas-report', selectedGrades, isSchoolWide],
     queryFn: async () => {
@@ -152,15 +157,20 @@ export default function ReportsPage() {
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      let q = supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
-      if (selectedAssessment !== 'end_term') {
-        q = q.eq('assessment_type', selectedAssessment);
-      } else {
-        q = q.eq('assessment_type', 'end_term');
+      // Chunk learner IDs to keep .in() lists reasonable, then page each chunk past the 1000-row cap.
+      const CHUNK = 200;
+      const all: any[] = [];
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const rows = await fetchAllPaged(() =>
+          supabase.from('scores').select('*')
+            .in('learner_id', slice)
+            .eq('term', selectedTerm).eq('year', selectedYear)
+            .eq('assessment_type', selectedAssessment)
+        );
+        all.push(...rows);
       }
-      const { data } = await q;
-      return data || [];
+      return all;
     },
     enabled: learners.length > 0 && !!user,
   });
