@@ -119,8 +119,9 @@ export async function generateCurriculumScheme(
   const design = await findActiveCurriculumDesign(opts.grade, opts.subject, opts.term);
   if (!design) return null;
 
-  const totalWeeks = opts.totalWeeks ?? 13;
-  const midTermWeek = opts.midTermWeek ?? 8;
+  const totalWeeks = opts.totalWeeks ?? defaultWeeksForTerm(opts.term);
+  const midTermWeek = opts.midTermWeek ?? Math.max(1, Math.floor(totalWeeks / 2));
+  const hasBreak = midTermWeek > 0 && midTermWeek < totalWeeks;
   const lessonsPerWeek = opts.lessonsPerWeek ?? 5;
   const mode: CurriculumMode = opts.mode ?? 'lock';
   const flex = opts.flex ?? {};
@@ -128,9 +129,9 @@ export async function generateCurriculumScheme(
   const lessons = expandLessons(design, opts.selectedSubStrandIds);
   const totalCurriculumLessons = lessons.length;
 
-  // Teaching weeks = totalWeeks − mid-term break − final revision week
-  const teachingWeeks = totalWeeks - 2; // last week is revision, mid-term week 8 is break
-  const teachingCapacity = teachingWeeks * lessonsPerWeek;
+  // Teaching weeks = totalWeeks − (mid-term break, if any) − final revision week
+  const teachingWeeks = totalWeeks - (hasBreak ? 1 : 0) - 1;
+  const teachingCapacity = Math.max(0, teachingWeeks * lessonsPerWeek);
   const warnings: string[] = [];
   if (totalCurriculumLessons > teachingCapacity) {
     warnings.push(
