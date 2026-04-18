@@ -79,9 +79,15 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   const doc = new jsPDF({ format: 'a4' });
   const pw = doc.internal.pageSize.getWidth(); // 210mm
   const ph = doc.internal.pageSize.getHeight(); // 297mm
-  const mx = 15; // 15mm margins
+  const isKJSEAOnePage = isKJSEAGradeLevel(data.learner.grade); // Grade 7-9 → strict 1-page mode
+  const mx = isKJSEAOnePage ? 9 : 15; // tighter margins for one-page mode
   const cw = pw - mx * 2; // content width
   const cx = pw / 2;
+  // Density factor — shrinks fonts/heights when many subjects
+  const subjCount = data.subjectData.length;
+  const dense = isKJSEAOnePage && subjCount > 10;
+  const ultra = isKJSEAOnePage && subjCount > 13;
+  const f = (base: number) => isKJSEAOnePage ? (ultra ? base - 1.5 : dense ? base - 1 : base - 0.5) : base;
 
   const ss = data.schoolSettings;
   const schoolName = ss['school_name'] || 'SCHOOL';
@@ -98,13 +104,13 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   // ═══════════════════════════════════════════════════
   // ── HEADER BAND ──
   // ═══════════════════════════════════════════════════
-  const headerH = 32;
+  const headerH = isKJSEAOnePage ? 22 : 32;
   doc.setFillColor(...BRAND);
   doc.rect(0, 0, pw, headerH, 'F');
 
   // Logo
-  const logoSize = 22;
-  const logoX = mx + 3;
+  const logoSize = isKJSEAOnePage ? 16 : 22;
+  const logoX = mx + 2;
   const logoY = (headerH - logoSize) / 2;
   if (data.logoBase64) {
     doc.addImage(data.logoBase64, 'PNG', logoX, logoY, logoSize, logoSize);
@@ -114,13 +120,13 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   }
 
   // School name — large
-  const textX = logoX + logoSize + 6;
-  doc.setFontSize(18);
+  const textX = logoX + logoSize + 5;
+  doc.setFontSize(isKJSEAOnePage ? 14 : 18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text(schoolName.toUpperCase(), textX, 13);
+  doc.text(schoolName.toUpperCase(), textX, isKJSEAOnePage ? 9 : 13);
 
-  if (schoolMotto) {
+  if (schoolMotto && !isKJSEAOnePage) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(220, 235, 220);
@@ -129,28 +135,34 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
 
   const contactParts = [schoolAddress, schoolPhone, schoolEmail].filter(Boolean);
   if (contactParts.length) {
-    doc.setFontSize(7.5);
+    doc.setFontSize(isKJSEAOnePage ? 6.5 : 7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(200, 220, 200);
-    doc.text(contactParts.join('  •  '), textX, 25);
+    doc.text(contactParts.join('  •  '), textX, isKJSEAOnePage ? 14 : 25);
+  }
+  if (isKJSEAOnePage && schoolMotto) {
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(220, 235, 220);
+    doc.text(`"${schoolMotto}"`, textX, 19);
   }
 
   // Report title — right side
-  doc.setFontSize(10);
+  doc.setFontSize(isKJSEAOnePage ? 8.5 : 10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('ACADEMIC REPORT CARD', pw - mx - 2, 13, { align: 'right' });
-  doc.setFontSize(9);
+  doc.text('ACADEMIC REPORT CARD', pw - mx - 2, isKJSEAOnePage ? 9 : 13, { align: 'right' });
+  doc.setFontSize(isKJSEAOnePage ? 7.5 : 9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 220, 200);
-  doc.text(`Term ${data.selectedTerm}  •  ${data.assessmentLabel}  •  ${data.selectedYear}`, pw - mx - 2, 20, { align: 'right' });
+  doc.text(`Term ${data.selectedTerm}  •  ${data.assessmentLabel}  •  ${data.selectedYear}`, pw - mx - 2, isKJSEAOnePage ? 15 : 20, { align: 'right' });
 
-  y = headerH + 5;
+  y = headerH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── STUDENT INFO CARD ──
   // ═══════════════════════════════════════════════════
-  const infoH = 26;
+  const infoH = isKJSEAOnePage ? 18 : 26;
   doc.setFillColor(...LIGHT_BG);
   doc.roundedRect(mx, y, cw, infoH, 2, 2, 'F');
   doc.setDrawColor(...BORDER);
@@ -158,7 +170,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   doc.roundedRect(mx, y, cw, infoH, 2, 2, 'S');
 
   // Student photo / initials
-  const photoSize = 20;
+  const photoSize = isKJSEAOnePage ? 14 : 20;
   const photoX = mx + 4;
   const photoY = y + (infoH - photoSize) / 2;
   if (data.learner.photoBase64) {
@@ -173,23 +185,27 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   }
 
   // Info fields — two rows, three columns
-  const infoStartX = photoX + photoSize + 8;
+  const infoStartX = photoX + photoSize + (isKJSEAOnePage ? 5 : 8);
   const col2X = mx + cw * 0.42;
   const col3X = mx + cw * 0.72;
 
   const infoField = (label: string, value: string, x: number, iy: number) => {
-    doc.setFontSize(7);
+    doc.setFontSize(isKJSEAOnePage ? 6 : 7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...MID);
     doc.text(label.toUpperCase(), x, iy);
-    doc.setFontSize(10);
+    doc.setFontSize(isKJSEAOnePage ? 8.5 : 10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...DARK);
-    doc.text(value, x, iy + 5);
+    const maxW = (col2X - infoStartX) - 2;
+    const truncated = isKJSEAOnePage && doc.getTextWidth(value) > maxW
+      ? doc.splitTextToSize(value, maxW)[0]
+      : value;
+    doc.text(truncated, x, iy + (isKJSEAOnePage ? 4 : 5));
   };
 
-  const row1Y = y + 7;
-  const row2Y = y + 18;
+  const row1Y = y + (isKJSEAOnePage ? 5 : 7);
+  const row2Y = y + (isKJSEAOnePage ? 13 : 18);
   infoField('Student Name', data.learner.full_name, infoStartX, row1Y);
   infoField('Adm No.', data.learner.admission_number, col2X, row1Y);
   infoField('Gender', data.learner.gender, col3X, row1Y);
@@ -197,43 +213,46 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   infoField('Stream Pos.', `${data.streamRank} of ${data.totalInStream}`, col2X, row2Y);
   infoField('Overall Pos.', `${data.rank} of ${data.totalInClass}`, col3X, row2Y);
 
-  y += infoH + 5;
+  y += infoH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── SUBJECT PERFORMANCE TABLE ──
   // ═══════════════════════════════════════════════════
-  doc.setFontSize(11);
+  doc.setFontSize(isKJSEAOnePage ? 9 : 11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...BRAND);
   doc.text('SUBJECT PERFORMANCE', mx, y + 1);
-  y += 5;
+  y += isKJSEAOnePage ? 3.5 : 5;
 
-  const subjectHeaders = ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
+  // Use compact short headers in one-page mode
+  const subjectHeaders = isKJSEAOnePage
+    ? ['#', 'Subject', 'Mk', 'Out', '%', 'Gr', 'Pts', 'Avg', 'Tch']
+    : ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
   const subjectBody = data.subjectData.map((s, i) => {
     const pct = s.maxScore > 0 ? ((s.score / s.maxScore) * 100).toFixed(0) : '0';
     const classAvg = data.classAvgPerSubject[s.name] !== undefined ? data.classAvgPerSubject[s.name].toFixed(0) : '-';
     const points = s.grade !== '-' ? String(gradePoints(s.grade as AnyGrade, isKJSEA)) : '-';
+    const teacherInit = s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-');
+    if (isKJSEAOnePage) {
+      return [`${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`, s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit];
+    }
     return [
-      `${i + 1}`,
-      s.name,
-      `${s.score}`,
-      `${s.maxScore}`,
-      `${pct}%`,
-      s.grade !== '-' ? s.grade : '-',
-      points,
-      classAvg,
-      s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-'),
+      `${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`,
+      s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit,
       s.grade !== '-' ? getGradeLabel(s.grade as AnyGrade).split(' ')[0] : '-',
     ];
   });
+
+  const tblFont = ultra ? 7 : dense ? 7.5 : isKJSEAOnePage ? 8 : 8.5;
+  const tblPad = ultra ? 1.2 : dense ? 1.5 : isKJSEAOnePage ? 2 : 3;
 
   autoTable(doc, {
     head: [subjectHeaders],
     body: subjectBody,
     startY: y,
     styles: {
-      fontSize: 8.5,
-      cellPadding: 3,
+      fontSize: tblFont,
+      cellPadding: tblPad,
       lineColor: [180, 180, 180],
       lineWidth: 0.3,
       textColor: DARK,
@@ -242,11 +261,21 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       fillColor: BRAND,
       textColor: WHITE,
       fontStyle: 'bold',
-      fontSize: 8.5,
-      cellPadding: 3.5,
+      fontSize: tblFont,
+      cellPadding: tblPad + 0.3,
     },
     alternateRowStyles: { fillColor: [250, 252, 254] },
-    columnStyles: {
+    columnStyles: isKJSEAOnePage ? {
+      0: { cellWidth: 6, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 11, halign: 'center' },
+      3: { cellWidth: 11, halign: 'center' },
+      4: { cellWidth: 11, halign: 'center' },
+      5: { cellWidth: 11, halign: 'center' },
+      6: { cellWidth: 11, halign: 'center' },
+      7: { cellWidth: 12, halign: 'center' },
+      8: { cellWidth: 12, halign: 'center' },
+    } : {
       0: { cellWidth: 8, halign: 'center' },
       1: { cellWidth: 'auto' },
       2: { cellWidth: 14, halign: 'center' },
@@ -270,11 +299,11 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 4;
+  y = (doc as any).lastAutoTable.finalY + (isKJSEAOnePage ? 2.5 : 4);
 
-  // ── STRAND BREAKDOWN ──
+  // ── STRAND BREAKDOWN ── (skipped in one-page KJSEA mode to preserve space)
   const subjectsWithStrands = data.subjectData.filter(s => s.strands && s.strands.length > 0);
-  if (subjectsWithStrands.length > 0) {
+  if (subjectsWithStrands.length > 0 && !isKJSEAOnePage) {
     // Check if strands will push us past the page — if so, add new page
     const estStrandRows = subjectsWithStrands.reduce((n, s) => n + (s.strands?.length || 0), 0);
     if (y + estStrandRows * 6 + 10 > ph - 80) {
@@ -328,9 +357,9 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   // ── SUMMARY CARDS ROW ──
   // ═══════════════════════════════════════════════════
   const cardCount = 5;
-  const cardGap = 3;
+  const cardGap = isKJSEAOnePage ? 2 : 3;
   const cardW = (cw - (cardCount - 1) * cardGap) / cardCount;
-  const cardH = 18;
+  const cardH = isKJSEAOnePage ? 12 : 18;
 
   const summaryCards = [
     { label: 'TOTAL', value: `${data.total}/${data.maxTotal}`, color: BRAND },
@@ -344,27 +373,27 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     const cardX = mx + i * (cardW + cardGap);
     doc.setFillColor(...card.color);
     doc.roundedRect(cardX, y, cardW, cardH, 2, 2, 'F');
-    doc.setFontSize(7);
+    doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(220, 235, 240);
-    doc.text(card.label, cardX + cardW / 2, y + 6.5, { align: 'center' });
-    doc.setFontSize(13);
+    doc.text(card.label, cardX + cardW / 2, y + (isKJSEAOnePage ? 4.5 : 6.5), { align: 'center' });
+    doc.setFontSize(isKJSEAOnePage ? 9.5 : 13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...WHITE);
-    doc.text(card.value, cardX + cardW / 2, y + 14, { align: 'center' });
+    doc.text(card.value, cardX + cardW / 2, y + (isKJSEAOnePage ? 10 : 14), { align: 'center' });
   });
 
-  y += cardH + 5;
+  y += cardH + (isKJSEAOnePage ? 3 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── PERFORMANCE GRAPH + GRADE DISTRIBUTION ──
   // ═══════════════════════════════════════════════════
-  const graphSectionH = 42;
+  const graphSectionH = isKJSEAOnePage ? 28 : 42;
   const hasTermHistory = data.termHistory && data.termHistory.length > 1;
   const hasDist = data.gradeDistribution && data.gradeDistribution.some(d => d.count > 0);
 
-  // Check if we need a new page for graphs + remarks
-  if (y + graphSectionH + 60 > ph) {
+  // In one-page mode, NEVER add a new page — fit at all costs
+  if (!isKJSEAOnePage && y + graphSectionH + 60 > ph) {
     doc.addPage();
     y = mx;
   }
@@ -373,7 +402,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     const leftW = hasDist ? cw * 0.55 : (hasTermHistory ? cw * 0.58 : cw - 4);
     const graphX = mx + 2;
 
-    doc.setFontSize(10);
+    doc.setFontSize(isKJSEAOnePage ? 8 : 10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...BRAND);
     doc.text('SUBJECT PERFORMANCE GRAPH', graphX, y);
@@ -383,7 +412,7 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
     } else if (hasTermHistory) {
       doc.text('PERFORMANCE TREND', mx + cw * 0.62, y);
     }
-    y += 5;
+    y += isKJSEAOnePage ? 3 : 5;
 
     const barAreaW = leftW - 18;
     const barCount = data.subjectData.length;
@@ -509,100 +538,110 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       });
     }
 
-    y += graphSectionH + 3;
+    y += graphSectionH + (isKJSEAOnePage ? 1 : 3);
   }
 
   // ═══════════════════════════════════════════════════
   // ── REMARKS SECTION ──
   // ═══════════════════════════════════════════════════
-  // Check page space for remarks
-  if (y + 55 > ph) {
+  // In one-page mode, NEVER add a new page
+  if (!isKJSEAOnePage && y + 55 > ph) {
     doc.addPage();
     y = mx;
   }
 
-  doc.setFontSize(11);
+  doc.setFontSize(isKJSEAOnePage ? 9 : 11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...BRAND);
   doc.text('REMARKS & COMMENTS', mx, y);
-  y += 5;
+  y += isKJSEAOnePage ? 3.5 : 5;
 
   // Class Teacher
-  const remarkH = 20;
+  const remarkH = isKJSEAOnePage ? 13 : 20;
+  const remarkFont = isKJSEAOnePage ? 7 : 8;
+  // Aggressive truncation in one-page mode: cap to ~110 chars (1 line)
+  const truncate = (s: string, max: number) => s.length > max ? s.substring(0, max - 1).trimEnd() + '…' : s;
+
   doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.3);
   doc.roundedRect(mx, y, cw, remarkH, 1.5, 1.5, 'S');
   doc.setFillColor(...BRAND);
-  doc.roundedRect(mx, y, 30, 7, 1.5, 1.5, 'F');
-  doc.setFontSize(7);
+  doc.roundedRect(mx, y, isKJSEAOnePage ? 26 : 30, isKJSEAOnePage ? 5 : 7, 1.5, 1.5, 'F');
+  doc.setFontSize(isKJSEAOnePage ? 6 : 7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('CLASS TEACHER', mx + 15, y + 5, { align: 'center' });
+  doc.text('CLASS TEACHER', mx + (isKJSEAOnePage ? 13 : 15), y + (isKJSEAOnePage ? 3.5 : 5), { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
-  const ctText = data.classTeacherComment || '___________________________________________';
+  const ctRaw = data.classTeacherComment || '___________________________________________';
+  const ctText = isKJSEAOnePage ? truncate(ctRaw, 130) : ctRaw;
   const ctLines = doc.splitTextToSize(ctText, cw - 8);
-  doc.text(ctLines.slice(0, 2), mx + 4, y + 11);
-  doc.setFontSize(7);
+  doc.text(ctLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________________   Date: ____________________', mx + 4, y + 18);
-  y += remarkH + 4;
+  doc.text('Sign: ____________   Date: ____________', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  y += remarkH + (isKJSEAOnePage ? 2 : 4);
 
   // Principal
   doc.roundedRect(mx, y, cw, remarkH, 1.5, 1.5, 'S');
   doc.setFillColor(142, 68, 173);
-  doc.roundedRect(mx, y, 25, 7, 1.5, 1.5, 'F');
-  doc.setFontSize(7);
+  doc.roundedRect(mx, y, isKJSEAOnePage ? 22 : 25, isKJSEAOnePage ? 5 : 7, 1.5, 1.5, 'F');
+  doc.setFontSize(isKJSEAOnePage ? 6 : 7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('PRINCIPAL', mx + 12.5, y + 5, { align: 'center' });
+  doc.text('PRINCIPAL', mx + (isKJSEAOnePage ? 11 : 12.5), y + (isKJSEAOnePage ? 3.5 : 5), { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
-  const prText = data.principalComment || '___________________________________________';
+  const prRaw = data.principalComment || '___________________________________________';
+  const prText = isKJSEAOnePage ? truncate(prRaw, 130) : prRaw;
   const prLines = doc.splitTextToSize(prText, cw - 8);
-  doc.text(prLines.slice(0, 2), mx + 4, y + 11);
-  doc.setFontSize(7);
+  doc.text(prLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________________   Date: ____________________   Stamp:', mx + 4, y + 18);
-  y += remarkH + 5;
+  doc.text('Sign: ____________   Date: ____________   Stamp:', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  y += remarkH + (isKJSEAOnePage ? 2 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── CALENDAR + QR FOOTER ──
   // ═══════════════════════════════════════════════════
   if (closingDate || openingDate || data.appUrl) {
-    const calH = 16;
+    const calH = isKJSEAOnePage ? 11 : 16;
+    // Make sure footer band stays visible (ph - 7 reserved)
+    if (isKJSEAOnePage && y + calH > ph - 8) {
+      y = ph - 8 - calH;
+    }
     doc.setFillColor(...LIGHT_BG);
     doc.roundedRect(mx, y, cw, calH, 1.5, 1.5, 'F');
 
     if (closingDate || openingDate) {
-      doc.setFontSize(8);
+      doc.setFontSize(isKJSEAOnePage ? 6.5 : 8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...DARK);
-      doc.text('SCHOOL CALENDAR', mx + 5, y + 6);
+      doc.text('SCHOOL CALENDAR', mx + 5, y + (isKJSEAOnePage ? 4 : 6));
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(isKJSEAOnePage ? 6 : 7.5);
       doc.setTextColor(...MID);
-      if (closingDate) doc.text(`Closing: ${closingDate}`, mx + 5, y + 10);
-      if (openingDate) doc.text(`Opening: ${openingDate}`, mx + 5, y + 14);
+      if (closingDate) doc.text(`Closing: ${closingDate}`, mx + 5, y + (isKJSEAOnePage ? 7 : 10));
+      if (openingDate) doc.text(`Opening: ${openingDate}`, mx + 5, y + (isKJSEAOnePage ? 10 : 14));
     }
 
     if (data.appUrl) {
       const qrUrl = `${data.appUrl}/parent-dashboard?learner=${data.learner.id}`;
       const qrBase64 = await generateQRCodeBase64(qrUrl);
       if (qrBase64) {
-        const qrSize = 13;
-        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 2, y + 1.5, qrSize, qrSize);
-        doc.setFontSize(5);
+        const qrSize = isKJSEAOnePage ? 9 : 13;
+        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 2, y + 1, qrSize, qrSize);
+        doc.setFontSize(isKJSEAOnePage ? 4.5 : 5);
         doc.setTextColor(140, 140, 140);
         doc.text('Parent Portal', pw - mx - qrSize / 2 - 2, y + calH - 0.5, { align: 'center' });
       }
     }
 
-    y += calH + 2;
+    y += calH + (isKJSEAOnePage ? 1 : 2);
   }
 
   // ── FOOTER BAND ──
