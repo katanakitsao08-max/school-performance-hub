@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileText, BookOpen, Download, Printer, Pencil, RotateCcw, Lock, Unlock, ShieldCheck, Info, ChevronsUpDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCbcSubjectsForGrade } from '@/data/cbc-subjects';
+import { getCbcSubjectsForGrade, getOfficialLessonsPerWeek } from '@/data/cbc-subjects';
 import { type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
 import { generateCurriculumScheme, generateCurriculumLessonPlan, defaultWeeksForTerm, type CurriculumMode } from '@/lib/curriculum-engine';
 import { findActiveCurriculumDesign, type DbCurriculumDesign, type DbSubStrand } from '@/lib/curriculum-db';
