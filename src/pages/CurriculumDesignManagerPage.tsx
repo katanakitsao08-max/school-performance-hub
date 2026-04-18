@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Upload, FileText, Trash2, CheckCircle2, Eye, Plus, X, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Upload, FileText, Trash2, CheckCircle2, Eye, Plus, X, RefreshCw, Sparkles, ArrowLeftRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { planYearReview, reviewToPerTermDesigns, type YearReview, type SubStrandWithTerm } from "@/lib/curriculum-year-split";
 
 type Status = "draft" | "review" | "approved" | "active" | "archived";
 interface DesignRow {
@@ -42,7 +43,8 @@ interface ExtractedSubStrand {
 interface ExtractedDesign {
   grade: string;
   subject: string;
-  term: number;
+  coverage?: "year" | "term";
+  term: number; // 0 when coverage = year
   title?: string;
   strands: { name: string; sub_strands: ExtractedSubStrand[] }[];
 }
@@ -70,8 +72,10 @@ export default function CurriculumDesignManagerPage() {
   const [hintGrade, setHintGrade] = useState("");
   const [hintSubject, setHintSubject] = useState("");
   const [hintTerm, setHintTerm] = useState<string>("");
+  const [hintCoverage, setHintCoverage] = useState<"year" | "term">("year");
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedDesign | null>(null);
+  const [yearReview, setYearReview] = useState<YearReview | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
 
   // Manual entry state
