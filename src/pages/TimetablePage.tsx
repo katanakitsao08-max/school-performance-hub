@@ -128,6 +128,7 @@ export default function TimetablePage() {
     if (assignments.length === 0) return toast({ title: 'No teacher assignments found', description: 'Assign teachers to subjects first.', variant: 'destructive' });
     setGenerating(true);
     setBatchMode(false);
+    const reqMap: Record<string, SubjectRequirement[]> = {};
     reqMap[`${grade}|${stream}`] = requirements.filter(r => r.lessonsPerWeek > 0);
     const r = generateTimetable({
       classes: [{ grade, stream }],
