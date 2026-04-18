@@ -596,7 +596,26 @@ export default function ContentGenerationPage() {
                                 <TableCell><Textarea value={row.inquiry} onChange={e => handleSchemeEdit(i, 'inquiry', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
                                 <TableCell><Input value={row.resources} onChange={e => handleSchemeEdit(i, 'resources', e.target.value)} className="text-sm" /></TableCell>
                                 <TableCell><Input value={row.assessment} onChange={e => handleSchemeEdit(i, 'assessment', e.target.value)} className="text-sm" /></TableCell>
-                                <TableCell><Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" />
+                                    <Select
+                                      value={String(row.week)}
+                                      onValueChange={(v) => moveSchemeRowToWeek(i, parseInt(v, 10))}
+                                    >
+                                      <SelectTrigger className="h-7 text-[11px]">
+                                        <SelectValue placeholder="Move to week…" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Array.from({ length: totalWeeks }, (_, k) => k + 1).map((w) => (
+                                          <SelectItem key={w} value={String(w)} className="text-xs">
+                                            Move to Week {w}{w === row.week ? ' (current)' : ''}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </TableCell>
                               </>
                             ) : (
                               <>
