@@ -161,10 +161,7 @@ export function computeGradeAnalysis(
     ? `Reinforce ${ranked[ranked.length - 1]?.subjectName || 'weak areas'} through targeted remedial sessions and peer learning.`
     : `Urgent intervention required. Prioritise remediation in ${ranked[ranked.length - 1]?.subjectName || 'low-performing subjects'} and engage parents.`;
 
-  // Real unique learner counts (only learners that submitted at least one score)
-  const learnersWithScores = new Set(scores.map((s: any) => s.learner_id));
-  const activeLearners = learners.filter(l => learnersWithScores.has(l.id));
-
+  // Roster-based learner counts (count learners enrolled in scope, NOT score rows)
   return {
     subjects: subjectAnalyses,
     overallDistribution: overallDist,
@@ -173,9 +170,9 @@ export function computeGradeAnalysis(
     overallAverage: overallCount > 0 ? Number((overallTotalScore / overallCount).toFixed(2)) : 0,
     overallMean,
     overallMeanLabel: overallCount > 0 ? getMeanGradeLabel(overallMean) : '-',
-    totalEntries: activeLearners.length,
-    totalM: activeLearners.filter(l => learnerGender[l.id] === 'M').length,
-    totalF: activeLearners.filter(l => learnerGender[l.id] === 'F').length,
+    totalEntries: learners.length,
+    totalM: learners.filter(l => learnerGender[l.id] === 'M').length,
+    totalF: learners.filter(l => learnerGender[l.id] === 'F').length,
     insights: { highestBand, genderNote, overallComment, bestSubject, weakestSubject, recommendation },
   };
 }
