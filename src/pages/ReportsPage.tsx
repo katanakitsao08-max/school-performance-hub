@@ -19,6 +19,7 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
+import { fetchAllPaged } from '@/lib/fetch-all';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -129,8 +130,8 @@ export default function ReportsPage() {
           query = query.in('stream', selectedStreams);
         }
       }
-      const { data } = await query;
-      return data || [];
+      const data = await fetchAllPaged(() => query);
+      return data;
     },
     enabled: !!user,
   });
@@ -156,15 +157,20 @@ export default function ReportsPage() {
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      let q = supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
-      if (selectedAssessment !== 'end_term') {
-        q = q.eq('assessment_type', selectedAssessment);
-      } else {
-        q = q.eq('assessment_type', 'end_term');
+      // Chunk learner IDs to keep .in() lists reasonable, then page each chunk past the 1000-row cap.
+      const CHUNK = 200;
+      const all: any[] = [];
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const rows = await fetchAllPaged(() =>
+          supabase.from('scores').select('*')
+            .in('learner_id', slice)
+            .eq('term', selectedTerm).eq('year', selectedYear)
+            .eq('assessment_type', selectedAssessment)
+        );
+        all.push(...rows);
       }
-      const { data } = await q;
-      return data || [];
+      return all;
     },
     enabled: learners.length > 0 && !!user,
   });
@@ -211,13 +217,13 @@ export default function ReportsPage() {
   const { data: termHistoryScores = [] } = useQuery({
     queryKey: ['term-history-scores', selectedYear, schoolId],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllPaged(() => supabase
         .from('scores')
         .select('learner_id, score, term, year, assessment_type, learning_area_id')
         .eq('year', selectedYear)
         .eq('assessment_type', 'end_term')
-        .eq('school_id', schoolId!);
-      return data || [];
+        .eq('school_id', schoolId!));
+      return data;
     },
     enabled: !!schoolId,
   });
@@ -226,8 +232,9 @@ export default function ReportsPage() {
   const { data: reportStrands = [] } = useQuery({
     queryKey: ['report-strands', schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order');
-      return data || [];
+      const data = await fetchAllPaged(() =>
+        supabase.from('strands').select('*').eq('school_id', schoolId!).order('sort_order'));
+      return data;
     },
     enabled: !!schoolId,
   });
@@ -237,11 +244,17 @@ export default function ReportsPage() {
     queryFn: async () => {
       const learnerIds = learners.map(l => l.id);
       if (!learnerIds.length) return [];
-      const { data } = await supabase.from('strand_scores').select('*')
-        .in('learner_id', learnerIds)
-        .eq('term', selectedTerm).eq('year', selectedYear)
-        .eq('assessment_type', selectedAssessment);
-      return data || [];
+      const CHUNK = 200;
+      const all: any[] = [];
+      for (let i = 0; i < learnerIds.length; i += CHUNK) {
+        const slice = learnerIds.slice(i, i + CHUNK);
+        const rows = await fetchAllPaged(() => supabase.from('strand_scores').select('*')
+          .in('learner_id', slice)
+          .eq('term', selectedTerm).eq('year', selectedYear)
+          .eq('assessment_type', selectedAssessment));
+        all.push(...rows);
+      }
+      return all;
     },
     enabled: learners.length > 0 && !!schoolId,
   });
