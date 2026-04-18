@@ -609,35 +609,39 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   // ── CALENDAR + QR FOOTER ──
   // ═══════════════════════════════════════════════════
   if (closingDate || openingDate || data.appUrl) {
-    const calH = 16;
+    const calH = isKJSEAOnePage ? 11 : 16;
+    // Make sure footer band stays visible (ph - 7 reserved)
+    if (isKJSEAOnePage && y + calH > ph - 8) {
+      y = ph - 8 - calH;
+    }
     doc.setFillColor(...LIGHT_BG);
     doc.roundedRect(mx, y, cw, calH, 1.5, 1.5, 'F');
 
     if (closingDate || openingDate) {
-      doc.setFontSize(8);
+      doc.setFontSize(isKJSEAOnePage ? 6.5 : 8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...DARK);
-      doc.text('SCHOOL CALENDAR', mx + 5, y + 6);
+      doc.text('SCHOOL CALENDAR', mx + 5, y + (isKJSEAOnePage ? 4 : 6));
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(isKJSEAOnePage ? 6 : 7.5);
       doc.setTextColor(...MID);
-      if (closingDate) doc.text(`Closing: ${closingDate}`, mx + 5, y + 10);
-      if (openingDate) doc.text(`Opening: ${openingDate}`, mx + 5, y + 14);
+      if (closingDate) doc.text(`Closing: ${closingDate}`, mx + 5, y + (isKJSEAOnePage ? 7 : 10));
+      if (openingDate) doc.text(`Opening: ${openingDate}`, mx + 5, y + (isKJSEAOnePage ? 10 : 14));
     }
 
     if (data.appUrl) {
       const qrUrl = `${data.appUrl}/parent-dashboard?learner=${data.learner.id}`;
       const qrBase64 = await generateQRCodeBase64(qrUrl);
       if (qrBase64) {
-        const qrSize = 13;
-        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 2, y + 1.5, qrSize, qrSize);
-        doc.setFontSize(5);
+        const qrSize = isKJSEAOnePage ? 9 : 13;
+        doc.addImage(qrBase64, 'PNG', pw - mx - qrSize - 2, y + 1, qrSize, qrSize);
+        doc.setFontSize(isKJSEAOnePage ? 4.5 : 5);
         doc.setTextColor(140, 140, 140);
         doc.text('Parent Portal', pw - mx - qrSize / 2 - 2, y + calH - 0.5, { align: 'center' });
       }
     }
 
-    y += calH + 2;
+    y += calH + (isKJSEAOnePage ? 1 : 2);
   }
 
   // ── FOOTER BAND ──
