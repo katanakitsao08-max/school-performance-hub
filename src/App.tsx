@@ -77,18 +77,18 @@ const App = () => (
               {/* Super Admin routes */}
               <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
-              <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><TimetableKeysPage /></ProtectedRoute>} />
-              <Route path="/timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><TimetablePage /></ProtectedRoute>} />
+              <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Timetable"><TimetablePage /></ErrorBoundary></ProtectedRoute>} />
               {/* School-level routes */}
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><Dashboard /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><UsersPage /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Users"><UsersPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/learning-areas" element={<ProtectedRoute allowedRoles={['admin']}><LearningAreasPage /></ProtectedRoute>} />
               <Route path="/streams" element={<ProtectedRoute allowedRoles={['admin']}><StreamsPage /></ProtectedRoute>} />
               <Route path="/grades" element={<ProtectedRoute allowedRoles={['admin']}><GradesPage /></ProtectedRoute>} />
-              <Route path="/learners" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><LearnersPage /></ProtectedRoute>} />
+              <Route path="/learners" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><ErrorBoundary inline label="Learners"><LearnersPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><MarksEntryPage /></ProtectedRoute>} />
               <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><AttendancePage /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><ErrorBoundary inline label="Reports"><ReportsPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
               <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
               <Route path="/promotion" element={<ProtectedRoute allowedRoles={['admin']}><PromotionPage /></ProtectedRoute>} />
