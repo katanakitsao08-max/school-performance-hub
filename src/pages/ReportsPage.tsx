@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { computeAnalysis } from '@/lib/analysis-utils';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,7 +73,7 @@ export default function ReportsPage() {
   }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
 
   // Drop any selected streams that are no longer valid for the current grade level.
-  useMemo(() => {
+  useEffect(() => {
     if (isSchoolWide) return;
     const valid = new Set(dbStreams);
     setSelectedStreams(prev => {
