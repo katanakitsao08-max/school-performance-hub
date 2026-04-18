@@ -158,16 +158,6 @@ export async function hasActiveCurriculumDesign(
   subject: string,
   term: string | number,
 ): Promise<boolean> {
-  const termInt = termToInt(term);
-  const grades = gradeCandidates(grade);
-  const { data } = await supabase
-    .from("curriculum_designs")
-    .select("id")
-    .in("grade", grades)
-    .ilike("subject", subject)
-    .eq("term", termInt)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-  return !!data;
+  const d = await findActiveCurriculumDesign(grade, subject, term);
+  return !!d;
 }
