@@ -376,9 +376,9 @@ export default function CurriculumDesignManagerPage() {
               <CardHeader><CardTitle className="text-base">Auto-seed from KICD PDF</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Open the KICD curriculum PDF, copy ALL the text (Ctrl+A → Ctrl+C inside Acrobat / Preview)
-                  and paste it below. The AI will identify Grade, Subject, Term, Strands, Sub-strands, SLOs and activities.
-                  After review, save it as a Draft and approve when correct.
+                  Upload a KICD curriculum PDF directly — it'll be parsed on the server and structured by AI
+                  into Grade, Subject, Term, Strands, Sub-strands, SLOs and activities. Or paste raw text as a fallback.
+                  Scanned/image-only PDFs aren't supported (use a text PDF). Max 25 MB.
                 </p>
                 <div className="grid md:grid-cols-3 gap-3">
                   <div>
@@ -401,13 +401,42 @@ export default function CurriculumDesignManagerPage() {
                     </Select>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Upload PDF file</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null;
+                        setPdfFile(f);
+                        if (f) setPdfText("");
+                      }}
+                    />
+                    {pdfFile && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setPdfFile(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {pdfFile && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      {pdfFile.name} · {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  )}
+                </div>
                 <div>
-                  <Label className="text-xs">PDF text</Label>
+                  <Label className="text-xs">Or paste PDF text (fallback)</Label>
                   <Textarea
-                    rows={10}
+                    rows={6}
                     value={pdfText}
-                    onChange={(e) => setPdfText(e.target.value)}
-                    placeholder="Paste full extracted PDF text here…"
+                    onChange={(e) => {
+                      setPdfText(e.target.value);
+                      if (e.target.value) setPdfFile(null);
+                    }}
+                    placeholder="Only use if the PDF upload fails (e.g. scanned PDF). Paste extracted text here…"
+                    disabled={!!pdfFile}
                   />
                 </div>
                 <Button onClick={handleExtract} disabled={extracting}>
