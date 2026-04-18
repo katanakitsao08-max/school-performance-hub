@@ -287,7 +287,9 @@ export default function ReportsPage() {
       const maxTotal = learnerGradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
       const mean = learnerGradeSubjects.length > 0 ? total / learnerGradeSubjects.length : 0;
       const avgMax = learnerGradeSubjects.length > 0 ? maxTotal / learnerGradeSubjects.length : 100;
-      const hasAnyScore = learnerScores.length > 0;
+      // Include learner if they have at least ONE non-zero score.
+      // Excludes only learners with all-zero (or no) scores entered.
+      const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
       return {
         ...l, subjectData, total, mean,
         overallGrade: learnerGradeSubjects.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',

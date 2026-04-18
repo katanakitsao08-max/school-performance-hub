@@ -91,23 +91,27 @@ export default function PerformanceTrackingPage() {
 
       let grandTotal = 0;
       let grandCount = 0;
+      let nonZeroCount = 0;
 
       TERMS.forEach(term => {
         ASSESSMENT_TYPES.forEach(at => {
           const scores = learnerScores.filter(s => s.term === term && (s.assessment_type || 'end_term') === at);
-          const total = scores.reduce((sum, s) => sum + s.score, 0);
+          const total = scores.reduce((sum, s) => sum + Number(s.score), 0);
           const count = scores.length;
           const mean = count > 0 ? total / count : 0;
           if (!termData[`T${term}`]) termData[`T${term}`] = {};
           termData[`T${term}`][at] = { mean, total, count };
           grandTotal += total;
           grandCount += count;
+          nonZeroCount += scores.filter(s => Number(s.score) > 0).length;
         });
       });
 
       const average = grandCount > 0 ? grandTotal / grandCount : 0;
-      return { ...l, termData, grandTotal, average, rank: 0, hasAnyScore: grandCount > 0 };
-    }).filter(l => l.hasAnyScore); // Exclude learners with no marks entered in any subject
+      // Include learner if they have at least ONE non-zero score across all entries.
+      // Excludes only learners with no marks or all-zero marks.
+      return { ...l, termData, grandTotal, average, rank: 0, hasAnyScore: nonZeroCount > 0 };
+    }).filter(l => l.hasAnyScore);
 
     // Sort by average descending to assign ranks
     const sorted = [...raw].sort((a, b) => b.average - a.average);
