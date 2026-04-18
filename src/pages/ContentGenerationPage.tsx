@@ -253,7 +253,7 @@ export default function ContentGenerationPage() {
                     <div className="flex items-center gap-2">
                       {curriculumMode === 'lock'
                         ? <Lock className="h-4 w-4 text-primary" />
-                        : <Unlock className="h-4 w-4 text-amber-600" />}
+                        : <Unlock className="h-4 w-4 text-primary" />}
                       <div>
                         <p className="text-sm font-medium">
                           {curriculumMode === 'lock' ? 'Lock mode' : 'Smart Flex mode'}
