@@ -538,66 +538,72 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       });
     }
 
-    y += graphSectionH + 3;
+    y += graphSectionH + (isKJSEAOnePage ? 1 : 3);
   }
 
   // ═══════════════════════════════════════════════════
   // ── REMARKS SECTION ──
   // ═══════════════════════════════════════════════════
-  // Check page space for remarks
-  if (y + 55 > ph) {
+  // In one-page mode, NEVER add a new page
+  if (!isKJSEAOnePage && y + 55 > ph) {
     doc.addPage();
     y = mx;
   }
 
-  doc.setFontSize(11);
+  doc.setFontSize(isKJSEAOnePage ? 9 : 11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...BRAND);
   doc.text('REMARKS & COMMENTS', mx, y);
-  y += 5;
+  y += isKJSEAOnePage ? 3.5 : 5;
 
   // Class Teacher
-  const remarkH = 20;
+  const remarkH = isKJSEAOnePage ? 13 : 20;
+  const remarkFont = isKJSEAOnePage ? 7 : 8;
+  // Aggressive truncation in one-page mode: cap to ~110 chars (1 line)
+  const truncate = (s: string, max: number) => s.length > max ? s.substring(0, max - 1).trimEnd() + '…' : s;
+
   doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.3);
   doc.roundedRect(mx, y, cw, remarkH, 1.5, 1.5, 'S');
   doc.setFillColor(...BRAND);
-  doc.roundedRect(mx, y, 30, 7, 1.5, 1.5, 'F');
-  doc.setFontSize(7);
+  doc.roundedRect(mx, y, isKJSEAOnePage ? 26 : 30, isKJSEAOnePage ? 5 : 7, 1.5, 1.5, 'F');
+  doc.setFontSize(isKJSEAOnePage ? 6 : 7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('CLASS TEACHER', mx + 15, y + 5, { align: 'center' });
+  doc.text('CLASS TEACHER', mx + (isKJSEAOnePage ? 13 : 15), y + (isKJSEAOnePage ? 3.5 : 5), { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
-  const ctText = data.classTeacherComment || '___________________________________________';
+  const ctRaw = data.classTeacherComment || '___________________________________________';
+  const ctText = isKJSEAOnePage ? truncate(ctRaw, 130) : ctRaw;
   const ctLines = doc.splitTextToSize(ctText, cw - 8);
-  doc.text(ctLines.slice(0, 2), mx + 4, y + 11);
-  doc.setFontSize(7);
+  doc.text(ctLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________________   Date: ____________________', mx + 4, y + 18);
-  y += remarkH + 4;
+  doc.text('Sign: ____________   Date: ____________', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  y += remarkH + (isKJSEAOnePage ? 2 : 4);
 
   // Principal
   doc.roundedRect(mx, y, cw, remarkH, 1.5, 1.5, 'S');
   doc.setFillColor(142, 68, 173);
-  doc.roundedRect(mx, y, 25, 7, 1.5, 1.5, 'F');
-  doc.setFontSize(7);
+  doc.roundedRect(mx, y, isKJSEAOnePage ? 22 : 25, isKJSEAOnePage ? 5 : 7, 1.5, 1.5, 'F');
+  doc.setFontSize(isKJSEAOnePage ? 6 : 7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('PRINCIPAL', mx + 12.5, y + 5, { align: 'center' });
+  doc.text('PRINCIPAL', mx + (isKJSEAOnePage ? 11 : 12.5), y + (isKJSEAOnePage ? 3.5 : 5), { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
-  const prText = data.principalComment || '___________________________________________';
+  const prRaw = data.principalComment || '___________________________________________';
+  const prText = isKJSEAOnePage ? truncate(prRaw, 130) : prRaw;
   const prLines = doc.splitTextToSize(prText, cw - 8);
-  doc.text(prLines.slice(0, 2), mx + 4, y + 11);
-  doc.setFontSize(7);
+  doc.text(prLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________________   Date: ____________________   Stamp:', mx + 4, y + 18);
-  y += remarkH + 5;
+  doc.text('Sign: ____________   Date: ____________   Stamp:', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  y += remarkH + (isKJSEAOnePage ? 2 : 5);
 
   // ═══════════════════════════════════════════════════
   // ── CALENDAR + QR FOOTER ──
