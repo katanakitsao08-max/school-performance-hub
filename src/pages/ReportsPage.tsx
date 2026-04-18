@@ -71,6 +71,16 @@ export default function ReportsPage() {
     return dbStreamsRaw.filter(s => (s.level || 'primary') === lvl).map(s => s.name);
   }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
 
+  // Drop any selected streams that are no longer valid for the current grade level.
+  useMemo(() => {
+    if (isSchoolWide) return;
+    const valid = new Set(dbStreams);
+    setSelectedStreams(prev => {
+      const filtered = prev.filter(s => valid.has(s));
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [dbStreams, isSchoolWide]);
+
   const { data: schoolSettings = {} } = useQuery({
     queryKey: ['school-settings-map', schoolId],
     queryFn: async () => {
