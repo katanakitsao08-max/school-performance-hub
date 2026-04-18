@@ -115,7 +115,8 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const trimmedText = workingText.length > 60_000 ? workingText.slice(0, 60_000) : workingText;
+    // Cap at 30k chars — KICD designs rarely exceed this and smaller payloads = much faster AI response
+    const trimmedText = workingText.length > 30_000 ? workingText.slice(0, 30_000) : workingText;
 
     const userMessage = `${
       hintGrade ? `Hint - Grade: ${hintGrade}\n` : ""
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userMessage },
