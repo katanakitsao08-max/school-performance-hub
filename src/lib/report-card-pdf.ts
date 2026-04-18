@@ -79,9 +79,15 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   const doc = new jsPDF({ format: 'a4' });
   const pw = doc.internal.pageSize.getWidth(); // 210mm
   const ph = doc.internal.pageSize.getHeight(); // 297mm
-  const mx = 15; // 15mm margins
+  const isKJSEAOnePage = isKJSEAGradeLevel(data.learner.grade); // Grade 7-9 → strict 1-page mode
+  const mx = isKJSEAOnePage ? 9 : 15; // tighter margins for one-page mode
   const cw = pw - mx * 2; // content width
   const cx = pw / 2;
+  // Density factor — shrinks fonts/heights when many subjects
+  const subjCount = data.subjectData.length;
+  const dense = isKJSEAOnePage && subjCount > 10;
+  const ultra = isKJSEAOnePage && subjCount > 13;
+  const f = (base: number) => isKJSEAOnePage ? (ultra ? base - 1.5 : dense ? base - 1 : base - 0.5) : base;
 
   const ss = data.schoolSettings;
   const schoolName = ss['school_name'] || 'SCHOOL';
