@@ -127,7 +127,8 @@ export default function CurriculumDesignManagerPage() {
       const payload: Record<string, unknown> = {
         hintGrade: hintGrade || undefined,
         hintSubject: hintSubject || undefined,
-        hintTerm: hintTerm ? parseInt(hintTerm, 10) : undefined,
+        hintTerm: hintCoverage === "term" && hintTerm ? parseInt(hintTerm, 10) : undefined,
+        hintCoverage,
       };
       if (pdfFile) {
         if (pdfFile.size > 25 * 1024 * 1024) {
@@ -144,8 +145,30 @@ export default function CurriculumDesignManagerPage() {
       });
       if (error) throw error;
       if (!data?.design) throw new Error("AI did not return a design");
-      setExtracted(data.design as ExtractedDesign);
-      toast.success("Curriculum extracted — review then save as draft.");
+      const design = data.design as ExtractedDesign;
+      setExtracted(design);
+      // If whole-year (coverage='year' OR term=0), build the review board
+      const isYear = design.coverage === "year" || design.term === 0 || hintCoverage === "year";
+      if (isYear) {
+        setYearReview(planYearReview({
+          grade: design.grade,
+          subject: design.subject,
+          coverage: "year",
+          term: 0,
+          title: design.title,
+          strands: design.strands.map((s) => ({
+            name: s.name,
+            sub_strands: s.sub_strands.map((ss) => ({
+              ...ss,
+              term_hint: (ss as any).term_hint,
+            })),
+          })),
+        }));
+        toast.success("Whole-year curriculum extracted — review the term split below, then save.");
+      } else {
+        setYearReview(null);
+        toast.success("Curriculum extracted — review then save as draft.");
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Extraction failed");
     } finally {
