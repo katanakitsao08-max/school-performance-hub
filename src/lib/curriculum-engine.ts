@@ -15,12 +15,12 @@
 //  break at week 8 and revision in the final week.
 // ============================================================
 
-import {
-  findCurriculumDesign,
-  type CurriculumDesign,
-  type CurriculumSubStrand,
-} from '@/data/cbc-curriculum-designs';
+import { findActiveCurriculumDesign, type DbCurriculumDesign, type DbSubStrand } from './curriculum-db';
 import type { SchemeRow } from './content-generation-templates';
+
+// Backwards-compatible aliases (engine internals were typed against the old hardcoded shape)
+type CurriculumDesign = DbCurriculumDesign;
+type CurriculumSubStrand = DbSubStrand;
 
 export type CurriculumMode = 'lock' | 'flex';
 
@@ -90,12 +90,13 @@ export interface CurriculumSchemeResult {
 
 /**
  * Generate a curriculum-locked Scheme of Work.
- * Returns null if no design is registered for (grade, subject, term).
+ * Returns null if no ACTIVE design is registered in the database for (grade, subject, term).
+ * Now async because curriculum lives in Supabase, not a hardcoded file.
  */
-export function generateCurriculumScheme(
+export async function generateCurriculumScheme(
   opts: CurriculumGenerateOptions,
-): CurriculumSchemeResult | null {
-  const design = findCurriculumDesign(opts.grade, opts.subject, opts.term);
+): Promise<CurriculumSchemeResult | null> {
+  const design = await findActiveCurriculumDesign(opts.grade, opts.subject, opts.term);
   if (!design) return null;
 
   const totalWeeks = opts.totalWeeks ?? 13;
