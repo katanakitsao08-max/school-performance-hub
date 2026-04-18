@@ -1,7 +1,9 @@
 // Extract structured CBC curriculum data from a KICD PDF using Lovable AI.
-// Superadmin-only. Returns a draft JSON the client then writes to curriculum_designs.
+// Accepts either raw `pdfText` or a base64-encoded `pdfBase64` (server-side parsed via unpdf).
+// Superadmin-only.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +23,21 @@ Rules:
   assessment_methods, inquiry_questions, resources, core competencies, values, pcis (Pertinent and Contemporary Issues).
 - Use the document's exact wording. Do not invent content. If a field is missing leave it as an empty array.
 - Return ONLY through the provided tool call.`;
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  // Strip data-URL prefix if present
+  const cleaned = b64.includes(",") ? b64.split(",")[1] : b64;
+  const binary = atob(cleaned);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function parsePdfToText(pdfBytes: Uint8Array): Promise<string> {
+  const pdf = await getDocumentProxy(pdfBytes);
+  const { text } = await extractText(pdf, { mergePages: true });
+  return Array.isArray(text) ? text.join("\n") : String(text ?? "");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -49,7 +66,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify Super Admin
     const userId = claimsData.claims.sub;
     const { data: roleRow } = await supabase
       .from("user_roles")
@@ -65,10 +81,33 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { pdfText, hintGrade, hintSubject, hintTerm } = body ?? {};
-    if (!pdfText || typeof pdfText !== "string" || pdfText.trim().length < 50) {
+    const { pdfText, pdfBase64, hintGrade, hintSubject, hintTerm } = body ?? {};
+
+    let workingText: string = typeof pdfText === "string" ? pdfText : "";
+
+    // Server-side PDF parsing path
+    if (pdfBase64 && typeof pdfBase64 === "string") {
+      try {
+        const bytes = base64ToUint8Array(pdfBase64);
+        if (bytes.byteLength > 25 * 1024 * 1024) {
+          return new Response(
+            JSON.stringify({ error: "PDF too large (max 25 MB)" }),
+            { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        workingText = await parsePdfToText(bytes);
+      } catch (parseErr) {
+        console.error("PDF parse error:", parseErr);
+        return new Response(
+          JSON.stringify({ error: "Could not read this PDF. It may be a scanned image (try a text-based PDF) or corrupted." }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
+    if (!workingText || workingText.trim().length < 50) {
       return new Response(
-        JSON.stringify({ error: "pdfText is required (>=50 chars of extracted PDF text)" }),
+        JSON.stringify({ error: "Need at least 50 characters of PDF text. Provide pdfBase64 (uploaded file) or pdfText." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -76,8 +115,7 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Cap input size to keep token costs reasonable
-    const trimmedText = pdfText.length > 60_000 ? pdfText.slice(0, 60_000) : pdfText;
+    const trimmedText = workingText.length > 60_000 ? workingText.slice(0, 60_000) : workingText;
 
     const userMessage = `${
       hintGrade ? `Hint - Grade: ${hintGrade}\n` : ""
@@ -189,9 +227,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ design: parsed }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ design: parsed, charsParsed: workingText.length }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error("extract-curriculum-pdf error:", e);
     return new Response(
