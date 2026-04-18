@@ -201,8 +201,12 @@ export default function GradeAnalysisPage() {
             <h1 className="text-2xl font-display font-bold">Grade Analysis</h1>
             <p className="text-muted-foreground text-sm">CBC sub-level distribution with gender breakdown</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={exportPDF} disabled={analysis.subjects.length === 0}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch checked={autoPdf} onCheckedChange={setAutoPdf} />
+              Auto-PDF on update
+            </label>
+            <Button variant="outline" onClick={() => exportPDF(true)} disabled={analysis.subjects.length === 0}>
               <FileDown className="mr-2 h-4 w-4" /> PDF
             </Button>
             <Button variant="outline" onClick={exportExcel} disabled={analysis.subjects.length === 0}>
