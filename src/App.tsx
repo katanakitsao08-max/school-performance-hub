@@ -93,7 +93,7 @@ function RefreshRedirector() {
     const target =
       role === 'super_admin' ? '/super-admin' :
       role === 'parent' ? '/parent' :
-      '/dashboard';
+      '/';
 
     if (path !== target) {
       navigate(target, { replace: true });
