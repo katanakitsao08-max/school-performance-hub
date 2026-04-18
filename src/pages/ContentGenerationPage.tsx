@@ -200,6 +200,33 @@ export default function ContentGenerationPage() {
     setSchemeRows(updated);
   };
 
+  /**
+   * Move a scheme row to a different week. Picks the first available teaching
+   * lesson slot in the target week and swaps it with the source row (so the
+   * total number of rows is preserved and lesson numbers stay sequential).
+   */
+  const moveSchemeRowToWeek = (rowIdx: number, targetWeek: number) => {
+    if (!schemeRows) return;
+    const src = schemeRows[rowIdx];
+    if (!src || src.isBreak) return;
+    // Find the FIRST teaching row in the target week — we'll swap with it.
+    const destIdx = schemeRows.findIndex(
+      (r, i) => i !== rowIdx && r.week === targetWeek && !r.isBreak,
+    );
+    if (destIdx === -1) {
+      toast.error(`Week ${targetWeek} has no teaching lessons to swap with.`);
+      return;
+    }
+    const next = [...schemeRows];
+    const a = next[rowIdx];
+    const b = next[destIdx];
+    // Swap content but keep each row's week/lesson position fixed
+    next[rowIdx] = { ...b, week: a.week, lesson: a.lesson };
+    next[destIdx] = { ...a, week: b.week, lesson: b.lesson };
+    setSchemeRows(next);
+    toast.success(`Moved to Week ${targetWeek}`);
+  };
+
   const handleLessonEdit = (field: string, value: any) => {
     if (!lessonPlan) return;
     setLessonPlan({ ...lessonPlan, [field]: value });
