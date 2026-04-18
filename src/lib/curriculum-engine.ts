@@ -240,3 +240,94 @@ export async function generateCurriculumScheme(
     warnings,
   };
 }
+
+// ============================================================
+// KICD-locked Lesson Plan generator
+// Pulls SLOs, activities, resources, assessment, competencies, values & PCIs
+// VERBATIM from the loaded curriculum design's sub-strand.
+// ============================================================
+import type { LessonPlanData } from './content-generation-templates';
+
+export interface CurriculumLessonOptions {
+  grade: string;
+  subject: string;
+  term: string;
+  subStrandId: string;
+  school: string;
+  teacher: string;
+  date?: string;
+  duration?: string;
+}
+
+export async function generateCurriculumLessonPlan(
+  opts: CurriculumLessonOptions,
+): Promise<LessonPlanData | null> {
+  const design = await findActiveCurriculumDesign(opts.grade, opts.subject, opts.term);
+  if (!design) return null;
+
+  let parentStrand = '';
+  let ss: CurriculumSubStrand | null = null;
+  for (const strand of design.strands) {
+    const found = strand.subStrands.find((s) => s.id === opts.subStrandId);
+    if (found) {
+      parentStrand = strand.name;
+      ss = found;
+      break;
+    }
+  }
+  if (!ss) return null;
+
+  const sloLines = ss.slos.length > 0
+    ? ss.slos
+    : [`engage with ${ss.name}`];
+  const slo = formatThreeSLOs(sloLines);
+
+  const activities = ss.activities.length > 0
+    ? ss.activities
+    : [`Learners explore ${ss.name} through guided discussion`];
+
+  const resources = ss.resources.length > 0 ? ss.resources : ['Course book', 'Charts'];
+  const assessment = (ss.assessmentMethods.length > 0
+    ? ss.assessmentMethods
+    : ['Oral questions', 'Written exercise']
+  ).join(', ');
+  const competencies = ss.competencies.length > 0
+    ? ss.competencies
+    : ['Communication and collaboration', 'Critical thinking and problem solving'];
+  const values = ss.values.length > 0 ? ss.values : ['Respect', 'Responsibility'];
+  const inquiry = ss.inquiryQuestions[0] || `Why is ${ss.name} important?`;
+
+  return {
+    school: opts.school,
+    teacher: opts.teacher,
+    grade: opts.grade,
+    subject: opts.subject,
+    term: opts.term,
+    strand: parentStrand,
+    subStrand: ss.name,
+    slo,
+    date: opts.date ?? new Date().toISOString().split('T')[0],
+    duration: opts.duration ?? '40 minutes',
+    introduction: `Review previous knowledge on ${ss.name} through Q&A. Key inquiry: ${inquiry}`,
+    development: [
+      `Step 1: Introduce ${ss.name} and link to learners' real-life experiences.`,
+      `Step 2: Guide learners through the KICD-aligned activities below.`,
+      `Step 3: Learners work in pairs/groups while the teacher monitors.`,
+      `Step 4: Class discussion of findings; teacher addresses misconceptions.`,
+      `Step 5: Summarise key points and connect to the next lesson.`,
+    ],
+    learnerActivities: activities,
+    teacherActivities: [
+      `Guide learners through ${ss.name}`,
+      'Monitor group discussions and provide feedback',
+      'Facilitate peer learning and collaboration',
+      'Assess learner understanding through observation',
+      'Provide remedial support to struggling learners',
+    ],
+    resources,
+    assessment,
+    coreCompetencies: competencies,
+    values,
+    reflection: `Reflect on learner achievement of the SLOs on "${ss.name}". Note areas for reinforcement and plan remediation/enrichment.`,
+  };
+}
