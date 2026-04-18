@@ -369,16 +369,25 @@ export default function TimetablePage() {
           </Card>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={generate} disabled={generating || !grade || !stream}>
             <Sparkles className="h-4 w-4 mr-2" />
-            {generating ? 'Generating…' : 'Generate Timetable'}
+            {generating && !batchMode ? 'Generating…' : 'Generate (Single Class)'}
           </Button>
-          {result && (
+          <Button variant="secondary" onClick={generateAllClasses} disabled={generating}>
+            <Layers className="h-4 w-4 mr-2" />
+            {generating && batchMode ? 'Generating all…' : 'Generate ALL Classes'}
+          </Button>
+          {result && !batchMode && (
             <>
               <Button variant="outline" onClick={save}>Save</Button>
               <Button variant="outline" onClick={downloadClass}><Download className="h-4 w-4 mr-2" />Class PDF</Button>
             </>
+          )}
+          {result && batchMode && (
+            <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
+              {savingBatch ? 'Saving…' : `Save All (${batchClasses.length})`}
+            </Button>
           )}
         </div>
 
