@@ -63,7 +63,14 @@ export interface GradeAnalysisReport {
   totalEntries: number;
   totalM: number;
   totalF: number;
-  insights: { highestBand: string; genderNote: string; overallComment: string };
+  insights: {
+    highestBand: string;
+    genderNote: string;
+    overallComment: string;
+    bestSubject: string;
+    weakestSubject: string;
+    recommendation: string;
+  };
 }
 
 function emptyGenderDist(): Record<CBCSubLevel, GenderDist> {
