@@ -8,11 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw } from 'lucide-react';
+import { FileText, BookOpen, Download, Printer, Pencil, Save, RotateCcw, Lock, Unlock, ShieldCheck, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getGrades, getSubjects, getTerms, getStrands, getSubStrands, getSLOs, getAllStrandsForTerm } from '@/data/cbc-curriculum';
 import { generateSchemeOfWork, generateLessonPlan, type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
+import { generateCurriculumScheme, type CurriculumMode } from '@/lib/curriculum-engine';
+import { hasCurriculumDesign } from '@/data/cbc-curriculum-designs';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function ContentGenerationPage() {
@@ -33,6 +38,15 @@ export default function ContentGenerationPage() {
   const [lessonDate, setLessonDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonDuration, setLessonDuration] = useState('40 minutes');
   const [schoolName, setSchoolName] = useState('');
+
+  // --- Curriculum-Driven Engine state ---
+  const [curriculumMode, setCurriculumMode] = useState<CurriculumMode>('lock');
+  const [extraActivities, setExtraActivities] = useState('');
+  const [extraResources, setExtraResources] = useState('');
+  const kicdAvailable = useMemo(
+    () => grade && subject && term ? hasCurriculumDesign(grade, subject, term) : false,
+    [grade, subject, term],
+  );
 
   const grades = useMemo(() => getGrades(), []);
   const subjects = useMemo(() => grade ? getSubjects(grade) : [], [grade]);
@@ -56,11 +70,34 @@ export default function ContentGenerationPage() {
       toast.error('Please select Grade, Subject, and Term');
       return;
     }
+
+    // 1. KICD-locked path — pull EVERYTHING from the curriculum design
+    if (kicdAvailable) {
+      const flex = curriculumMode === 'flex' ? {
+        extraActivities: extraActivities.split('\n').map(s => s.trim()).filter(Boolean),
+        extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
+      } : undefined;
+      const result = generateCurriculumScheme({
+        grade, subject, term, mode: curriculumMode, flex,
+      });
+      if (result) {
+        setSchemeRows(result.rows);
+        setEditingScheme(false);
+        if (result.warnings.length > 0) {
+          toast.warning(result.warnings[0]);
+        } else {
+          toast.success(`KICD curriculum loaded — ${result.scheduledLessons} lessons scheduled (${curriculumMode === 'lock' ? 'Lock' : 'Flex'} mode)`);
+        }
+        return;
+      }
+    }
+
+    // 2. Fallback to legacy generic generator (uses cbcCurriculum starter dataset)
     const allStrands = getAllStrandsForTerm(grade, subject, term);
     const rows = generateSchemeOfWork(grade, subject, term, allStrands);
     setSchemeRows(rows);
     setEditingScheme(false);
-    toast.success('Scheme of Work generated successfully');
+    toast.success('Scheme of Work generated (generic template)');
   };
 
   const handleGenerateLesson = () => {
@@ -186,6 +223,91 @@ export default function ContentGenerationPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Curriculum-Driven Engine panel */}
+        {grade && subject && term && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Curriculum-Driven Engine
+                {kicdAvailable ? (
+                  <Badge className="bg-primary">KICD design loaded</Badge>
+                ) : (
+                  <Badge variant="outline">No KICD design — using template</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {kicdAvailable ? (
+                <>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>100% KICD-aligned</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      SLOs, strands, sub-strands, activities and lesson allocations are pulled
+                      verbatim from the official curriculum design for {grade} — {subject} — {term}.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                    <div className="flex items-center gap-2">
+                      {curriculumMode === 'lock'
+                        ? <Lock className="h-4 w-4 text-primary" />
+                        : <Unlock className="h-4 w-4 text-primary" />}
+                      <div>
+                        <p className="text-sm font-medium">
+                          {curriculumMode === 'lock' ? 'Lock mode' : 'Smart Flex mode'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {curriculumMode === 'lock'
+                            ? 'SLOs and structure are read-only — printed exactly as KICD specifies.'
+                            : 'Append extra activities/resources only. SLOs and structure stay locked.'}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={curriculumMode === 'flex'}
+                      onCheckedChange={(v) => setCurriculumMode(v ? 'flex' : 'lock')}
+                    />
+                  </div>
+                  {curriculumMode === 'flex' && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Extra activities (one per line)</Label>
+                        <Textarea
+                          rows={3}
+                          placeholder={'e.g. Watch YouTube clip on…\nVisit nearby market for survey…'}
+                          value={extraActivities}
+                          onChange={e => setExtraActivities(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Extra resources (comma-separated)</Label>
+                        <Textarea
+                          rows={3}
+                          placeholder="e.g. Projector, weather chart, real flowers"
+                          value={extraResources}
+                          onChange={e => setExtraResources(e.target.value)}
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Alert variant="default">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    No official KICD design seeded for this combination yet — the system will fall
+                    back to the generic CBC template. Lock/Flex mode applies only when a KICD design
+                    is available.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
