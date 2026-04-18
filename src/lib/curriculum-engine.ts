@@ -114,7 +114,7 @@ export async function generateCurriculumScheme(
   const mode: CurriculumMode = opts.mode ?? 'lock';
   const flex = opts.flex ?? {};
 
-  const lessons = expandLessons(design);
+  const lessons = expandLessons(design, opts.selectedSubStrandIds);
   const totalCurriculumLessons = lessons.length;
 
   // Teaching weeks = totalWeeks − mid-term break − final revision week
