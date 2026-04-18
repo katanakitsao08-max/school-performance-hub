@@ -97,9 +97,13 @@ export default function GradeAnalysisPage() {
     enabled: learners.length > 0,
   });
 
-  // Exclude learners with NO marks entered for any subject in this term/assessment
+  // Exclude only learners with NO non-zero marks for this term/assessment.
+  // A learner with at least one subject scored > 0 is included (even if other
+  // subjects are 0 or missing).
   const learnersWithScores = useMemo(() => {
-    const ids = new Set(scores.map((s: any) => s.learner_id));
+    const ids = new Set(
+      scores.filter((s: any) => Number(s.score) > 0).map((s: any) => s.learner_id)
+    );
     return learners.filter((l: any) => ids.has(l.id));
   }, [learners, scores]);
 
