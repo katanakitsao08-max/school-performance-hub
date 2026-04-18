@@ -63,7 +63,14 @@ export interface GradeAnalysisReport {
   totalEntries: number;
   totalM: number;
   totalF: number;
-  insights: { highestBand: string; genderNote: string; overallComment: string };
+  insights: {
+    highestBand: string;
+    genderNote: string;
+    overallComment: string;
+    bestSubject: string;
+    weakestSubject: string;
+    recommendation: string;
+  };
 }
 
 function emptyGenderDist(): Record<CBCSubLevel, GenderDist> {
@@ -145,6 +152,19 @@ export function computeGradeAnalysis(
   const genderNote = mTotal > fTotal ? `Male entries (${mTotal}) exceed Female (${fTotal})` : fTotal > mTotal ? `Female entries (${fTotal}) exceed Male (${mTotal})` : 'Equal gender participation';
   const overallComment = overallMean >= 6 ? 'Strong performance' : overallMean >= 4 ? 'Average performance' : overallMean >= 2 ? 'Below average – needs improvement' : 'Poor performance – urgent intervention needed';
 
+  const ranked = [...subjectAnalyses].filter(s => s.entryCount > 0).sort((a, b) => b.meanGradePoint - a.meanGradePoint);
+  const bestSubject = ranked.length > 0 ? `${ranked[0].subjectName} (${ranked[0].meanGradeLabel})` : '-';
+  const weakestSubject = ranked.length > 0 ? `${ranked[ranked.length - 1].subjectName} (${ranked[ranked.length - 1].meanGradeLabel})` : '-';
+  const recommendation = overallMean >= 6
+    ? 'Maintain current teaching strategies and continue learner enrichment activities.'
+    : overallMean >= 4
+    ? `Reinforce ${ranked[ranked.length - 1]?.subjectName || 'weak areas'} through targeted remedial sessions and peer learning.`
+    : `Urgent intervention required. Prioritise remediation in ${ranked[ranked.length - 1]?.subjectName || 'low-performing subjects'} and engage parents.`;
+
+  // Real unique learner counts (only learners that submitted at least one score)
+  const learnersWithScores = new Set(scores.map((s: any) => s.learner_id));
+  const activeLearners = learners.filter(l => learnersWithScores.has(l.id));
+
   return {
     subjects: subjectAnalyses,
     overallDistribution: overallDist,
@@ -153,9 +173,9 @@ export function computeGradeAnalysis(
     overallAverage: overallCount > 0 ? Number((overallTotalScore / overallCount).toFixed(2)) : 0,
     overallMean,
     overallMeanLabel: overallCount > 0 ? getMeanGradeLabel(overallMean) : '-',
-    totalEntries: learners.length,
-    totalM: learners.filter(l => learnerGender[l.id] === 'M').length,
-    totalF: learners.filter(l => learnerGender[l.id] === 'F').length,
-    insights: { highestBand, genderNote, overallComment },
+    totalEntries: activeLearners.length,
+    totalM: activeLearners.filter(l => learnerGender[l.id] === 'M').length,
+    totalF: activeLearners.filter(l => learnerGender[l.id] === 'F').length,
+    insights: { highestBand, genderNote, overallComment, bestSubject, weakestSubject, recommendation },
   };
 }
