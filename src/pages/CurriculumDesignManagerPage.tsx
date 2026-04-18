@@ -66,6 +66,7 @@ export default function CurriculumDesignManagerPage() {
 
   // AI extraction state
   const [pdfText, setPdfText] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [hintGrade, setHintGrade] = useState("");
   const [hintSubject, setHintSubject] = useState("");
   const [hintTerm, setHintTerm] = useState<string>("");
