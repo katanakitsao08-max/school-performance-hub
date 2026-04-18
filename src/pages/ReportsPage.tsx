@@ -568,7 +568,38 @@ export default function ReportsPage() {
       l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
     ]);
 
-    autoTable(doc, { head: [headers], body, startY: y + 4, styles: { fontSize: 7 } });
+    // Footer row: Subject Mean per subject + class mean + class grade
+    const foot: any[] = [];
+    if (!isSchoolWide && selectedGrades.length === 1 && displaySubjects.length > 0) {
+      const maxTotalSubj = displaySubjects.reduce((s, sub) => s + sub.max_score, 0);
+      const avgMaxSubj = displaySubjects.length ? maxTotalSubj / displaySubjects.length : 100;
+      const meanTotalRow = reportData.length
+        ? reportData.reduce((s, l) => s + l.total, 0) / reportData.length
+        : 0;
+      const gradeForClass = displaySubjects.length && reportData.length
+        ? getGradeForLevel(classMean, avgMaxSubj, reportData[0].grade)
+        : '-';
+      foot.push([
+        { content: 'SUBJECT MEAN', colSpan: showGradeCol ? 3 : 2, styles: { halign: 'right', fontStyle: 'bold' } },
+        ...displaySubjects.map(sub => {
+          const sm = subjectMeans.find(m => m.name === sub.name);
+          return sm ? sm.mean.toFixed(1) : '-';
+        }),
+        reportData.length ? meanTotalRow.toFixed(1) : '-',
+        classMean.toFixed(1),
+        String(gradeForClass),
+        '—',
+      ]);
+    }
+
+    autoTable(doc, {
+      head: [headers],
+      body,
+      foot: foot.length ? foot : undefined,
+      startY: y + 4,
+      styles: { fontSize: 7 },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold' },
+    });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
     const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
