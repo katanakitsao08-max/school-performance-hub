@@ -96,3 +96,22 @@ export async function findActiveCurriculumDesign(
 
   return { ...design, strands: strandsOut };
 }
+
+/** Lightweight existence check used by UI badges ("KICD design loaded"). */
+export async function hasActiveCurriculumDesign(
+  grade: string,
+  subject: string,
+  term: string | number,
+): Promise<boolean> {
+  const termInt = termToInt(term);
+  const { data } = await supabase
+    .from("curriculum_designs")
+    .select("id")
+    .eq("grade", grade)
+    .ilike("subject", subject)
+    .eq("term", termInt)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}

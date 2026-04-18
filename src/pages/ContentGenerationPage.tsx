@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getGrades, getSubjects, getTerms, getStrands, getSubStrands, getSLOs, getAllStrandsForTerm } from '@/data/cbc-curriculum';
 import { generateSchemeOfWork, generateLessonPlan, type SchemeRow, type LessonPlanData } from '@/lib/content-generation-templates';
 import { generateCurriculumScheme, type CurriculumMode } from '@/lib/curriculum-engine';
-import { hasCurriculumDesign } from '@/data/cbc-curriculum-designs';
+import { hasActiveCurriculumDesign } from '@/lib/curriculum-db';
 import { downloadSchemeOfWorkPdf, downloadLessonPlanPdf } from '@/lib/content-generation-pdf';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -43,10 +43,18 @@ export default function ContentGenerationPage() {
   const [curriculumMode, setCurriculumMode] = useState<CurriculumMode>('lock');
   const [extraActivities, setExtraActivities] = useState('');
   const [extraResources, setExtraResources] = useState('');
-  const kicdAvailable = useMemo(
-    () => grade && subject && term ? hasCurriculumDesign(grade, subject, term) : false,
-    [grade, subject, term],
-  );
+  const [kicdAvailable, setKicdAvailable] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (grade && subject && term) {
+      hasActiveCurriculumDesign(grade, subject, term).then((ok) => {
+        if (alive) setKicdAvailable(ok);
+      });
+    } else {
+      setKicdAvailable(false);
+    }
+    return () => { alive = false; };
+  }, [grade, subject, term]);
 
   const grades = useMemo(() => getGrades(), []);
   const subjects = useMemo(() => grade ? getSubjects(grade) : [], [grade]);
@@ -65,19 +73,19 @@ export default function ContentGenerationPage() {
     setLessonPlan(null);
   };
 
-  const handleGenerateScheme = () => {
+  const handleGenerateScheme = async () => {
     if (!grade || !subject || !term) {
       toast.error('Please select Grade, Subject, and Term');
       return;
     }
 
-    // 1. KICD-locked path — pull EVERYTHING from the curriculum design
+    // 1. KICD-locked path — pull EVERYTHING from the active DB curriculum design
     if (kicdAvailable) {
       const flex = curriculumMode === 'flex' ? {
         extraActivities: extraActivities.split('\n').map(s => s.trim()).filter(Boolean),
         extraResources: extraResources.split(',').map(s => s.trim()).filter(Boolean),
       } : undefined;
-      const result = generateCurriculumScheme({
+      const result = await generateCurriculumScheme({
         grade, subject, term, mode: curriculumMode, flex,
       });
       if (result) {
