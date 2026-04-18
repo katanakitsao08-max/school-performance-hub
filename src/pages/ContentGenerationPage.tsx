@@ -200,6 +200,33 @@ export default function ContentGenerationPage() {
     setSchemeRows(updated);
   };
 
+  /**
+   * Move a scheme row to a different week. Picks the first available teaching
+   * lesson slot in the target week and swaps it with the source row (so the
+   * total number of rows is preserved and lesson numbers stay sequential).
+   */
+  const moveSchemeRowToWeek = (rowIdx: number, targetWeek: number) => {
+    if (!schemeRows) return;
+    const src = schemeRows[rowIdx];
+    if (!src || src.isBreak) return;
+    // Find the FIRST teaching row in the target week — we'll swap with it.
+    const destIdx = schemeRows.findIndex(
+      (r, i) => i !== rowIdx && r.week === targetWeek && !r.isBreak,
+    );
+    if (destIdx === -1) {
+      toast.error(`Week ${targetWeek} has no teaching lessons to swap with.`);
+      return;
+    }
+    const next = [...schemeRows];
+    const a = next[rowIdx];
+    const b = next[destIdx];
+    // Swap content but keep each row's week/lesson position fixed
+    next[rowIdx] = { ...b, week: a.week, lesson: a.lesson };
+    next[destIdx] = { ...a, week: b.week, lesson: b.lesson };
+    setSchemeRows(next);
+    toast.success(`Moved to Week ${targetWeek}`);
+  };
+
   const handleLessonEdit = (field: string, value: any) => {
     if (!lessonPlan) return;
     setLessonPlan({ ...lessonPlan, [field]: value });
@@ -569,7 +596,26 @@ export default function ContentGenerationPage() {
                                 <TableCell><Textarea value={row.inquiry} onChange={e => handleSchemeEdit(i, 'inquiry', e.target.value)} className="text-sm min-h-[60px]" /></TableCell>
                                 <TableCell><Input value={row.resources} onChange={e => handleSchemeEdit(i, 'resources', e.target.value)} className="text-sm" /></TableCell>
                                 <TableCell><Input value={row.assessment} onChange={e => handleSchemeEdit(i, 'assessment', e.target.value)} className="text-sm" /></TableCell>
-                                <TableCell><Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" /></TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <Input value={row.remarks} onChange={e => handleSchemeEdit(i, 'remarks', e.target.value)} className="text-sm" />
+                                    <Select
+                                      value={String(row.week)}
+                                      onValueChange={(v) => moveSchemeRowToWeek(i, parseInt(v, 10))}
+                                    >
+                                      <SelectTrigger className="h-7 text-[11px]">
+                                        <SelectValue placeholder="Move to week…" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Array.from({ length: totalWeeks }, (_, k) => k + 1).map((w) => (
+                                          <SelectItem key={w} value={String(w)} className="text-xs">
+                                            Move to Week {w}{w === row.week ? ' (current)' : ''}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </TableCell>
                               </>
                             ) : (
                               <>

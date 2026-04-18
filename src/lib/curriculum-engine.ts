@@ -46,12 +46,12 @@ export interface CurriculumGenerateOptions {
   selectedSubStrandIds?: string[];
 }
 
-/** Official KICD default weeks per term. */
-export function defaultWeeksForTerm(term: string): number {
-  const t = term.toLowerCase();
+/** Official KICD default weeks per term. T1=14, T2=13, T3=12 (39 total). */
+export function defaultWeeksForTerm(term: string | number): number {
+  const t = String(term).toLowerCase();
   if (t.includes('1')) return 14;
   if (t.includes('2')) return 13;
-  if (t.includes('3')) return 11;
+  if (t.includes('3')) return 12;
   return 13;
 }
 
