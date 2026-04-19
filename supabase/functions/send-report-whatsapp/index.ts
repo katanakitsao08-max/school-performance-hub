@@ -80,7 +80,17 @@ async function sendAfricasTalking(opts: {
     if (recip?.status === 'Success') {
       return { ok: true as const, providerId: recip.messageId || null, error: null };
     }
-    return { ok: false as const, providerId: null, error: `sms: ${recip?.status || 'unknown'}` };
+    const status = recip?.status || 'unknown';
+    // Translate AT status codes into actionable messages
+    let friendly = status;
+    if (status === 'UserInBlacklist') {
+      friendly = 'Recipient has opted out of SMS. Ask them to text START to your sender ID, or remove from blacklist in Africa\'s Talking dashboard.';
+    } else if (status === 'InvalidPhoneNumber') {
+      friendly = 'Invalid phone number format.';
+    } else if (status === 'InsufficientBalance') {
+      friendly = 'Africa\'s Talking account has insufficient balance.';
+    }
+    return { ok: false as const, providerId: null, error: friendly };
   }
   return { ok: true as const, providerId: json?.id || null, error: null };
 }
@@ -180,32 +190,46 @@ serve(async (req) => {
         `(Link expires in 48 hours)`;
 
       // 2. Try WhatsApp, fall back to SMS on ANY failure (404, auth, network, etc.)
+      // Skip WhatsApp entirely on sandbox accounts — the endpoint 404s and just slows things down.
+      const isSandbox = username.toLowerCase() === 'sandbox';
       let send: { ok: boolean; providerId: string | null; error: string | null };
       let usedChannel: 'whatsapp' | 'sms' = 'whatsapp';
-      let waError: string | null = null;
-      try {
-        const waSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
-        if (waSend.ok) {
-          send = waSend;
-        } else {
-          waError = waSend.error;
-          throw new Error(waSend.error || 'whatsapp failed');
+      let waError: string | null = isSandbox ? 'sandbox account — WhatsApp not available' : null;
+
+      if (!isSandbox) {
+        try {
+          const waSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
+          if (waSend.ok) {
+            send = waSend;
+          } else {
+            waError = waSend.error;
+            throw new Error(waSend.error || 'whatsapp failed');
+          }
+        } catch (waErr: any) {
+          if (!waError) waError = waErr?.message || 'whatsapp failed';
+          send = await trySms();
         }
-      } catch (waErr: any) {
-        if (!waError) waError = waErr?.message || 'whatsapp failed';
-        // Always fall back to SMS — sandbox plans don't support WhatsApp
+      } else {
+        send = await trySms();
+      }
+
+      async function trySms() {
         usedChannel = 'sms';
         try {
           const smsSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'sms' });
-          if (smsSend.ok) {
-            send = { ok: true, providerId: smsSend.providerId, error: null };
-          } else {
-            send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS also failed: ${smsSend.error}` };
-          }
+          if (smsSend.ok) return { ok: true, providerId: smsSend.providerId, error: null };
+          return {
+            ok: false,
+            providerId: null,
+            error: isSandbox ? smsSend.error : `WhatsApp unavailable; SMS: ${smsSend.error}`,
+          };
         } catch (smsErr: any) {
-          send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS error: ${smsErr?.message || smsErr}` };
+          return { ok: false, providerId: null, error: `SMS error: ${smsErr?.message || smsErr}` };
         }
       }
+
+      // @ts-ignore — set inside branches above
+      if (!send) send = { ok: false, providerId: null, error: 'No send attempted' };
 
       await supabaseAdmin.from('report_delivery_log').insert({
         school_id: schoolId,
