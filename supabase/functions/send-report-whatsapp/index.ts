@@ -80,7 +80,17 @@ async function sendAfricasTalking(opts: {
     if (recip?.status === 'Success') {
       return { ok: true as const, providerId: recip.messageId || null, error: null };
     }
-    return { ok: false as const, providerId: null, error: `sms: ${recip?.status || 'unknown'}` };
+    const status = recip?.status || 'unknown';
+    // Translate AT status codes into actionable messages
+    let friendly = status;
+    if (status === 'UserInBlacklist') {
+      friendly = 'Recipient has opted out of SMS. Ask them to text START to your sender ID, or remove from blacklist in Africa\'s Talking dashboard.';
+    } else if (status === 'InvalidPhoneNumber') {
+      friendly = 'Invalid phone number format.';
+    } else if (status === 'InsufficientBalance') {
+      friendly = 'Africa\'s Talking account has insufficient balance.';
+    }
+    return { ok: false as const, providerId: null, error: friendly };
   }
   return { ok: true as const, providerId: json?.id || null, error: null };
 }
