@@ -74,15 +74,25 @@ export default function TimetablePage() {
         supabase.from('learning_areas').select('id, name').eq('school_id', schoolId).eq('grade', grade).eq('is_active', true),
         supabase
           .from('teacher_assignments')
-          .select('teacher_id, learning_area_id, grade, stream, profiles!inner(full_name)')
+          .select('teacher_id, learning_area_id, grade, stream')
           .eq('school_id', schoolId)
           .eq('grade', grade),
       ]);
       const las = (la || []) as { id: string; name: string }[];
       setRequirements(las.map(l => ({ learningAreaId: l.id, learningAreaName: l.name, lessonsPerWeek: 5 })));
-      const rows: TeacherAssignmentRow[] = ((ta as any) || []).map((r: any) => ({
+      const taRows = ((ta as any) || []) as any[];
+      const teacherIds = Array.from(new Set(taRows.map(r => r.teacher_id)));
+      const nameMap: Record<string, string> = {};
+      if (teacherIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', teacherIds);
+        (profs || []).forEach((p: any) => { nameMap[p.user_id] = p.full_name; });
+      }
+      const rows: TeacherAssignmentRow[] = taRows.map((r: any) => ({
         teacher_id: r.teacher_id,
-        teacher_name: r.profiles?.full_name || 'Teacher',
+        teacher_name: nameMap[r.teacher_id] || 'Teacher',
         learning_area_id: r.learning_area_id,
         grade: r.grade,
         stream: r.stream,
@@ -156,12 +166,22 @@ export default function TimetablePage() {
       // 1. Discover every (grade, stream) that has at least one teacher assignment
       const { data: ta, error: taErr } = await supabase
         .from('teacher_assignments')
-        .select('teacher_id, learning_area_id, grade, stream, profiles!inner(full_name)')
+        .select('teacher_id, learning_area_id, grade, stream')
         .eq('school_id', schoolId);
       if (taErr) throw taErr;
-      const allAssignments: TeacherAssignmentRow[] = ((ta as any) || []).map((r: any) => ({
+      const taRows = ((ta as any) || []) as any[];
+      const teacherIds = Array.from(new Set(taRows.map(r => r.teacher_id)));
+      const nameMap: Record<string, string> = {};
+      if (teacherIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', teacherIds);
+        (profs || []).forEach((p: any) => { nameMap[p.user_id] = p.full_name; });
+      }
+      const allAssignments: TeacherAssignmentRow[] = taRows.map((r: any) => ({
         teacher_id: r.teacher_id,
-        teacher_name: r.profiles?.full_name || 'Teacher',
+        teacher_name: nameMap[r.teacher_id] || 'Teacher',
         learning_area_id: r.learning_area_id,
         grade: r.grade,
         stream: r.stream,
