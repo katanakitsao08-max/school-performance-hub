@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound
+  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +35,7 @@ const adminItems = [
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
+  { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
   { title: "Fees", url: "/fees", icon: Wallet },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
   { title: "Timetable", url: "/timetable", icon: CalendarClock },

@@ -37,6 +37,7 @@ import ParentDashboard from "./pages/ParentDashboard";
 import SharedReportPage from "./pages/SharedReportPage";
 import CurriculumDesignManagerPage from "./pages/CurriculumDesignManagerPage";
 import CurriculumLibraryPage from "./pages/CurriculumLibraryPage";
+import WhatsAppPage from "./pages/WhatsAppPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -138,6 +139,7 @@ const App = () => (
               <Route path="/reports" element={<ProtectedRoute><ErrorBoundary inline label="Reports"><ReportsPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
               <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
+              <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="WhatsApp"><WhatsAppPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/promotion" element={<ProtectedRoute allowedRoles={['admin']}><PromotionPage /></ProtectedRoute>} />
               <Route path="/strands" element={<ProtectedRoute allowedRoles={['admin']}><StrandsPage /></ProtectedRoute>} />
               <Route path="/teacher-assignments" element={<ProtectedRoute allowedRoles={['admin']}><TeacherAssignmentsPage /></ProtectedRoute>} />

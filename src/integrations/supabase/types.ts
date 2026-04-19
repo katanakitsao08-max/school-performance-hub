@@ -584,41 +584,53 @@ export type Database = {
         Row: {
           channel: string
           created_at: string
+          delivered_at: string | null
           error_message: string | null
+          failed_at: string | null
           id: string
           learner_id: string
+          message_body: string | null
           provider_message_id: string | null
           recipient: string
           school_id: string
           sent_by: string
           share_link_id: string | null
           status: string
+          template_id: string | null
         }
         Insert: {
           channel: string
           created_at?: string
+          delivered_at?: string | null
           error_message?: string | null
+          failed_at?: string | null
           id?: string
           learner_id: string
+          message_body?: string | null
           provider_message_id?: string | null
           recipient: string
           school_id: string
           sent_by: string
           share_link_id?: string | null
           status?: string
+          template_id?: string | null
         }
         Update: {
           channel?: string
           created_at?: string
+          delivered_at?: string | null
           error_message?: string | null
+          failed_at?: string | null
           id?: string
           learner_id?: string
+          message_body?: string | null
           provider_message_id?: string | null
           recipient?: string
           school_id?: string
           sent_by?: string
           share_link_id?: string | null
           status?: string
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -640,6 +652,13 @@ export type Database = {
             columns: ["share_link_id"]
             isOneToOne: false
             referencedRelation: "report_share_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_delivery_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1181,6 +1200,275 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_queue: {
+        Row: {
+          attempt_count: number
+          channel_used: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          learner_id: string | null
+          max_attempts: number
+          provider_message_id: string | null
+          recipient: string
+          rendered_message: string | null
+          scheduled_for: string
+          school_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["whatsapp_queue_status"]
+          template_id: string | null
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          attempt_count?: number
+          channel_used?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          learner_id?: string | null
+          max_attempts?: number
+          provider_message_id?: string | null
+          recipient: string
+          rendered_message?: string | null
+          scheduled_for?: string
+          school_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_queue_status"]
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          attempt_count?: number
+          channel_used?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          learner_id?: string | null
+          max_attempts?: number
+          provider_message_id?: string | null
+          recipient?: string
+          rendered_message?: string | null
+          scheduled_for?: string
+          school_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_queue_status"]
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_queue_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          name: string
+          recipient_ids: string[] | null
+          run_at: string
+          school_id: string
+          target_grade: string | null
+          target_scope: string
+          target_stream: string | null
+          template_id: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name: string
+          recipient_ids?: string[] | null
+          run_at: string
+          school_id: string
+          target_grade?: string | null
+          target_scope?: string
+          target_stream?: string | null
+          template_id: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name?: string
+          recipient_ids?: string[] | null
+          run_at?: string
+          school_id?: string
+          target_grade?: string | null
+          target_scope?: string
+          target_stream?: string | null
+          template_id?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_schedules_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_settings: {
+        Row: {
+          auto_send_attendance: boolean
+          auto_send_fee_reminders: boolean
+          auto_send_report_cards: boolean
+          created_at: string
+          daily_send_limit: number
+          enforce_school_branding: boolean
+          id: string
+          school_id: string
+          sender_display_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_send_attendance?: boolean
+          auto_send_fee_reminders?: boolean
+          auto_send_report_cards?: boolean
+          created_at?: string
+          daily_send_limit?: number
+          enforce_school_branding?: boolean
+          id?: string
+          school_id: string
+          sender_display_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_send_attendance?: boolean
+          auto_send_fee_reminders?: boolean
+          auto_send_report_cards?: boolean
+          created_at?: string
+          daily_send_limit?: number
+          enforce_school_branding?: boolean
+          id?: string
+          school_id?: string
+          sender_display_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body_text: string
+          buttons: Json
+          category: Database["public"]["Enums"]["whatsapp_template_category"]
+          created_at: string
+          created_by: string | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          is_system: boolean
+          language: string
+          name: string
+          provider_template_id: string | null
+          required_vars: string[]
+          school_id: string
+          status: Database["public"]["Enums"]["whatsapp_template_status"]
+          updated_at: string
+        }
+        Insert: {
+          body_text: string
+          buttons?: Json
+          category?: Database["public"]["Enums"]["whatsapp_template_category"]
+          created_at?: string
+          created_by?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_system?: boolean
+          language?: string
+          name: string
+          provider_template_id?: string | null
+          required_vars?: string[]
+          school_id: string
+          status?: Database["public"]["Enums"]["whatsapp_template_status"]
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          buttons?: Json
+          category?: Database["public"]["Enums"]["whatsapp_template_category"]
+          created_at?: string
+          created_by?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_system?: boolean
+          language?: string
+          name?: string
+          provider_template_id?: string | null
+          required_vars?: string[]
+          school_id?: string
+          status?: Database["public"]["Enums"]["whatsapp_template_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1197,6 +1485,10 @@ export type Database = {
           _type?: string
           _user_id: string
         }
+        Returns: string
+      }
+      find_system_wa_template: {
+        Args: { _name: string; _school_id: string }
         Returns: string
       }
       generate_school_code: { Args: never; Returns: string }
@@ -1216,11 +1508,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      seed_whatsapp_defaults_for_school: {
+        Args: { _school_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "headteacher" | "super_admin" | "parent"
       curriculum_source: "manual" | "ai_pdf"
       curriculum_status: "draft" | "review" | "approved" | "active" | "archived"
+      whatsapp_queue_status:
+        | "queued"
+        | "processing"
+        | "sent"
+        | "failed"
+        | "cancelled"
+      whatsapp_template_category: "utility" | "marketing" | "authentication"
+      whatsapp_template_status: "draft" | "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1351,6 +1655,15 @@ export const Constants = {
       app_role: ["admin", "teacher", "headteacher", "super_admin", "parent"],
       curriculum_source: ["manual", "ai_pdf"],
       curriculum_status: ["draft", "review", "approved", "active", "archived"],
+      whatsapp_queue_status: [
+        "queued",
+        "processing",
+        "sent",
+        "failed",
+        "cancelled",
+      ],
+      whatsapp_template_category: ["utility", "marketing", "authentication"],
+      whatsapp_template_status: ["draft", "pending", "approved", "rejected"],
     },
   },
 } as const
