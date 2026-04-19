@@ -1487,6 +1487,10 @@ export type Database = {
         }
         Returns: string
       }
+      find_system_wa_template: {
+        Args: { _name: string; _school_id: string }
+        Returns: string
+      }
       generate_school_code: { Args: never; Returns: string }
       get_user_assigned_grades: {
         Args: { _user_id: string }
