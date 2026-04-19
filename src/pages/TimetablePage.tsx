@@ -134,8 +134,24 @@ export default function TimetablePage() {
   };
 
   const generate = () => {
-    if (!grade || !stream) return toast({ title: 'Select grade and stream' });
-    if (assignments.length === 0) return toast({ title: 'No teacher assignments found', description: 'Assign teachers to subjects first.', variant: 'destructive' });
+    if (!grade) return toast({ title: 'Select a grade', variant: 'destructive' });
+    if (!stream) return toast({ title: 'Select a stream', variant: 'destructive' });
+    if (assignments.length === 0) {
+      return toast({
+        title: 'No teacher assignments for this grade',
+        description: `Go to Teacher Assignments and assign teachers to subjects in Grade ${grade}.`,
+        variant: 'destructive',
+      });
+    }
+    const streamAssignments = assignments.filter(a => a.stream === stream);
+    if (streamAssignments.length === 0) {
+      const availableStreams = Array.from(new Set(assignments.map(a => a.stream))).join(', ');
+      return toast({
+        title: `No teachers assigned to Grade ${grade} ${stream}`,
+        description: `Available streams with assignments: ${availableStreams || 'none'}.`,
+        variant: 'destructive',
+      });
+    }
     setGenerating(true);
     setBatchMode(false);
     const reqMap: Record<string, SubjectRequirement[]> = {};
@@ -146,7 +162,7 @@ export default function TimetablePage() {
       periodsPerDay,
       breakPeriod,
       requirementsByClass: reqMap,
-      assignments: assignments.filter(a => a.stream === stream),
+      assignments: streamAssignments,
     });
     setResult(r);
     setGenerating(false);
