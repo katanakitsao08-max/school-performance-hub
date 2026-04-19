@@ -190,32 +190,46 @@ serve(async (req) => {
         `(Link expires in 48 hours)`;
 
       // 2. Try WhatsApp, fall back to SMS on ANY failure (404, auth, network, etc.)
+      // Skip WhatsApp entirely on sandbox accounts — the endpoint 404s and just slows things down.
+      const isSandbox = username.toLowerCase() === 'sandbox';
       let send: { ok: boolean; providerId: string | null; error: string | null };
       let usedChannel: 'whatsapp' | 'sms' = 'whatsapp';
-      let waError: string | null = null;
-      try {
-        const waSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
-        if (waSend.ok) {
-          send = waSend;
-        } else {
-          waError = waSend.error;
-          throw new Error(waSend.error || 'whatsapp failed');
+      let waError: string | null = isSandbox ? 'sandbox account — WhatsApp not available' : null;
+
+      if (!isSandbox) {
+        try {
+          const waSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'whatsapp' });
+          if (waSend.ok) {
+            send = waSend;
+          } else {
+            waError = waSend.error;
+            throw new Error(waSend.error || 'whatsapp failed');
+          }
+        } catch (waErr: any) {
+          if (!waError) waError = waErr?.message || 'whatsapp failed';
+          send = await trySms();
         }
-      } catch (waErr: any) {
-        if (!waError) waError = waErr?.message || 'whatsapp failed';
-        // Always fall back to SMS — sandbox plans don't support WhatsApp
+      } else {
+        send = await trySms();
+      }
+
+      async function trySms() {
         usedChannel = 'sms';
         try {
           const smsSend = await sendAfricasTalking({ apiKey, username, to: phone, message, channel: 'sms' });
-          if (smsSend.ok) {
-            send = { ok: true, providerId: smsSend.providerId, error: null };
-          } else {
-            send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS also failed: ${smsSend.error}` };
-          }
+          if (smsSend.ok) return { ok: true, providerId: smsSend.providerId, error: null };
+          return {
+            ok: false,
+            providerId: null,
+            error: isSandbox ? smsSend.error : `WhatsApp unavailable; SMS: ${smsSend.error}`,
+          };
         } catch (smsErr: any) {
-          send = { ok: false, providerId: null, error: `WhatsApp failed (${waError}); SMS error: ${smsErr?.message || smsErr}` };
+          return { ok: false, providerId: null, error: `SMS error: ${smsErr?.message || smsErr}` };
         }
       }
+
+      // @ts-ignore — set inside branches above
+      if (!send) send = { ok: false, providerId: null, error: 'No send attempted' };
 
       await supabaseAdmin.from('report_delivery_log').insert({
         school_id: schoolId,
