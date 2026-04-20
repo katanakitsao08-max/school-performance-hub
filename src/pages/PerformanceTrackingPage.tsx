@@ -15,9 +15,43 @@ import { Button } from '@/components/ui/button';
 import { downloadClassPerformancePdf, downloadIndividualPerformancePdf } from '@/lib/performance-tracking-pdf';
 
 export default function PerformanceTrackingPage() {
-  const { user, schoolId } = useAuth();
-  const dynamicGrades = useSchoolGrades();
+  const { user, schoolId, role } = useAuth();
+  const allGrades = useSchoolGrades();
   const currentYear = new Date().getFullYear();
+  const isTeacher = role === 'teacher';
+
+  // Fetch this teacher's assignments to scope grades/streams/subjects
+  const { data: myAssignments = [] } = useQuery({
+    queryKey: ['my-teacher-assignments', user?.id, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      const { data: ct } = await supabase
+        .from('class_teachers')
+        .select('grade, stream')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      return { subjects: data || [], classes: ct || [] };
+    },
+    enabled: !!user?.id && !!schoolId && isTeacher,
+  }) as any;
+
+  const dynamicGrades = useMemo(() => {
+    if (!isTeacher) return allGrades;
+    const set = new Set<string>();
+    (myAssignments?.subjects || []).forEach((a: any) => set.add(a.grade));
+    (myAssignments?.classes || []).forEach((a: any) => set.add(a.grade));
+    const filtered = allGrades.filter(g => set.has(g));
+    return filtered.length ? filtered : allGrades;
+  }, [isTeacher, allGrades, myAssignments]);
+
+  const allowedSubjectIds = useMemo(() => {
+    if (!isTeacher) return null;
+    return new Set<string>((myAssignments?.subjects || []).map((a: any) => a.learning_area_id));
+  }, [isTeacher, myAssignments]);
 
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
   const [selectedYear, setSelectedYear] = useState(currentYear);
