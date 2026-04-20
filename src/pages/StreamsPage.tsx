@@ -48,14 +48,30 @@ export default function StreamsPage() {
       if (editing) {
         const { error } = await supabase.from('streams').update({ name, level: dialogLevel } as any).eq('id', editing.id);
         if (error) throw error;
+        return 'updated' as const;
       } else {
+        // Idempotent create: if a stream with same name+level already exists for this school, treat as success
+        const { data: existing } = await supabase
+          .from('streams')
+          .select('id')
+          .eq('school_id', schoolId!)
+          .eq('name', name)
+          .eq('level', dialogLevel as any)
+          .maybeSingle();
+        if (existing) return 'exists' as const;
         const { error } = await supabase.from('streams').insert({ name, school_id: schoolId, level: dialogLevel } as any);
-        if (error) throw error;
+        if (error) {
+          // Postgres unique-violation → treat as already exists
+          if ((error as any).code === '23505') return 'exists' as const;
+          throw error;
+        }
+        return 'created' as const;
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
-      toast({ title: editing ? 'Stream updated' : 'Stream created' });
+      const title = result === 'updated' ? 'Stream updated' : result === 'exists' ? 'Stream already exists — accepted' : 'Stream created';
+      toast({ title });
       setOpen(false);
       setEditing(null);
       setName('');
