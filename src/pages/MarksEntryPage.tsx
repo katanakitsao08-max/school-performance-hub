@@ -86,6 +86,7 @@ export default function MarksEntryPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [learnerSearch, setLearnerSearch] = useState('');
 
   // For privileged users, fetch all streams (with level for filtering)
   const { data: dbStreams = [] } = useQuery({
@@ -261,6 +262,16 @@ export default function MarksEntryPage() {
   }, [learners, scores, subjects]);
 
   const getRank = (id: string) => rankings.find(r => r.id === id)?.rank || '-';
+
+  // Filtered learners by search (name or admission number) — ranks computed against full class
+  const filteredLearners = useMemo(() => {
+    const q = learnerSearch.trim().toLowerCase();
+    if (!q) return learners;
+    return learners.filter((l: any) =>
+      (l.full_name || '').toLowerCase().includes(q) ||
+      (l.admission_number || '').toLowerCase().includes(q)
+    );
+  }, [learners, learnerSearch]);
 
   // Class summary
   const classSummary = useMemo(() => {
@@ -465,6 +476,21 @@ export default function MarksEntryPage() {
               </div>
             )}
 
+            {/* Learner search */}
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search learner by name or admission number…"
+                value={learnerSearch}
+                onChange={e => setLearnerSearch(e.target.value)}
+                className="h-9 max-w-sm"
+              />
+              {learnerSearch && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {filteredLearners.length} of {learners.length}
+                </Badge>
+              )}
+            </div>
+
             {/* Marks Grid */}
             <Card>
               <CardContent className="p-0 overflow-x-auto">
@@ -486,7 +512,7 @@ export default function MarksEntryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {learners.map((learner, idx) => {
+                    {filteredLearners.map((learner, idx) => {
                       const total = getTotal(learner.id);
                       const mean = getMean(learner.id);
                       const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
@@ -541,10 +567,10 @@ export default function MarksEntryPage() {
                         </TableRow>
                       );
                     })}
-                    {learners.length === 0 && (
+                    {filteredLearners.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
-                          No learners in this class. Select a different grade or stream.
+                          {learners.length === 0 ? 'No learners in this class. Select a different grade or stream.' : `No learners match "${learnerSearch}".`}
                         </TableCell>
                       </TableRow>
                     )}

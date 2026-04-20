@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Edit, KeyRound } from 'lucide-react';
+import { Plus, Trash2, Edit, KeyRound, Search, Users as UsersIcon, GraduationCap } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
@@ -27,6 +28,9 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [activeTab, setActiveTab] = useState<'staff' | 'parents'>('staff');
+  const [staffSearch, setStaffSearch] = useState('');
+  const [parentSearch, setParentSearch] = useState('');
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -50,6 +54,51 @@ export default function UsersPage() {
     },
     enabled: !!user,
   });
+
+  // Parent ↔ learner links (used to show which children each parent is linked to)
+  const { data: parentLinks = [] } = useQuery({
+    queryKey: ['parent-links-with-learners', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('parent_learners')
+        .select('parent_user_id, learner_id, relationship, learners(full_name, admission_number, grade, stream)')
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  // Split users: staff (admin/teacher/headteacher) vs parents
+  const staff = users.filter(u => u.role === 'admin' || u.role === 'teacher' || u.role === 'headteacher');
+  const parents = users.filter(u => u.role === 'parent');
+
+  const filterByQuery = (list: any[], q: string) => {
+    const s = q.trim().toLowerCase();
+    if (!s) return list;
+    return list.filter(u =>
+      (u.full_name || '').toLowerCase().includes(s) ||
+      (u.role || '').toLowerCase().includes(s)
+    );
+  };
+
+  const filteredStaff = filterByQuery(staff, staffSearch);
+  const filteredParents = parents.filter(p => {
+    const q = parentSearch.trim().toLowerCase();
+    if (!q) return true;
+    if ((p.full_name || '').toLowerCase().includes(q)) return true;
+    // also match by linked learner name / admission number
+    const childMatches = parentLinks
+      .filter(l => l.parent_user_id === p.user_id)
+      .some((l: any) =>
+        (l.learners?.full_name || '').toLowerCase().includes(q) ||
+        (l.learners?.admission_number || '').toLowerCase().includes(q)
+      );
+    return childMatches;
+  });
+
+  const linkedChildrenFor = (parentUserId: string) =>
+    parentLinks.filter(l => l.parent_user_id === parentUserId);
+
 
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
@@ -314,53 +363,146 @@ export default function UsersPage() {
           </Dialog>
         </div>
 
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Assigned Grades</TableHead>
-                  <TableHead>Streams</TableHead>
-                  <TableHead>Subjects</TableHead>
-                  <TableHead className="w-[150px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map(u => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.full_name}</TableCell>
-                    <TableCell><Badge variant="secondary" className="capitalize">{u.role}</Badge></TableCell>
-                    <TableCell>{(u.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
-                    <TableCell>{(u.assigned_streams || []).join(', ') || '-'}</TableCell>
-                    <TableCell>
-                      {(u.assigned_learning_areas || []).length > 0
-                        ? (u.assigned_learning_areas || []).join(', ')
-                        : u.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(u)} title="Edit">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(u); setNewPassword(''); }} title="Reset Password">
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeletingUser(u)} className="text-destructive hover:text-destructive" title="Delete">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {users.length === 0 && !isLoading && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-3">
+          <TabsList>
+            <TabsTrigger value="staff" className="gap-1.5">
+              <UsersIcon className="h-4 w-4" /> School Staff
+              <Badge variant="secondary" className="ml-1 h-5">{staff.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="parents" className="gap-1.5">
+              <GraduationCap className="h-4 w-4" /> Parents
+              <Badge variant="secondary" className="ml-1 h-5">{parents.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="staff" className="space-y-3">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search staff by name or role…"
+                value={staffSearch}
+                onChange={e => setStaffSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Assigned Grades</TableHead>
+                      <TableHead>Streams</TableHead>
+                      <TableHead>Subjects</TableHead>
+                      <TableHead className="w-[150px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredStaff.map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.full_name}</TableCell>
+                        <TableCell><Badge variant="secondary" className="capitalize">{u.role}</Badge></TableCell>
+                        <TableCell>{(u.assigned_grades || []).map((g: string) => `G${g}`).join(', ') || '-'}</TableCell>
+                        <TableCell>{(u.assigned_streams || []).join(', ') || '-'}</TableCell>
+                        <TableCell>
+                          {(u.assigned_learning_areas || []).length > 0
+                            ? (u.assigned_learning_areas || []).join(', ')
+                            : u.role === 'teacher' ? <span className="text-muted-foreground italic">Class Teacher (All)</span> : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(u)} title="Edit">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(u); setNewPassword(''); }} title="Reset Password">
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setDeletingUser(u)} className="text-destructive hover:text-destructive" title="Delete">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredStaff.length === 0 && !isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          {staff.length === 0 ? 'No staff users yet. Click "Add User" to create one.' : `No staff match "${staffSearch}".`}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="parents" className="space-y-3">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by parent name, child name, or admission number…"
+                value={parentSearch}
+                onChange={e => setParentSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parent Name</TableHead>
+                      <TableHead>Linked Children</TableHead>
+                      <TableHead className="w-[120px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredParents.map(p => {
+                      const kids = linkedChildrenFor(p.user_id);
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.full_name}</TableCell>
+                          <TableCell>
+                            {kids.length === 0 ? (
+                              <span className="text-muted-foreground italic">No children linked</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {kids.map((k: any, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {k.learners?.full_name} · {k.learners?.admission_number} · G{k.learners?.grade}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(p); setNewPassword(''); }} title="Reset Password">
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setDeletingUser(p)} className="text-destructive hover:text-destructive" title="Delete">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredParents.length === 0 && !isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          {parents.length === 0 ? 'No parent accounts yet. Use Bulk Create Parents from the Learners page.' : `No parents match "${parentSearch}".`}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Delete User Dialog */}
         <AlertDialog open={!!deletingUser} onOpenChange={(v) => { if (!v) setDeletingUser(null); }}>
