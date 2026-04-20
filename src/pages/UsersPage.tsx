@@ -28,6 +28,9 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [activeTab, setActiveTab] = useState<'staff' | 'parents'>('staff');
+  const [staffSearch, setStaffSearch] = useState('');
+  const [parentSearch, setParentSearch] = useState('');
   const [form, setForm] = useState({
     username: '',
     password: '',
