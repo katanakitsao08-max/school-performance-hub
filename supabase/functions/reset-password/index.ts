@@ -39,7 +39,7 @@ serve(async (req) => {
     if (!user_id || !new_password) throw new Error('user_id and new_password are required');
     if (new_password.length < 6) throw new Error('Password must be at least 6 characters');
 
-    const { error } = await supabaseAdmin.auth.admin.updateUser(user_id, {
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
       password: new_password,
     });
     if (error) throw error;
