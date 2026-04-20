@@ -512,7 +512,7 @@ export default function MarksEntryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {learners.map((learner, idx) => {
+                    {filteredLearners.map((learner, idx) => {
                       const total = getTotal(learner.id);
                       const mean = getMean(learner.id);
                       const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
