@@ -91,13 +91,25 @@ export default function PerformanceTrackingPage() {
     enabled: !!schoolId && !!selectedStream,
   });
 
+  const dbStreams = useMemo(() => {
+    if (!isTeacher) return allDbStreams;
+    const set = new Set<string>();
+    (myAssignments?.subjects || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+    (myAssignments?.classes || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+    return allDbStreams.filter(s => set.has(s));
+  }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
+
   const { data: subjects = [] } = useQuery({
-    queryKey: ['tracking-subjects', selectedGrade, schoolId],
+    queryKey: ['tracking-subjects', selectedGrade, schoolId, isTeacher, Array.from(allowedSubjectIds || [])],
     queryFn: async () => {
       const { data } = await supabase.from('learning_areas').select('*')
         .eq('grade', selectedGrade).eq('is_active', true).eq('school_id', schoolId!)
         .order('name');
-      return data || [];
+      const list = data || [];
+      if (isTeacher && allowedSubjectIds) {
+        return list.filter((s: any) => allowedSubjectIds.has(s.id));
+      }
+      return list;
     },
     enabled: !!schoolId,
   });
