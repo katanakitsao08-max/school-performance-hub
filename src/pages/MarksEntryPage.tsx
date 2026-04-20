@@ -86,6 +86,7 @@ export default function MarksEntryPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [scores, setScores] = useState<Record<string, Record<string, string>>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [learnerSearch, setLearnerSearch] = useState('');
 
   // For privileged users, fetch all streams (with level for filtering)
   const { data: dbStreams = [] } = useQuery({
