@@ -476,6 +476,21 @@ export default function MarksEntryPage() {
               </div>
             )}
 
+            {/* Learner search */}
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search learner by name or admission number…"
+                value={learnerSearch}
+                onChange={e => setLearnerSearch(e.target.value)}
+                className="h-9 max-w-sm"
+              />
+              {learnerSearch && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {filteredLearners.length} of {learners.length}
+                </Badge>
+              )}
+            </div>
+
             {/* Marks Grid */}
             <Card>
               <CardContent className="p-0 overflow-x-auto">
