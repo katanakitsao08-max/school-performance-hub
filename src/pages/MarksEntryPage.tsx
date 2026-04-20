@@ -263,6 +263,16 @@ export default function MarksEntryPage() {
 
   const getRank = (id: string) => rankings.find(r => r.id === id)?.rank || '-';
 
+  // Filtered learners by search (name or admission number) — ranks computed against full class
+  const filteredLearners = useMemo(() => {
+    const q = learnerSearch.trim().toLowerCase();
+    if (!q) return learners;
+    return learners.filter((l: any) =>
+      (l.full_name || '').toLowerCase().includes(q) ||
+      (l.admission_number || '').toLowerCase().includes(q)
+    );
+  }, [learners, learnerSearch]);
+
   // Class summary
   const classSummary = useMemo(() => {
     if (learners.length === 0 || subjects.length === 0) return null;
