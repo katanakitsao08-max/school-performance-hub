@@ -299,7 +299,10 @@ export default function ParentReportsTab({ child }: Props) {
         assessmentLabel: 'End-Term',
         classTeacherComment: generateTeacherComment(child.full_name, mean, 100, subjectData.map(s => ({ name: s.name, score: s.score, maxScore: s.maxScore }))),
         principalComment: '',
-        schoolSettings,
+        schoolSettings: {
+          ...schoolSettings,
+          school_name: schoolSettings['school_name'] || schoolRecord?.school_name || 'SCHOOL',
+        },
         logoBase64,
         classAvgPerSubject,
         gradeDistribution,
