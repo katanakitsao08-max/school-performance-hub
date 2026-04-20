@@ -55,6 +55,51 @@ export default function UsersPage() {
     enabled: !!user,
   });
 
+  // Parent ↔ learner links (used to show which children each parent is linked to)
+  const { data: parentLinks = [] } = useQuery({
+    queryKey: ['parent-links-with-learners', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('parent_learners')
+        .select('parent_user_id, learner_id, relationship, learners(full_name, admission_number, grade, stream)')
+        .eq('school_id', schoolId!);
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  // Split users: staff (admin/teacher/headteacher) vs parents
+  const staff = users.filter(u => u.role === 'admin' || u.role === 'teacher' || u.role === 'headteacher');
+  const parents = users.filter(u => u.role === 'parent');
+
+  const filterByQuery = (list: any[], q: string) => {
+    const s = q.trim().toLowerCase();
+    if (!s) return list;
+    return list.filter(u =>
+      (u.full_name || '').toLowerCase().includes(s) ||
+      (u.role || '').toLowerCase().includes(s)
+    );
+  };
+
+  const filteredStaff = filterByQuery(staff, staffSearch);
+  const filteredParents = parents.filter(p => {
+    const q = parentSearch.trim().toLowerCase();
+    if (!q) return true;
+    if ((p.full_name || '').toLowerCase().includes(q)) return true;
+    // also match by linked learner name / admission number
+    const childMatches = parentLinks
+      .filter(l => l.parent_user_id === p.user_id)
+      .some((l: any) =>
+        (l.learners?.full_name || '').toLowerCase().includes(q) ||
+        (l.learners?.admission_number || '').toLowerCase().includes(q)
+      );
+    return childMatches;
+  });
+
+  const linkedChildrenFor = (parentUserId: string) =>
+    parentLinks.filter(l => l.parent_user_id === parentUserId);
+
+
   const { data: dbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId],
     queryFn: async () => {
