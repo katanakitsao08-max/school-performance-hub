@@ -79,7 +79,9 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   const doc = new jsPDF({ format: 'a4' });
   const pw = doc.internal.pageSize.getWidth(); // 210mm
   const ph = doc.internal.pageSize.getHeight(); // 297mm
-  const isKJSEAOnePage = isKJSEAGradeLevel(data.learner.grade); // Grade 7-9 → strict 1-page mode
+  // Use the compact one-page Grade 7-9 layout for Grade 4 and above (grading scale stays per CBC level)
+  const _gnum = parseInt(String(data.learner.grade).replace(/\D/g, ''), 10);
+  const isKJSEAOnePage = isKJSEAGradeLevel(data.learner.grade) || (!isNaN(_gnum) && _gnum >= 4);
   const mx = isKJSEAOnePage ? 9 : 15; // tighter margins for one-page mode
   const cw = pw - mx * 2; // content width
   const cx = pw / 2;
