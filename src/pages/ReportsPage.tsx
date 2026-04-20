@@ -107,6 +107,9 @@ export default function ReportsPage() {
   const schoolMotto = schoolSettings['school_motto'] || '';
   const schoolAddress = schoolSettings['school_address'] || '';
   const schoolLogoUrl = schoolSettings['school_logo_url'] || '';
+  // Always inject the resolved school name so downstream PDFs use the
+  // super-admin-registered name even when school_settings.school_name is empty.
+  const schoolSettingsWithName = { ...schoolSettings, school_name: schoolName } as Record<string, string>;
 
   // For combined/school reports, fetch learners for multiple grades
   const { data: learners = [] } = useQuery({
@@ -721,7 +724,7 @@ export default function ReportsPage() {
       assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
       classTeacherComment: comments[ld.id] || '',
       principalComment: principalComments[ld.id] || '',
-      schoolSettings: schoolSettings as Record<string, string>,
+      schoolSettings: schoolSettingsWithName,
       logoBase64,
       classAvgPerSubject,
       termHistory: getTermHistory(ld.id),
@@ -776,7 +779,7 @@ export default function ReportsPage() {
         assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
         classTeacherComment: comments[ld.id] || '',
         principalComment: principalComments[ld.id] || '',
-        schoolSettings: schoolSettings as Record<string, string>,
+        schoolSettings: schoolSettingsWithName,
         logoBase64, classAvgPerSubject,
         termHistory: getTermHistory(ld.id),
         gradeDistribution,
@@ -811,7 +814,8 @@ export default function ReportsPage() {
       ...l.subjectData.map((s: any) => s.score),
       l.total, Number(l.mean.toFixed(1)), l.overallGrade,
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const titleRow = [`${schoolName.toUpperCase()} — REPORT — TERM ${selectedTerm} ${selectedYear}`];
+    const ws = XLSX.utils.aoa_to_sheet([titleRow, [], headers, ...data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
 
