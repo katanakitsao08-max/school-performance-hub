@@ -45,7 +45,7 @@ export default function TimetablePage() {
   const [grade, setGrade] = useState('');
   const [stream, setStream] = useState('');
   const [periodsPerDay, setPeriodsPerDay] = useState(8);
-  const [breakInput, setBreakInput] = useState('4'); // comma-separated period numbers
+  const [breakInput, setBreakInput] = useState('3,6'); // comma-separated period numbers (two breaks)
   const [requirements, setRequirements] = useState<SubjectRequirement[]>([]);
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [result, setResult] = useState<ReturnType<typeof generateTimetable> | null>(null);
