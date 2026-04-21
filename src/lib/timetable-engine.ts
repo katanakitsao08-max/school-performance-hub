@@ -24,6 +24,8 @@ export interface TimetableSlot {
   teacherId?: string;
   teacherName?: string;
   isBreak?: boolean;
+  isLocked?: boolean;
+  lockedLabel?: string;
 }
 
 export interface ClassKey {
@@ -31,20 +33,27 @@ export interface ClassKey {
   stream: string;
 }
 
+export interface LockedSlot {
+  classKey: string;        // `${grade}|${stream}` or '*' for all classes
+  day: string;             // e.g. 'Monday' or '*' for every day
+  period: number;          // 1-indexed
+  label: string;           // e.g. 'Assembly', 'Pastoral'
+}
+
 export interface GenerateOptions {
-  classes: ClassKey[];                     // classes to schedule
-  days: string[];                          // e.g. Mon-Fri
-  periodsPerDay: number;                   // total period columns
-  breakPeriod?: number;                    // 1-indexed period that is the break
-  requirementsByClass: Record<string, SubjectRequirement[]>; // key = `${grade}|${stream}`
-  assignments: TeacherAssignmentRow[];     // teacher pool from teacher_assignments
+  classes: ClassKey[];
+  days: string[];
+  periodsPerDay: number;
+  breakPeriod?: number;            // legacy: single break
+  breakPeriods?: number[];         // NEW: multiple breaks (1-indexed)
+  lockedSlots?: LockedSlot[];      // NEW: fixed periods (assembly etc.)
+  requirementsByClass: Record<string, SubjectRequirement[]>;
+  assignments: TeacherAssignmentRow[];
 }
 
 export interface GenerationResult {
-  // class key -> 2D grid [day][period]
   grids: Record<string, TimetableSlot[][]>;
-  // teacher_id -> 2D grid [day][period]
-  teacherGrids: Record<string, { teacherName: string; grid: TimetableSlot[][] }>;
+  teacherGrids: Record<string, { teacherName: string; grid: TimetableSlot[][]; lessonCount: number }>;
   conflicts: string[];
   unfilled: string[];
 }
@@ -52,27 +61,52 @@ export interface GenerationResult {
 const classKey = (g: string, s: string) => `${g}|${s}`;
 
 export function generateTimetable(opts: GenerateOptions): GenerationResult {
-  const { classes, days, periodsPerDay, breakPeriod, requirementsByClass, assignments } = opts;
+  const { classes, days, periodsPerDay, requirementsByClass, assignments } = opts;
+
+  // Merge legacy single + new array
+  const breaks = new Set<number>();
+  if (opts.breakPeriod) breaks.add(opts.breakPeriod);
+  (opts.breakPeriods || []).forEach(b => breaks.add(b));
 
   const grids: Record<string, TimetableSlot[][]> = {};
-  const teacherBusy: Record<string, Set<string>> = {}; // teacherId -> Set("day:period")
+  const teacherBusy: Record<string, Set<string>> = {};
   const teacherLoad: Record<string, number> = {};
   const conflicts: string[] = [];
   const unfilled: string[] = [];
 
-  // init empty grids with break column
+  // init empty grids — apply breaks + locked slots
   for (const c of classes) {
     const k = classKey(c.grade, c.stream);
     grids[k] = days.map((d) =>
       Array.from({ length: periodsPerDay }, (_, p) => ({
         day: d,
         period: p + 1,
-        isBreak: breakPeriod ? p + 1 === breakPeriod : false,
+        isBreak: breaks.has(p + 1),
       })),
     );
   }
 
-  // Build assignment lookup: classKey + learningAreaId -> teacher pool
+  // Apply locked slots
+  (opts.lockedSlots || []).forEach(lock => {
+    const targetClasses = lock.classKey === '*'
+      ? Object.keys(grids)
+      : [lock.classKey].filter(k => grids[k]);
+    targetClasses.forEach(ck => {
+      days.forEach((d, di) => {
+        if (lock.day !== '*' && lock.day !== d) return;
+        const slot = grids[ck][di][lock.period - 1];
+        if (!slot) return;
+        grids[ck][di][lock.period - 1] = {
+          ...slot,
+          isLocked: true,
+          lockedLabel: lock.label,
+          learningAreaName: lock.label,
+        };
+      });
+    });
+  });
+
+  // teacher pool lookup
   const teacherPool: Record<string, TeacherAssignmentRow[]> = {};
   for (const a of assignments) {
     const k = `${classKey(a.grade, a.stream)}::${a.learning_area_id}`;
@@ -80,7 +114,7 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
     teacherPool[k].push(a);
   }
 
-  // Build flat list of lessons to place per class (subject repeated lessonsPerWeek times)
+  // flat lessons list
   type Lesson = { classKey: string; req: SubjectRequirement };
   const lessonsToPlace: Lesson[] = [];
   for (const c of classes) {
@@ -93,10 +127,8 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
     }
   }
 
-  // Sort: subjects with more lessons first (harder to place)
   lessonsToPlace.sort((a, b) => b.req.lessonsPerWeek - a.req.lessonsPerWeek);
 
-  // Place each lesson
   for (const lesson of lessonsToPlace) {
     const grid = grids[lesson.classKey];
     const pool = teacherPool[`${lesson.classKey}::${lesson.req.learningAreaId}`] || [];
@@ -106,14 +138,12 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
       continue;
     }
 
-    // Try every (day, period) — prefer slots not already used by same subject same day
     let placed = false;
     const candidates: { d: number; p: number; score: number }[] = [];
     for (let d = 0; d < days.length; d++) {
       for (let p = 0; p < periodsPerDay; p++) {
         const slot = grid[d][p];
-        if (slot.isBreak || slot.learningAreaId) continue;
-        // avoid same subject twice on same day
+        if (slot.isBreak || slot.isLocked || slot.learningAreaId) continue;
         const sameDay = grid[d].some((s) => s.learningAreaId === lesson.req.learningAreaId);
         candidates.push({ d, p, score: sameDay ? 1 : 0 });
       }
@@ -121,7 +151,6 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
     candidates.sort((a, b) => a.score - b.score);
 
     for (const c of candidates) {
-      // pick least-loaded teacher who is free at this slot
       const sortedPool = [...pool].sort(
         (x, y) => (teacherLoad[x.teacher_id] || 0) - (teacherLoad[y.teacher_id] || 0),
       );
@@ -150,7 +179,7 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
   }
 
   // Build per-teacher grids
-  const teacherGrids: Record<string, { teacherName: string; grid: TimetableSlot[][] }> = {};
+  const teacherGrids: Record<string, { teacherName: string; grid: TimetableSlot[][]; lessonCount: number }> = {};
   for (const k of Object.keys(grids)) {
     const [grade, stream] = k.split('|');
     grids[k].forEach((row, di) => {
@@ -159,11 +188,12 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
         if (!teacherGrids[cell.teacherId]) {
           teacherGrids[cell.teacherId] = {
             teacherName: cell.teacherName || 'Teacher',
+            lessonCount: 0,
             grid: days.map((d) =>
               Array.from({ length: periodsPerDay }, (_, p) => ({
                 day: d,
                 period: p + 1,
-                isBreak: breakPeriod ? p + 1 === breakPeriod : false,
+                isBreak: breaks.has(p + 1),
               })),
             ),
           };
@@ -181,6 +211,7 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
           teacherId: cell.teacherId,
           teacherName: cell.teacherName,
         };
+        teacherGrids[cell.teacherId].lessonCount += 1;
       });
     });
   }
@@ -189,7 +220,6 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
 }
 
 export function generateActivationKey(): string {
-  const seg = () =>
-    Math.random().toString(36).slice(2, 6).toUpperCase();
+  const seg = () => Math.random().toString(36).slice(2, 6).toUpperCase();
   return `TT-${seg()}-${seg()}-${seg()}`;
 }

@@ -9,17 +9,18 @@ interface PdfOpts {
   days: string[];
   periodsPerDay: number;
   breakPeriod?: number;
+  breakPeriods?: number[];
   grid: TimetableSlot[][];
   showTeacher?: boolean;
   showClass?: boolean;
 }
 
 // Build column header definitions with BREAK columns labeled clearly.
-function buildPeriodHeaders(periodsPerDay: number, breakPeriod?: number) {
+function buildPeriodHeaders(periodsPerDay: number, breaks: Set<number>) {
   const headers: { label: string; isBreak: boolean; periodNum?: number }[] = [];
   let visiblePeriod = 0;
   for (let p = 1; p <= periodsPerDay; p++) {
-    if (breakPeriod && p === breakPeriod) {
+    if (breaks.has(p)) {
       headers.push({ label: 'BREAK', isBreak: true });
     } else {
       visiblePeriod += 1;
@@ -52,7 +53,11 @@ export function exportTimetablePdf(opts: PdfOpts) {
   }
 
   // ── Build table ──────────────────────────────────────────────────────────
-  const periodHeaders = buildPeriodHeaders(opts.periodsPerDay, opts.breakPeriod);
+  const breaksSet = new Set<number>([
+    ...(opts.breakPeriod ? [opts.breakPeriod] : []),
+    ...(opts.breakPeriods || []),
+  ]);
+  const periodHeaders = buildPeriodHeaders(opts.periodsPerDay, breaksSet);
 
   // Two header rows: top label + period number row (mimicking ASc style)
   const head: any[] = [
@@ -74,6 +79,8 @@ export function exportTimetablePdf(opts: PdfOpts) {
       const slot = opts.grid[di]?.[p];
       if (slot?.isBreak) {
         row.push({ content: 'BREAK', styles: { fillColor: [240, 240, 240], textColor: 90, halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 7 } });
+      } else if (slot?.isLocked) {
+        row.push({ content: (slot.lockedLabel || 'LOCKED').toUpperCase(), styles: { fillColor: [255, 243, 224], textColor: 120, halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 7 } });
       } else if (slot?.learningAreaName) {
         // Two-line cell: SUBJECT (bold) on top, teacher beneath
         const subject = slot.learningAreaName.toUpperCase();
