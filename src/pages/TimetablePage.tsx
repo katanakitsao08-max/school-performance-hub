@@ -11,15 +11,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers } from 'lucide-react';
+import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers, FileSpreadsheet, Search, Plus, X } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
+import { getGradeLevel, type SchoolLevel } from '@/lib/grade-levels';
 import {
-  generateTimetable, type SubjectRequirement, type TeacherAssignmentRow, type TimetableSlot,
+  generateTimetable, type SubjectRequirement, type TeacherAssignmentRow, type TimetableSlot, type LockedSlot,
 } from '@/lib/timetable-engine';
 import { exportTimetablePdf } from '@/lib/timetable-pdf';
+import { exportTimetableExcel, exportTimetableExcelMulti } from '@/lib/timetable-excel';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+// Block filters: maps a "block" to grade-level filter
+const BLOCKS = [
+  { id: 'all', label: 'All Levels', match: (_g: string) => true },
+  { id: 'lower', label: 'Lower Primary (1-3)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 1 && n <= 3; } },
+  { id: 'upper', label: 'Upper Primary (4-6)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 4 && n <= 6; } },
+  { id: 'junior', label: 'Junior School (7-9)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 7 && n <= 9; } },
+] as const;
 
 export default function TimetablePage() {
   const { schoolId, user } = useAuth();
@@ -35,7 +45,7 @@ export default function TimetablePage() {
   const [grade, setGrade] = useState('');
   const [stream, setStream] = useState('');
   const [periodsPerDay, setPeriodsPerDay] = useState(8);
-  const [breakPeriod, setBreakPeriod] = useState<number>(4);
+  const [breakInput, setBreakInput] = useState('4'); // comma-separated period numbers
   const [requirements, setRequirements] = useState<SubjectRequirement[]>([]);
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [result, setResult] = useState<ReturnType<typeof generateTimetable> | null>(null);
@@ -43,8 +53,19 @@ export default function TimetablePage() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchClasses, setBatchClasses] = useState<{ grade: string; stream: string }[]>([]);
   const [savingBatch, setSavingBatch] = useState(false);
+  const [blockFilter, setBlockFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lockedSlots, setLockedSlots] = useState<LockedSlot[]>([]);
+  const [newLock, setNewLock] = useState({ day: 'Monday', period: 1, label: 'Assembly' });
 
-  // Check activation status
+  const breakPeriods = useMemo(() => {
+    return breakInput
+      .split(',')
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => !isNaN(n) && n >= 1 && n <= periodsPerDay);
+  }, [breakInput, periodsPerDay]);
+
+  // Check activation
   useEffect(() => {
     if (!schoolId) return;
     (async () => {
@@ -66,7 +87,7 @@ export default function TimetablePage() {
     })();
   }, [schoolId]);
 
-  // Load assignments + learning areas when class chosen
+  // Load assignments + learning areas
   useEffect(() => {
     if (!schoolId || !grade) return;
     (async () => {
@@ -133,6 +154,11 @@ export default function TimetablePage() {
     setRequirements(prev => prev.map((r, idx) => idx === i ? { ...r, lessonsPerWeek: val } : r));
   };
 
+  const addLock = () => {
+    setLockedSlots(prev => [...prev, { classKey: '*', day: newLock.day, period: newLock.period, label: newLock.label || 'Locked' }]);
+  };
+  const removeLock = (i: number) => setLockedSlots(prev => prev.filter((_, idx) => idx !== i));
+
   const generate = () => {
     if (!grade) return toast({ title: 'Select a grade', variant: 'destructive' });
     if (!stream) return toast({ title: 'Select a stream', variant: 'destructive' });
@@ -160,7 +186,8 @@ export default function TimetablePage() {
       classes: [{ grade, stream }],
       days: DAYS,
       periodsPerDay,
-      breakPeriod,
+      breakPeriods,
+      lockedSlots,
       requirementsByClass: reqMap,
       assignments: streamAssignments,
     });
@@ -179,7 +206,6 @@ export default function TimetablePage() {
     setBatchMode(true);
     setResult(null);
     try {
-      // 1. Discover every (grade, stream) that has at least one teacher assignment
       const { data: ta, error: taErr } = await supabase
         .from('teacher_assignments')
         .select('teacher_id, learning_area_id, grade, stream')
@@ -195,29 +221,32 @@ export default function TimetablePage() {
           .in('user_id', teacherIds);
         (profs || []).forEach((p: any) => { nameMap[p.user_id] = p.full_name; });
       }
-      const allAssignments: TeacherAssignmentRow[] = taRows.map((r: any) => ({
-        teacher_id: r.teacher_id,
-        teacher_name: nameMap[r.teacher_id] || 'Teacher',
-        learning_area_id: r.learning_area_id,
-        grade: r.grade,
-        stream: r.stream,
-      }));
+      const blockMatcher = BLOCKS.find(b => b.id === blockFilter)!.match;
+      const allAssignments: TeacherAssignmentRow[] = taRows
+        .filter((r: any) => blockMatcher(r.grade))
+        .map((r: any) => ({
+          teacher_id: r.teacher_id,
+          teacher_name: nameMap[r.teacher_id] || 'Teacher',
+          learning_area_id: r.learning_area_id,
+          grade: r.grade,
+          stream: r.stream,
+        }));
       if (allAssignments.length === 0) {
-        toast({ title: 'No teacher assignments', description: 'Assign teachers to subjects first.', variant: 'destructive' });
+        toast({ title: 'No teacher assignments in this block', description: 'Try a different block or assign teachers first.', variant: 'destructive' });
+        setGenerating(false);
         return;
       }
       const classSet = new Map<string, { grade: string; stream: string }>();
       allAssignments.forEach(a => classSet.set(`${a.grade}|${a.stream}`, { grade: a.grade, stream: a.stream }));
       const classList = Array.from(classSet.values());
 
-      // 2. Load learning areas for every grade involved
-      const grades = Array.from(new Set(classList.map(c => c.grade)));
+      const gradesIn = Array.from(new Set(classList.map(c => c.grade)));
       const { data: la, error: laErr } = await supabase
         .from('learning_areas')
         .select('id, name, grade')
         .eq('school_id', schoolId)
         .eq('is_active', true)
-        .in('grade', grades);
+        .in('grade', gradesIn);
       if (laErr) throw laErr;
       const areasByGrade: Record<string, { id: string; name: string }[]> = {};
       ((la as any) || []).forEach((l: any) => {
@@ -225,7 +254,6 @@ export default function TimetablePage() {
         areasByGrade[l.grade].push({ id: l.id, name: l.name });
       });
 
-      // 3. Build per-class requirements (default 5 lessons/week per subject)
       const reqMap: Record<string, SubjectRequirement[]> = {};
       classList.forEach(c => {
         const areas = areasByGrade[c.grade] || [];
@@ -234,12 +262,12 @@ export default function TimetablePage() {
         }));
       });
 
-      // 4. Single engine run — shared teacherBusy prevents cross-class double-booking
       const r = generateTimetable({
         classes: classList,
         days: DAYS,
         periodsPerDay,
-        breakPeriod,
+        breakPeriods,
+        lockedSlots,
         requirementsByClass: reqMap,
         assignments: allAssignments,
       });
@@ -265,7 +293,7 @@ export default function TimetablePage() {
       grade: c.grade, stream: c.stream,
       days: DAYS,
       periods_per_day: periodsPerDay,
-      break_period: breakPeriod,
+      break_period: breakPeriods[0] ?? null,
       data: result.grids[`${c.grade}|${c.stream}`] as any,
       generated_by: user.id,
     }));
@@ -284,7 +312,7 @@ export default function TimetablePage() {
       grade, stream,
       days: DAYS,
       periods_per_day: periodsPerDay,
-      break_period: breakPeriod,
+      break_period: breakPeriods[0] ?? null,
       data: result.grids[ck] as any,
       generated_by: user.id,
     });
@@ -297,7 +325,18 @@ export default function TimetablePage() {
     exportTimetablePdf({
       schoolName,
       title: `Class Timetable — ${grade} ${stream}`,
-      days: DAYS, periodsPerDay, breakPeriod,
+      days: DAYS, periodsPerDay, breakPeriods,
+      grid: result.grids[`${grade}|${stream}`],
+      showTeacher: true,
+    });
+  };
+
+  const downloadClassExcel = () => {
+    if (!result) return;
+    exportTimetableExcel({
+      schoolName,
+      title: `Class Timetable — ${grade} ${stream}`,
+      days: DAYS, periodsPerDay, breakPeriods,
       grid: result.grids[`${grade}|${stream}`],
       showTeacher: true,
     });
@@ -309,12 +348,40 @@ export default function TimetablePage() {
     exportTimetablePdf({
       schoolName,
       title: `Teacher Timetable — ${t.teacherName}`,
-      days: DAYS, periodsPerDay, breakPeriod,
+      days: DAYS, periodsPerDay, breakPeriods,
       grid: t.grid,
     });
   };
 
+  const downloadAllExcel = () => {
+    if (!result) return;
+    exportTimetableExcelMulti(schoolName, `Master Timetable — ${schoolName}`, batchClasses.map(c => ({
+      name: `${c.grade}-${c.stream}`,
+      opts: {
+        title: `${c.grade} ${c.stream}`,
+        days: DAYS, periodsPerDay, breakPeriods,
+        grid: result.grids[`${c.grade}|${c.stream}`],
+        showTeacher: true,
+      },
+    })));
+  };
+
+  // Search filter (teacher / subject / class)
+  const matchesSearch = (cell: TimetableSlot) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return (cell.teacherName?.toLowerCase().includes(q) ||
+            cell.learningAreaName?.toLowerCase().includes(q) ||
+            cell.lockedLabel?.toLowerCase().includes(q));
+  };
+
   const classGrid = result?.grids[`${grade}|${stream}`];
+
+  // Filter batchClasses by block (display only)
+  const visibleBatchClasses = useMemo(() => {
+    const m = BLOCKS.find(b => b.id === blockFilter)!.match;
+    return batchClasses.filter(c => m(c.grade));
+  }, [batchClasses, blockFilter]);
 
   // ---- LOCKED VIEW ----
   if (activated === false) {
@@ -353,22 +420,35 @@ export default function TimetablePage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Timetable Generator</h1>
-            <p className="text-muted-foreground">ASC-style auto scheduling. Teachers are auto-selected from subject assignments.</p>
+            <h1 className="text-3xl font-bold">Block Timetable Generator</h1>
+            <p className="text-muted-foreground text-sm">Auto-scheduling with collision detection. Lower / Upper Primary & Junior School support.</p>
           </div>
           <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
         </div>
 
         <Card>
           <CardHeader><CardTitle>Configuration</CardTitle></CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-4">
+          <CardContent className="grid gap-4 md:grid-cols-5">
+            <div>
+              <Label>Block</Label>
+              <Select value={blockFilter} onValueChange={setBlockFilter}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BLOCKS.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Grade</Label>
               <Select value={grade} onValueChange={setGrade}>
                 <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
-                <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {grades.filter(g => BLOCKS.find(b => b.id === blockFilter)!.match(g)).map(g => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
@@ -383,9 +463,42 @@ export default function TimetablePage() {
               <Input type="number" min={4} max={12} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(12, Number(e.target.value) || 8)))} />
             </div>
             <div>
-              <Label>Break period</Label>
-              <Input type="number" min={1} max={periodsPerDay} value={breakPeriod} onChange={e => setBreakPeriod(Math.max(1, Math.min(periodsPerDay, Number(e.target.value) || 4)))} />
+              <Label>Break periods</Label>
+              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,5" />
+              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated period #s</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Locked / Fixed periods */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><Lock className="h-4 w-4" /> Fixed periods (locked)</CardTitle>
+            <CardDescription>e.g. Assembly, Pastoral. Applied to ALL classes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 md:grid-cols-4">
+              <Select value={newLock.day} onValueChange={v => setNewLock(s => ({ ...s, day: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="*">Every day</SelectItem>
+                  {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" min={1} max={periodsPerDay} value={newLock.period} onChange={e => setNewLock(s => ({ ...s, period: Number(e.target.value) || 1 }))} placeholder="Period" />
+              <Input value={newLock.label} onChange={e => setNewLock(s => ({ ...s, label: e.target.value }))} placeholder="Label (e.g. Assembly)" />
+              <Button onClick={addLock} variant="outline"><Plus className="h-4 w-4 mr-1" /> Add lock</Button>
+            </div>
+            {lockedSlots.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {lockedSlots.map((l, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1.5">
+                    {l.label} — {l.day === '*' ? 'Daily' : l.day} P{l.period}
+                    <button onClick={() => removeLock(i)} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -412,18 +525,22 @@ export default function TimetablePage() {
           </Button>
           <Button variant="secondary" onClick={generateAllClasses} disabled={generating}>
             <Layers className="h-4 w-4 mr-2" />
-            {generating && batchMode ? 'Generating all…' : 'Generate ALL Classes'}
+            {generating && batchMode ? 'Generating all…' : `Generate ${BLOCKS.find(b => b.id === blockFilter)!.label}`}
           </Button>
           {result && !batchMode && (
             <>
               <Button variant="outline" onClick={save}>Save</Button>
               <Button variant="outline" onClick={downloadClass}><Download className="h-4 w-4 mr-2" />Class PDF</Button>
+              <Button variant="outline" onClick={downloadClassExcel}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
             </>
           )}
           {result && batchMode && (
-            <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
-              {savingBatch ? 'Saving…' : `Save All (${batchClasses.length})`}
-            </Button>
+            <>
+              <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
+                {savingBatch ? 'Saving…' : `Save All (${visibleBatchClasses.length})`}
+              </Button>
+              <Button variant="outline" onClick={downloadAllExcel}><FileSpreadsheet className="h-4 w-4 mr-2" />Master Excel</Button>
+            </>
           )}
         </div>
 
@@ -440,14 +557,27 @@ export default function TimetablePage() {
           </Alert>
         )}
 
+        {result && (
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search teacher, subject, or class…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="max-w-sm h-9"
+            />
+            {searchQuery && <Badge variant="secondary" className="text-[10px]">filtering</Badge>}
+          </div>
+        )}
+
         {result && batchMode && (
           <Tabs defaultValue="classes">
             <TabsList>
-              <TabsTrigger value="classes">All Classes ({batchClasses.length})</TabsTrigger>
+              <TabsTrigger value="classes">All Classes ({visibleBatchClasses.length})</TabsTrigger>
               <TabsTrigger value="teachers">Teacher Views ({Object.keys(result.teacherGrids).length})</TabsTrigger>
             </TabsList>
             <TabsContent value="classes" className="space-y-4">
-              {batchClasses.map(c => {
+              {visibleBatchClasses.map(c => {
                 const ck = `${c.grade}|${c.stream}`;
                 const g = result.grids[ck];
                 if (!g) return null;
@@ -455,33 +585,48 @@ export default function TimetablePage() {
                   <Card key={ck}>
                     <CardHeader className="flex flex-row items-center justify-between py-3">
                       <CardTitle className="text-base">{c.grade} — {c.stream}</CardTitle>
-                      <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
-                        schoolName,
-                        title: `Class Timetable — ${c.grade} ${c.stream}`,
-                        days: DAYS, periodsPerDay, breakPeriod,
-                        grid: g, showTeacher: true,
-                      })}>
-                        <Download className="h-3 w-3 mr-1" /> PDF
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
+                          schoolName,
+                          title: `Class Timetable — ${c.grade} ${c.stream}`,
+                          days: DAYS, periodsPerDay, breakPeriods,
+                          grid: g, showTeacher: true,
+                        })}>
+                          <Download className="h-3 w-3 mr-1" /> PDF
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => exportTimetableExcel({
+                          schoolName,
+                          title: `Class Timetable — ${c.grade} ${c.stream}`,
+                          days: DAYS, periodsPerDay, breakPeriods,
+                          grid: g, showTeacher: true,
+                        })}>
+                          <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} showTeacher />
+                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
                     </CardContent>
                   </Card>
                 );
               })}
             </TabsContent>
             <TabsContent value="teachers" className="space-y-4">
-              {Object.entries(result.teacherGrids).map(([tid, t]) => (
+              {Object.entries(result.teacherGrids)
+                .filter(([_, t]) => !searchQuery || t.teacherName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(([tid, t]) => (
                 <Card key={tid}>
                   <CardHeader className="flex flex-row items-center justify-between py-3">
-                    <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                      <Badge variant="outline" className="text-[10px]">{t.lessonCount} lessons/wk</Badge>
+                    </div>
                     <Button size="sm" variant="outline" onClick={() => downloadTeacher(tid)}>
                       <Download className="h-3 w-3 mr-1" /> PDF
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -497,20 +642,25 @@ export default function TimetablePage() {
             </TabsList>
             <TabsContent value="class">
               <Card><CardContent className="p-0 overflow-x-auto">
-                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} showTeacher />
+                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
               </CardContent></Card>
             </TabsContent>
             <TabsContent value="teachers" className="space-y-4">
-              {Object.entries(result!.teacherGrids).map(([tid, t]) => (
+              {Object.entries(result!.teacherGrids)
+                .filter(([_, t]) => !searchQuery || t.teacherName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(([tid, t]) => (
                 <Card key={tid}>
                   <CardHeader className="flex flex-row items-center justify-between py-3">
-                    <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">{t.teacherName}</CardTitle>
+                      <Badge variant="outline" className="text-[10px]">{t.lessonCount} lessons/wk</Badge>
+                    </div>
                     <Button size="sm" variant="outline" onClick={() => downloadTeacher(tid)}>
                       <Download className="h-3 w-3 mr-1" /> PDF
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriod={breakPeriod} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -525,17 +675,18 @@ export default function TimetablePage() {
   );
 }
 
-function GridTable({ grid, days, periodsPerDay, breakPeriod, showTeacher }: {
-  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriod?: number; showTeacher?: boolean;
+function GridTable({ grid, days, periodsPerDay, breakPeriods, showTeacher, matchesSearch }: {
+  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriods?: number[]; showTeacher?: boolean; matchesSearch?: (c: TimetableSlot) => boolean;
 }) {
+  const breaks = new Set(breakPeriods || []);
   return (
     <table className="w-full text-xs border-collapse">
       <thead>
         <tr className="bg-muted">
           <th className="border p-2 text-left">Day</th>
           {Array.from({ length: periodsPerDay }, (_, i) => (
-            <th key={i} className={`border p-2 ${breakPeriod === i + 1 ? 'bg-muted-foreground/20' : ''}`}>
-              {breakPeriod === i + 1 ? 'BREAK' : `P${i + 1}`}
+            <th key={i} className={`border p-2 ${breaks.has(i + 1) ? 'bg-muted-foreground/20' : ''}`}>
+              {breaks.has(i + 1) ? 'BREAK' : `P${i + 1}`}
             </th>
           ))}
         </tr>
@@ -547,9 +698,11 @@ function GridTable({ grid, days, periodsPerDay, breakPeriod, showTeacher }: {
             {Array.from({ length: periodsPerDay }, (_, p) => {
               const cell = grid[di]?.[p];
               if (cell?.isBreak) return <td key={p} className="border p-2 text-center bg-muted/40 text-muted-foreground">BREAK</td>;
+              if (cell?.isLocked) return <td key={p} className="border p-2 text-center bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-medium text-[11px]">{cell.lockedLabel}</td>;
               if (cell?.learningAreaName) {
+                const dim = matchesSearch && !matchesSearch(cell);
                 return (
-                  <td key={p} className="border p-2 text-center">
+                  <td key={p} className={`border p-2 text-center transition-opacity ${dim ? 'opacity-25' : ''}`}>
                     <div className="font-medium">{cell.learningAreaName}</div>
                     {showTeacher && cell.teacherName && <div className="text-[10px] text-muted-foreground">{cell.teacherName}</div>}
                   </td>
