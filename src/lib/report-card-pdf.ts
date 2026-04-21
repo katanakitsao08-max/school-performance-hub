@@ -559,9 +559,11 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   y += isKJSEAOnePage ? 3.5 : 5;
 
   // Class Teacher
-  const remarkH = isKJSEAOnePage ? 13 : 20;
-  const remarkFont = isKJSEAOnePage ? 7 : 8;
-  // Aggressive truncation in one-page mode: cap to ~110 chars (1 line)
+  const remarkH = isKJSEAOnePage ? 16 : 26;
+  const remarkFont = isKJSEAOnePage ? 7.5 : 9;
+  const remarkLineH = isKJSEAOnePage ? 3.6 : 4.4;
+  const maxLines = isKJSEAOnePage ? 2 : 3;
+  // Soft truncation only when really long
   const truncate = (s: string, max: number) => s.length > max ? s.substring(0, max - 1).trimEnd() + '…' : s;
 
   doc.setDrawColor(...BORDER);
@@ -578,12 +580,15 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
   const ctRaw = data.classTeacherComment || '___________________________________________';
-  const ctText = isKJSEAOnePage ? truncate(ctRaw, 130) : ctRaw;
+  const ctText = isKJSEAOnePage ? truncate(ctRaw, 220) : truncate(ctRaw, 360);
   const ctLines = doc.splitTextToSize(ctText, cw - 8);
-  doc.text(ctLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  const ctTextY = y + (isKJSEAOnePage ? 8.5 : 11.5);
+  ctLines.slice(0, maxLines).forEach((line: string, i: number) => {
+    doc.text(line, mx + 4, ctTextY + i * remarkLineH);
+  });
   doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________   Date: ____________', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  doc.text('Sign: ____________   Date: ____________', mx + 4, y + remarkH - 2);
   y += remarkH + (isKJSEAOnePage ? 2 : 4);
 
   // Principal
@@ -599,12 +604,15 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   doc.setFontSize(remarkFont);
   doc.setTextColor(...DARK);
   const prRaw = data.principalComment || '___________________________________________';
-  const prText = isKJSEAOnePage ? truncate(prRaw, 130) : prRaw;
+  const prText = isKJSEAOnePage ? truncate(prRaw, 220) : truncate(prRaw, 360);
   const prLines = doc.splitTextToSize(prText, cw - 8);
-  doc.text(prLines.slice(0, isKJSEAOnePage ? 1 : 2), mx + 4, y + (isKJSEAOnePage ? 8 : 11));
+  const prTextY = y + (isKJSEAOnePage ? 8.5 : 11.5);
+  prLines.slice(0, maxLines).forEach((line: string, i: number) => {
+    doc.text(line, mx + 4, prTextY + i * remarkLineH);
+  });
   doc.setFontSize(isKJSEAOnePage ? 5.5 : 7);
   doc.setTextColor(...MID);
-  doc.text('Sign: ____________   Date: ____________   Stamp:', mx + 4, y + (isKJSEAOnePage ? 11.5 : 18));
+  doc.text('Sign: ____________   Date: ____________   Stamp:', mx + 4, y + remarkH - 2);
   y += remarkH + (isKJSEAOnePage ? 2 : 5);
 
   // ═══════════════════════════════════════════════════
