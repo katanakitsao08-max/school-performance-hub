@@ -129,6 +129,12 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
 
   lessonsToPlace.sort((a, b) => b.req.lessonsPerWeek - a.req.lessonsPerWeek);
 
+  // Track how many times a subject has started at each period (per class) to rotate start times
+  // Key: `${classKey}::${learningAreaId}::${period}` => count
+  const subjectPeriodUse: Record<string, number> = {};
+  // Also track which days a subject has been placed in (per class) to spread across week
+  const subjectDayUse: Record<string, Set<number>> = {};
+
   for (const lesson of lessonsToPlace) {
     const grid = grids[lesson.classKey];
     const pool = teacherPool[`${lesson.classKey}::${lesson.req.learningAreaId}`] || [];
@@ -138,6 +144,9 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
       continue;
     }
 
+    const subjKey = `${lesson.classKey}::${lesson.req.learningAreaId}`;
+    if (!subjectDayUse[subjKey]) subjectDayUse[subjKey] = new Set();
+
     let placed = false;
     const candidates: { d: number; p: number; score: number }[] = [];
     for (let d = 0; d < days.length; d++) {
@@ -145,7 +154,15 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
         const slot = grid[d][p];
         if (slot.isBreak || slot.isLocked || slot.learningAreaId) continue;
         const sameDay = grid[d].some((s) => s.learningAreaId === lesson.req.learningAreaId);
-        candidates.push({ d, p, score: sameDay ? 1 : 0 });
+        // Penalize: same-day repeat, repeated start period, day already used for this subject
+        const periodUseCount = subjectPeriodUse[`${subjKey}::${p}`] || 0;
+        const dayAlreadyUsed = subjectDayUse[subjKey].has(d);
+        const score =
+          (sameDay ? 100 : 0) +              // strongly avoid double-up same day
+          (dayAlreadyUsed ? 50 : 0) +        // prefer unused days
+          periodUseCount * 10 +              // rotate start period across week
+          Math.random() * 0.5;               // tiny jitter to break ties
+        candidates.push({ d, p, score });
       }
     }
     candidates.sort((a, b) => a.score - b.score);
@@ -169,6 +186,8 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
       if (!teacherBusy[teacher.teacher_id]) teacherBusy[teacher.teacher_id] = new Set();
       teacherBusy[teacher.teacher_id].add(slotKey);
       teacherLoad[teacher.teacher_id] = (teacherLoad[teacher.teacher_id] || 0) + 1;
+      subjectPeriodUse[`${subjKey}::${c.p}`] = (subjectPeriodUse[`${subjKey}::${c.p}`] || 0) + 1;
+      subjectDayUse[subjKey].add(c.d);
       placed = true;
       break;
     }
