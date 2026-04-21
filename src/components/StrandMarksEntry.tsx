@@ -53,11 +53,8 @@ export default function StrandMarksEntry({
     enabled: !!selectedGrade && !!schoolId,
   });
 
-  // Filter to editable subjects
-  const visibleSubjects = useMemo(() => {
-    if (isPrivileged) return subjects;
-    return subjects.filter(s => editableSubjectIds.has(s.id));
-  }, [subjects, isPrivileged, editableSubjectIds]);
+  // Show ALL subjects to everyone with grade access; save is gated by RLS for teachers.
+  const visibleSubjects = subjects;
 
   useEffect(() => {
     if (visibleSubjects.length > 0 && !selectedSubjectId) setSelectedSubjectId(visibleSubjects[0].id);
