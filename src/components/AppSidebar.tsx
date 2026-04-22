@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound
+  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound, Library, BookMarked
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import performTrackLogo from "@/assets/performtrack-logo.png";
 const superAdminItems = [
   { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
   { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+  { title: "Curriculum Designs", url: "/curriculum-manager", icon: BookMarked },
   { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
 ];
 
