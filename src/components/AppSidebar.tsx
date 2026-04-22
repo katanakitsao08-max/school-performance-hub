@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound
+  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, CreditCard, NotebookPen, CalendarClock, KeyRound, Library, BookMarked
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import performTrackLogo from "@/assets/performtrack-logo.png";
 const superAdminItems = [
   { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
   { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+  { title: "Curriculum Designs", url: "/curriculum-manager", icon: BookMarked },
   { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
 ];
 
@@ -38,6 +39,7 @@ const adminItems = [
   { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
   { title: "Fees", url: "/fees", icon: Wallet },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
+  { title: "Curriculum Library", url: "/curriculum-library", icon: Library },
   { title: "Timetable", url: "/timetable", icon: CalendarClock },
   { title: "Promotion", url: "/promotion", icon: ArrowUpCircle },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -51,6 +53,7 @@ const teacherItems = [
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
+  { title: "Curriculum Library", url: "/curriculum-library", icon: Library },
   { title: "Timetable", url: "/timetable", icon: CalendarClock },
 ];
 
@@ -61,6 +64,8 @@ const headteacherItems = [
   { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Curriculum Library", url: "/curriculum-library", icon: Library },
+  { title: "Timetable", url: "/timetable", icon: CalendarClock },
 ];
 
 const parentItems = [

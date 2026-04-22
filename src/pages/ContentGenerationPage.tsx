@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { NotesGenerator } from '@/components/NotesGenerator';
 
 // Hardcoded grade list (CBC scope) — independent of school config
 const ALL_GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'];
@@ -258,6 +259,9 @@ export default function ContentGenerationPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Generate KICD-aligned Schemes of Work and Lesson Plans</p>
         </div>
+
+        {/* AI Lesson Notes Generator (on-demand, CBC-aligned) */}
+        <NotesGenerator schoolName={schoolName} />
 
         {/* Filters */}
         <Card>
