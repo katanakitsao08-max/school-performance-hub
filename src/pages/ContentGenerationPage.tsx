@@ -260,6 +260,9 @@ export default function ContentGenerationPage() {
           <p className="text-sm text-muted-foreground mt-1">Generate KICD-aligned Schemes of Work and Lesson Plans</p>
         </div>
 
+        {/* AI Lesson Notes Generator (on-demand, CBC-aligned) */}
+        <NotesGenerator schoolName={schoolName} />
+
         {/* Filters */}
         <Card>
           <CardHeader className="pb-3">
