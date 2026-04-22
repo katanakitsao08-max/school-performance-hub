@@ -743,3 +743,133 @@ function GridTable({ grid, days, periodsPerDay, breakPeriods, showTeacher, match
     </table>
   );
 }
+
+// ===== Read-only view shown to teachers / headteachers once school is activated =====
+function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
+  schoolId: string; userId: string; schoolName: string; role: string;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [timetables, setTimetables] = useState<any[]>([]);
+  const [personalGrid, setPersonalGrid] = useState<TimetableSlot[][] | null>(null);
+  const [periodsPerDay, setPeriodsPerDay] = useState(8);
+  const [breakPeriods, setBreakPeriods] = useState<number[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data: tts } = await supabase
+        .from('timetables')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('grade', { ascending: true });
+      const list = (tts as any[]) || [];
+      setTimetables(list);
+      if (list.length > 0) {
+        setPeriodsPerDay(list[0].periods_per_day || 8);
+        setBreakPeriods(list[0].break_period ? [list[0].break_period] : []);
+      }
+
+      if (role === 'teacher' && list.length > 0) {
+        const ppd = list[0].periods_per_day || 8;
+        const empty: TimetableSlot[][] = DAYS.map(() =>
+          Array.from({ length: ppd }, () => ({} as TimetableSlot))
+        );
+        list.forEach(tt => {
+          const grid = (tt.data as TimetableSlot[][]) || [];
+          grid.forEach((row, di) => {
+            row.forEach((cell, pi) => {
+              if (cell?.teacherId === userId && !empty[di][pi]?.learningAreaName) {
+                empty[di][pi] = {
+                  ...cell,
+                  classKey: `${tt.grade} ${tt.stream}`,
+                };
+              }
+            });
+          });
+        });
+        setPersonalGrid(empty);
+      }
+      setLoading(false);
+    })();
+  }, [schoolId, userId, role]);
+
+  if (loading) return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Loading timetables…</div></DashboardLayout>;
+
+  if (timetables.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No timetables yet</AlertTitle>
+            <AlertDescription>The school admin has activated the timetable module but hasn't generated any timetables yet. Please check back later.</AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">My Timetable</h1>
+          <p className="text-muted-foreground text-sm">{schoolName} — read only</p>
+        </div>
+
+        {role === 'teacher' && personalGrid && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Personal Schedule</CardTitle>
+                <CardDescription>Only periods where you are assigned</CardDescription>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
+                schoolName,
+                title: 'My Personal Timetable',
+                days: DAYS, periodsPerDay, breakPeriods,
+                grid: personalGrid,
+              })}>
+                <Download className="h-3 w-3 mr-1" /> PDF
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <GridTable grid={personalGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} />
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">All Class Timetables</h2>
+          {timetables.map(tt => (
+            <Card key={tt.id}>
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-base">{tt.grade} — {tt.stream}</CardTitle>
+                <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
+                  schoolName,
+                  title: `Class Timetable — ${tt.grade} ${tt.stream}`,
+                  days: tt.days || DAYS,
+                  periodsPerDay: tt.periods_per_day || 8,
+                  breakPeriods: tt.break_period ? [tt.break_period] : [],
+                  grid: tt.data as TimetableSlot[][],
+                  showTeacher: true,
+                })}>
+                  <Download className="h-3 w-3 mr-1" /> PDF
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <GridTable
+                  grid={tt.data as TimetableSlot[][]}
+                  days={tt.days || DAYS}
+                  periodsPerDay={tt.periods_per_day || 8}
+                  breakPeriods={tt.break_period ? [tt.break_period] : []}
+                  showTeacher
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
