@@ -779,10 +779,7 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
           grid.forEach((row, di) => {
             row.forEach((cell, pi) => {
               if (cell?.teacherId === userId && !empty[di][pi]?.learningAreaName) {
-                empty[di][pi] = {
-                  ...cell,
-                  classKey: `${tt.grade} ${tt.stream}`,
-                };
+                empty[di][pi] = { ...cell };
               }
             });
           });
