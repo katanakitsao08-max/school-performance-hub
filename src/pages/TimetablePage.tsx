@@ -32,7 +32,8 @@ const BLOCKS = [
 ] as const;
 
 export default function TimetablePage() {
-  const { schoolId, user } = useAuth();
+  const { schoolId, user, role } = useAuth();
+  const isAdmin = role === 'admin' || role === 'super_admin';
   const grades = useSchoolGrades();
   const streams = useSchoolStreams();
 
