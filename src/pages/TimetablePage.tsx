@@ -386,6 +386,27 @@ export default function TimetablePage() {
 
   // ---- LOCKED VIEW ----
   if (activated === false) {
+    if (!isAdmin) {
+      return (
+        <DashboardLayout>
+          <div className="max-w-2xl mx-auto space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" /> Timetable Not Yet Activated</CardTitle>
+                <CardDescription>Your school administrator has not activated the Timetable module yet.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Waiting for activation</AlertTitle>
+                  <AlertDescription>Once the school admin enters the activation key, your personal timetable will appear here automatically.</AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </div>
+        </DashboardLayout>
+      );
+    }
     return (
       <DashboardLayout>
         <div className="max-w-2xl mx-auto space-y-6">
@@ -398,7 +419,7 @@ export default function TimetablePage() {
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Activation required</AlertTitle>
-                <AlertDescription>Contact your platform administrator to receive your school's activation key.</AlertDescription>
+                <AlertDescription>Contact your platform administrator to receive your school's activation key. Once activated, all teachers in this school will automatically see their personal timetables.</AlertDescription>
               </Alert>
               <Label>Activation Key</Label>
               <Input value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder="TT-XXXX-XXXX-XXXX" className="font-mono" />
@@ -415,6 +436,11 @@ export default function TimetablePage() {
 
   if (activated === null) {
     return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Loading…</div></DashboardLayout>;
+  }
+
+  // ---- TEACHER / HEADTEACHER READ-ONLY VIEW ----
+  if (!isAdmin) {
+    return <TeacherTimetableView schoolId={schoolId!} userId={user!.id} schoolName={schoolName} role={role!} />;
   }
 
   // ---- UNLOCKED ----
