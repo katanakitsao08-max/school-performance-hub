@@ -17,9 +17,20 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Plus, Edit, Trash2, Copy, Send, MessageCircle, BadgeCheck, Loader2, AlertTriangle, BarChart3, Clock, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { extractVariableKeys, previewTemplate, statusColor, normalizeKePhone, type WhatsAppTemplate, type TemplateCategory } from '@/lib/whatsapp-templates';
+import { LiveComposerTab } from '@/components/whatsapp/LiveComposerTab';
 
 export default function WhatsAppPage() {
   const { schoolId } = useAuth();
+  const { data: school } = useQuery({
+    queryKey: ['wa-school-name', schoolId],
+    enabled: !!schoolId,
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+  });
+  const schoolName = school?.school_name ?? 'Our School';
+
   return (
     <DashboardLayout>
       <div className="space-y-6 p-4 sm:p-6">
@@ -29,19 +40,21 @@ export default function WhatsAppPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">WhatsApp Communication</h1>
-            <p className="text-sm text-muted-foreground">Templates, automation, bulk send and delivery analytics.</p>
+            <p className="text-sm text-muted-foreground">Live composer, templates, automation and delivery analytics.</p>
           </div>
         </div>
 
         <SandboxNotice />
 
-        <Tabs defaultValue="templates" className="space-y-4">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto">
+        <Tabs defaultValue="composer" className="space-y-4">
+          <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full md:w-auto">
+            <TabsTrigger value="composer">Live Composer</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="send">Bulk Send</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
+          <TabsContent value="composer"><LiveComposerTab schoolId={schoolId} schoolName={schoolName} /></TabsContent>
           <TabsContent value="templates"><TemplatesTab schoolId={schoolId} /></TabsContent>
           <TabsContent value="send"><BulkSendTab schoolId={schoolId} /></TabsContent>
           <TabsContent value="analytics"><AnalyticsTab schoolId={schoolId} /></TabsContent>
