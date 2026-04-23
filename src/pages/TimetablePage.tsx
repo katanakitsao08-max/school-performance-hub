@@ -20,6 +20,8 @@ import {
 } from '@/lib/timetable-engine';
 import { exportTimetablePdf } from '@/lib/timetable-pdf';
 import { exportTimetableExcel, exportTimetableExcelMulti } from '@/lib/timetable-excel';
+import { exportTimetableSummaryPdf } from '@/lib/timetable-summary-pdf';
+import { SummaryAllClassesView } from '@/components/SummaryAllClassesView';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
