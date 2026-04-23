@@ -618,11 +618,25 @@ export default function TimetablePage() {
         )}
 
         {result && batchMode && (
-          <Tabs defaultValue="classes">
+          <Tabs defaultValue="summary">
             <TabsList>
-              <TabsTrigger value="classes">All Classes ({visibleBatchClasses.length})</TabsTrigger>
+              <TabsTrigger value="summary">Summary (All Classes)</TabsTrigger>
+              <TabsTrigger value="classes">Per Class ({visibleBatchClasses.length})</TabsTrigger>
               <TabsTrigger value="teachers">Teacher Views ({Object.keys(result.teacherGrids).length})</TabsTrigger>
             </TabsList>
+            <TabsContent value="summary">
+              <SummaryAllClassesView
+                schoolName={schoolName}
+                days={DAYS}
+                periodsPerDay={periodsPerDay}
+                breakPeriods={breakPeriods}
+                classes={visibleBatchClasses.map(c => ({
+                  grade: c.grade,
+                  stream: c.stream,
+                  grid: result.grids[`${c.grade}|${c.stream}`],
+                }))}
+              />
+            </TabsContent>
             <TabsContent value="classes" className="space-y-4">
               {visibleBatchClasses.map(c => {
                 const ck = `${c.grade}|${c.stream}`;
