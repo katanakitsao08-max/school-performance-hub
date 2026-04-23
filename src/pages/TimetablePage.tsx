@@ -583,6 +583,9 @@ export default function TimetablePage() {
               <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
                 {savingBatch ? 'Saving…' : `Save All (${visibleBatchClasses.length})`}
               </Button>
+              <Button variant="outline" onClick={downloadSummaryAllClasses}>
+                <Download className="h-4 w-4 mr-2" />Summary PDF (All Classes)
+              </Button>
               <Button variant="outline" onClick={downloadAllExcel}><FileSpreadsheet className="h-4 w-4 mr-2" />Master Excel</Button>
             </>
           )}
