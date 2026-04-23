@@ -94,10 +94,10 @@ export function LiveComposerTab({ schoolId, schoolName }: Props) {
 
   const renderMessage = (r: Recipient): string =>
     body
-      .replaceAll('{school_name}', schoolName)
-      .replaceAll('{student_name}', r.full_name)
-      .replaceAll('{parent_name}', r.parent_name)
-      .replaceAll('{grade}', `Grade ${r.grade}`);
+      .replace(/\{school_name\}/g, schoolName)
+      .replace(/\{student_name\}/g, r.full_name)
+      .replace(/\{parent_name\}/g, r.parent_name)
+      .replace(/\{grade\}/g, `Grade ${r.grade}`);
 
   const append = (entry: LogEntry) => setLogs((prev) => [entry, ...prev].slice(0, 500));
 
