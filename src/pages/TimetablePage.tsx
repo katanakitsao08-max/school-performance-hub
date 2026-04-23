@@ -369,6 +369,21 @@ export default function TimetablePage() {
     })));
   };
 
+  const downloadSummaryAllClasses = () => {
+    if (!result) return;
+    exportTimetableSummaryPdf({
+      schoolName,
+      days: DAYS,
+      periodsPerDay,
+      breakPeriods,
+      classes: visibleBatchClasses.map(c => ({
+        grade: c.grade,
+        stream: c.stream,
+        grid: result.grids[`${c.grade}|${c.stream}`],
+      })),
+    });
+  };
+
   // Search filter (teacher / subject / class)
   const matchesSearch = (cell: TimetableSlot) => {
     if (!searchQuery.trim()) return true;
