@@ -20,6 +20,8 @@ import {
 } from '@/lib/timetable-engine';
 import { exportTimetablePdf } from '@/lib/timetable-pdf';
 import { exportTimetableExcel, exportTimetableExcelMulti } from '@/lib/timetable-excel';
+import { exportTimetableSummaryPdf } from '@/lib/timetable-summary-pdf';
+import { SummaryAllClassesView } from '@/components/SummaryAllClassesView';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -367,6 +369,21 @@ export default function TimetablePage() {
     })));
   };
 
+  const downloadSummaryAllClasses = () => {
+    if (!result) return;
+    exportTimetableSummaryPdf({
+      schoolName,
+      days: DAYS,
+      periodsPerDay,
+      breakPeriods,
+      classes: visibleBatchClasses.map(c => ({
+        grade: c.grade,
+        stream: c.stream,
+        grid: result.grids[`${c.grade}|${c.stream}`],
+      })),
+    });
+  };
+
   // Search filter (teacher / subject / class)
   const matchesSearch = (cell: TimetableSlot) => {
     if (!searchQuery.trim()) return true;
@@ -566,6 +583,9 @@ export default function TimetablePage() {
               <Button variant="outline" onClick={saveBatch} disabled={savingBatch}>
                 {savingBatch ? 'Saving…' : `Save All (${visibleBatchClasses.length})`}
               </Button>
+              <Button variant="outline" onClick={downloadSummaryAllClasses}>
+                <Download className="h-4 w-4 mr-2" />Summary PDF (All Classes)
+              </Button>
               <Button variant="outline" onClick={downloadAllExcel}><FileSpreadsheet className="h-4 w-4 mr-2" />Master Excel</Button>
             </>
           )}
@@ -598,11 +618,25 @@ export default function TimetablePage() {
         )}
 
         {result && batchMode && (
-          <Tabs defaultValue="classes">
+          <Tabs defaultValue="summary">
             <TabsList>
-              <TabsTrigger value="classes">All Classes ({visibleBatchClasses.length})</TabsTrigger>
+              <TabsTrigger value="summary">Summary (All Classes)</TabsTrigger>
+              <TabsTrigger value="classes">Per Class ({visibleBatchClasses.length})</TabsTrigger>
               <TabsTrigger value="teachers">Teacher Views ({Object.keys(result.teacherGrids).length})</TabsTrigger>
             </TabsList>
+            <TabsContent value="summary">
+              <SummaryAllClassesView
+                schoolName={schoolName}
+                days={DAYS}
+                periodsPerDay={periodsPerDay}
+                breakPeriods={breakPeriods}
+                classes={visibleBatchClasses.map(c => ({
+                  grade: c.grade,
+                  stream: c.stream,
+                  grid: result.grids[`${c.grade}|${c.stream}`],
+                }))}
+              />
+            </TabsContent>
             <TabsContent value="classes" className="space-y-4">
               {visibleBatchClasses.map(c => {
                 const ck = `${c.grade}|${c.stream}`;
