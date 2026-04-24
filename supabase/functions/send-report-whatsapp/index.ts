@@ -20,6 +20,9 @@ interface RequestBody {
   assessment_type: string;
   app_url: string; // e.g. https://app.example.com
   school_name: string;
+  // 'auto' (default) → send via Africa's Talking WhatsApp/SMS
+  // 'manual_links' → only build share links + messages, return them so the admin's app can open wa.me
+  mode?: 'auto' | 'manual_links';
 }
 
 function normalizePhone(raw: string): string | null {
