@@ -20,6 +20,9 @@ interface RequestBody {
   assessment_type: string;
   app_url: string; // e.g. https://app.example.com
   school_name: string;
+  // 'auto' (default) → send via Africa's Talking WhatsApp/SMS
+  // 'manual_links' → only build share links + messages, return them so the admin's app can open wa.me
+  mode?: 'auto' | 'manual_links';
 }
 
 function normalizePhone(raw: string): string | null {
@@ -142,9 +145,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    const isManualMode = body.mode === 'manual_links';
+
     const apiKey = Deno.env.get('AFRICAS_TALKING_API_KEY');
     const username = Deno.env.get('AFRICAS_TALKING_USERNAME');
-    if (!apiKey || !username) {
+    if (!isManualMode && (!apiKey || !username)) {
       return new Response(JSON.stringify({
         success: false, error: 'Africa\'s Talking credentials not configured',
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -189,7 +194,30 @@ serve(async (req) => {
         `View/Download: ${url}\n` +
         `(Link expires in 48 hours)`;
 
-      // 2. Try WhatsApp, fall back to SMS on ANY failure (404, auth, network, etc.)
+      // === MANUAL MODE: just return the prepared message + share link, do not call any provider ===
+      if (isManualMode) {
+        await supabaseAdmin.from('report_delivery_log').insert({
+          school_id: schoolId,
+          learner_id: item.learner_id,
+          share_link_id: linkRow.id,
+          channel: 'whatsapp_manual',
+          recipient: phone,
+          status: 'pending',
+          message_body: message,
+          sent_by: user.id,
+        });
+        results.push({
+          learner_id: item.learner_id,
+          status: 'sent', // "prepared" — surfaced in UI as ready-to-open
+          channel: 'whatsapp_manual',
+          url,
+          recipient: phone,
+          message,
+        });
+        continue;
+      }
+
+
       // Skip WhatsApp entirely on sandbox accounts — the endpoint 404s and just slows things down.
       const isSandbox = username.toLowerCase() === 'sandbox';
       let send: { ok: boolean; providerId: string | null; error: string | null };
