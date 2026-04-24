@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2 } from 'lucide-react';
+import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 const SETTING_KEYS = [
@@ -24,10 +24,31 @@ const SETTING_KEYS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { schoolId, role } = useAuth();
+  const { schoolId, role, user } = useAuth();
   const [form, setForm] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  const [waNumber, setWaNumber] = useState('');
+  const [savingWa, setSavingWa] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load current admin's saved WhatsApp number
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('whatsapp_number').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setWaNumber((data as any)?.whatsapp_number || ''));
+  }, [user?.id]);
+
+  const saveWaNumber = async () => {
+    if (!user?.id) return;
+    setSavingWa(true);
+    const trimmed = waNumber.trim();
+    const { error } = await supabase.from('profiles')
+      .update({ whatsapp_number: trimmed || null } as any)
+      .eq('user_id', user.id);
+    setSavingWa(false);
+    if (error) { toast({ title: 'Save failed', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'WhatsApp number saved' });
+  };
 
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ['school-settings'],
