@@ -561,14 +561,80 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Periods / day</Label>
-              <Input type="number" min={4} max={12} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(12, Number(e.target.value) || 8)))} />
+              <Label>Slots / day</Label>
+              <Input type="number" min={4} max={14} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
+              <p className="text-[10px] text-muted-foreground mt-1">Total slots incl. breaks</p>
             </div>
             <div>
-              <Label>Break periods</Label>
-              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,5" />
-              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated period #s</p>
+              <Label>Break slot #s</Label>
+              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,6,9" />
+              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated</p>
             </div>
+            <div className="md:col-span-3">
+              <Label>Break labels (in order)</Label>
+              <Input value={breakLabelsInput} onChange={e => setBreakLabelsInput(e.target.value)} placeholder="SHORT BREAK, LONG BREAK, LUNCH" />
+            </div>
+            <div className="md:col-span-2 flex items-end gap-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gamesEnabled}
+                  onChange={e => setGamesEnabled(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span>Auto-lock last 2 slots as <strong>GAMES</strong> (P7 & P8)</span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Session times editor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Session times</CardTitle>
+            <CardDescription>Enter start/end time for every slot (including breaks). Times print in PDFs.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {periodTimes.map((t, i) => {
+                const isBreak = breakPeriods.includes(i + 1);
+                const breakIdx = breakPeriods.indexOf(i + 1);
+                const slotLabel = isBreak
+                  ? (breakLabels[breakIdx] || 'BREAK')
+                  : (() => {
+                      const teaching = i + 1 - breakPeriods.filter(b => b <= i + 1).length;
+                      const isGames = gamesEnabled && periodsPerDay >= 11 && (i + 1 === 10 || i + 1 === 11);
+                      return isGames ? `P${teaching} (GAMES)` : `P${teaching}`;
+                    })();
+                return (
+                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded border ${isBreak ? 'bg-muted/50' : ''}`}>
+                    <span className="text-[10px] font-semibold w-16 shrink-0">{slotLabel}</span>
+                    <Input
+                      type="time"
+                      value={t.start}
+                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, start: e.target.value } : p))}
+                      className="h-8 text-xs"
+                    />
+                    <span className="text-xs">–</span>
+                    <Input
+                      type="time"
+                      value={t.end}
+                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, end: e.target.value } : p))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => setPeriodTimes(defaultPeriodTimes())}
+            >
+              Reset to defaults
+            </Button>
           </CardContent>
         </Card>
 
