@@ -755,6 +755,7 @@ export default function TimetablePage() {
                 days={DAYS}
                 periodsPerDay={periodsPerDay}
                 breakPeriods={breakPeriods}
+                breakLabels={breakLabels}
                 classes={visibleBatchClasses.map(c => ({
                   grade: c.grade,
                   stream: c.stream,
