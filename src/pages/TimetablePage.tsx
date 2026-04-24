@@ -328,7 +328,7 @@ export default function TimetablePage() {
         days: DAYS,
         periodsPerDay,
         breakPeriods,
-        lockedSlots,
+        lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
         assignments: allAssignments,
       });
