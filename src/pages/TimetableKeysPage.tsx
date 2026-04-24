@@ -68,6 +68,16 @@ export default function TimetableKeysPage() {
     load();
   };
 
+  const deleteKey = async (id: string) => {
+    const { error } = await supabase.from('timetable_activation_keys').delete().eq('id', id);
+    if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    toast({ title: 'Key deleted' });
+    load();
+  };
+
+  const isExpired = (k: KeyRow) => !!k.expires_at && new Date(k.expires_at) < new Date();
+  const isDeletable = (k: KeyRow) => k.is_revoked || isExpired(k);
+
   const copy = (k: string) => {
     navigator.clipboard.writeText(k);
     toast({ title: 'Copied to clipboard' });
@@ -75,7 +85,7 @@ export default function TimetableKeysPage() {
 
   const status = (k: KeyRow) => {
     if (k.is_revoked) return <Badge variant="destructive">Revoked</Badge>;
-    if (k.expires_at && new Date(k.expires_at) < new Date()) return <Badge variant="secondary">Expired</Badge>;
+    if (isExpired(k)) return <Badge variant="secondary">Expired</Badge>;
     if (k.activated_at) return <Badge className="bg-primary">Active</Badge>;
     return <Badge variant="outline">Pending</Badge>;
   };
