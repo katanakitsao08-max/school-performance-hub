@@ -34,17 +34,15 @@ const BLOCKS = [
   { id: 'block49', label: 'Block: Grades 4-9 (Combined)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 4 && n <= 9; } },
 ] as const;
 
-// Default 8-period day with three breaks + Games
-// P1 P2 [SHORT BREAK] P3 P4 [LONG BREAK] P5 P6 [LUNCH] P7 P8 (Games)
-const DEFAULT_BREAK_INPUT = '3,5,7'; // periods that ARE breaks (between P2/P3, P4/P5, P6/P7 conceptually)
-// We model 11 periods total with breaks at positions 3, 5, 7 to map exactly to:
-// 1=P1, 2=P2, 3=SHORT, 4=P3, 5=LONG, 6=P4 ... — but to keep "P7,P8 Games" intuitive we instead
-// use 8 periods where breaks are inserted between them visually via breakLabels.
+// Default 11-slot day with three breaks giving 8 teaching periods + Games:
+// Slot:  1  2  3      4  5  6      7  8  9      10 11
+// Show:  P1 P2 SHORT  P3 P4 LONG   P5 P6 LUNCH  P7 P8(GAMES)
+const DEFAULT_PERIODS_PER_DAY = 11;
+const DEFAULT_BREAK_INPUT = '3,6,9';
 const DEFAULT_BREAK_LABELS = ['SHORT BREAK', 'LONG BREAK', 'LUNCH'];
 
 interface PeriodTime { start: string; end: string; }
 function defaultPeriodTimes(): PeriodTime[] {
-  // 8 periods + breaks; adjust to typical KE primary day
   return [
     { start: '08:00', end: '08:35' }, // P1
     { start: '08:35', end: '09:10' }, // P2
