@@ -96,6 +96,36 @@ export default function TimetablePage() {
       .filter(n => !isNaN(n) && n >= 1 && n <= periodsPerDay);
   }, [breakInput, periodsPerDay]);
 
+  const breakLabels = useMemo(
+    () => breakLabelsInput.split(',').map(s => s.trim()).filter(Boolean),
+    [breakLabelsInput],
+  );
+
+  // Resize period times array when periodsPerDay changes
+  useEffect(() => {
+    setPeriodTimes(prev => {
+      if (prev.length === periodsPerDay) return prev;
+      const next: PeriodTime[] = [];
+      for (let i = 0; i < periodsPerDay; i++) {
+        next.push(prev[i] || { start: '', end: '' });
+      }
+      return next;
+    });
+  }, [periodsPerDay]);
+
+  // Auto-lock Games for P10 & P11 (last two periods) on every day when enabled
+  const effectiveLockedSlots = useMemo<LockedSlot[]>(() => {
+    const base = [...lockedSlots];
+    if (gamesEnabled && periodsPerDay >= 11) {
+      DAYS.forEach(d => {
+        base.push({ classKey: '*', day: d, period: 10, label: 'GAMES' });
+        base.push({ classKey: '*', day: d, period: 11, label: 'GAMES' });
+      });
+    }
+    return base;
+  }, [lockedSlots, gamesEnabled, periodsPerDay]);
+
+
   // Check activation
   useEffect(() => {
     if (!schoolId) return;
