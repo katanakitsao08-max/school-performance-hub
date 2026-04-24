@@ -31,7 +31,32 @@ const BLOCKS = [
   { id: 'lower', label: 'Lower Primary (1-3)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 1 && n <= 3; } },
   { id: 'upper', label: 'Upper Primary (4-6)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 4 && n <= 6; } },
   { id: 'junior', label: 'Junior School (7-9)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 7 && n <= 9; } },
+  { id: 'block49', label: 'Block: Grades 4-9 (Combined)', match: (g: string) => { const n = parseInt(g, 10); return !isNaN(n) && n >= 4 && n <= 9; } },
 ] as const;
+
+// Default 11-slot day with three breaks giving 8 teaching periods + Games:
+// Slot:  1  2  3      4  5  6      7  8  9      10 11
+// Show:  P1 P2 SHORT  P3 P4 LONG   P5 P6 LUNCH  P7 P8(GAMES)
+const DEFAULT_PERIODS_PER_DAY = 11;
+const DEFAULT_BREAK_INPUT = '3,6,9';
+const DEFAULT_BREAK_LABELS = ['SHORT BREAK', 'LONG BREAK', 'LUNCH'];
+
+interface PeriodTime { start: string; end: string; }
+function defaultPeriodTimes(): PeriodTime[] {
+  return [
+    { start: '08:00', end: '08:35' }, // P1
+    { start: '08:35', end: '09:10' }, // P2
+    { start: '09:10', end: '09:30' }, // SHORT BREAK
+    { start: '09:30', end: '10:05' }, // P3
+    { start: '10:05', end: '10:40' }, // P4
+    { start: '10:40', end: '11:00' }, // LONG BREAK
+    { start: '11:00', end: '11:35' }, // P5
+    { start: '11:35', end: '12:10' }, // P6
+    { start: '12:10', end: '13:00' }, // LUNCH
+    { start: '13:00', end: '13:35' }, // P7
+    { start: '13:35', end: '14:10' }, // P8 (Games)
+  ];
+}
 
 export default function TimetablePage() {
   const { schoolId, user, role } = useAuth();
@@ -47,8 +72,11 @@ export default function TimetablePage() {
   // generator state
   const [grade, setGrade] = useState('');
   const [stream, setStream] = useState('');
-  const [periodsPerDay, setPeriodsPerDay] = useState(8);
-  const [breakInput, setBreakInput] = useState('3,6'); // comma-separated period numbers (two breaks)
+  const [periodsPerDay, setPeriodsPerDay] = useState(DEFAULT_PERIODS_PER_DAY);
+  const [breakInput, setBreakInput] = useState(DEFAULT_BREAK_INPUT);
+  const [breakLabelsInput, setBreakLabelsInput] = useState(DEFAULT_BREAK_LABELS.join(','));
+  const [periodTimes, setPeriodTimes] = useState<PeriodTime[]>(defaultPeriodTimes());
+  const [gamesEnabled, setGamesEnabled] = useState(true);
   const [requirements, setRequirements] = useState<SubjectRequirement[]>([]);
   const [assignments, setAssignments] = useState<TeacherAssignmentRow[]>([]);
   const [result, setResult] = useState<ReturnType<typeof generateTimetable> | null>(null);
@@ -67,6 +95,36 @@ export default function TimetablePage() {
       .map(s => parseInt(s.trim(), 10))
       .filter(n => !isNaN(n) && n >= 1 && n <= periodsPerDay);
   }, [breakInput, periodsPerDay]);
+
+  const breakLabels = useMemo(
+    () => breakLabelsInput.split(',').map(s => s.trim()).filter(Boolean),
+    [breakLabelsInput],
+  );
+
+  // Resize period times array when periodsPerDay changes
+  useEffect(() => {
+    setPeriodTimes(prev => {
+      if (prev.length === periodsPerDay) return prev;
+      const next: PeriodTime[] = [];
+      for (let i = 0; i < periodsPerDay; i++) {
+        next.push(prev[i] || { start: '', end: '' });
+      }
+      return next;
+    });
+  }, [periodsPerDay]);
+
+  // Auto-lock Games for P10 & P11 (last two periods) on every day when enabled
+  const effectiveLockedSlots = useMemo<LockedSlot[]>(() => {
+    const base = [...lockedSlots];
+    if (gamesEnabled && periodsPerDay >= 11) {
+      DAYS.forEach(d => {
+        base.push({ classKey: '*', day: d, period: 10, label: 'GAMES' });
+        base.push({ classKey: '*', day: d, period: 11, label: 'GAMES' });
+      });
+    }
+    return base;
+  }, [lockedSlots, gamesEnabled, periodsPerDay]);
+
 
   // Check activation
   useEffect(() => {
@@ -190,7 +248,7 @@ export default function TimetablePage() {
       days: DAYS,
       periodsPerDay,
       breakPeriods,
-      lockedSlots,
+      lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
       assignments: streamAssignments,
     });
@@ -270,7 +328,7 @@ export default function TimetablePage() {
         days: DAYS,
         periodsPerDay,
         breakPeriods,
-        lockedSlots,
+        lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
         assignments: allAssignments,
       });
@@ -376,6 +434,7 @@ export default function TimetablePage() {
       days: DAYS,
       periodsPerDay,
       breakPeriods,
+      breakLabels,
       classes: visibleBatchClasses.map(c => ({
         grade: c.grade,
         stream: c.stream,
@@ -503,14 +562,80 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Periods / day</Label>
-              <Input type="number" min={4} max={12} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(12, Number(e.target.value) || 8)))} />
+              <Label>Slots / day</Label>
+              <Input type="number" min={4} max={14} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
+              <p className="text-[10px] text-muted-foreground mt-1">Total slots incl. breaks</p>
             </div>
             <div>
-              <Label>Break periods</Label>
-              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,5" />
-              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated period #s</p>
+              <Label>Break slot #s</Label>
+              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,6,9" />
+              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated</p>
             </div>
+            <div className="md:col-span-3">
+              <Label>Break labels (in order)</Label>
+              <Input value={breakLabelsInput} onChange={e => setBreakLabelsInput(e.target.value)} placeholder="SHORT BREAK, LONG BREAK, LUNCH" />
+            </div>
+            <div className="md:col-span-2 flex items-end gap-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gamesEnabled}
+                  onChange={e => setGamesEnabled(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span>Auto-lock last 2 slots as <strong>GAMES</strong> (P7 & P8)</span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Session times editor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Session times</CardTitle>
+            <CardDescription>Enter start/end time for every slot (including breaks). Times print in PDFs.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {periodTimes.map((t, i) => {
+                const isBreak = breakPeriods.includes(i + 1);
+                const breakIdx = breakPeriods.indexOf(i + 1);
+                const slotLabel = isBreak
+                  ? (breakLabels[breakIdx] || 'BREAK')
+                  : (() => {
+                      const teaching = i + 1 - breakPeriods.filter(b => b <= i + 1).length;
+                      const isGames = gamesEnabled && periodsPerDay >= 11 && (i + 1 === 10 || i + 1 === 11);
+                      return isGames ? `P${teaching} (GAMES)` : `P${teaching}`;
+                    })();
+                return (
+                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded border ${isBreak ? 'bg-muted/50' : ''}`}>
+                    <span className="text-[10px] font-semibold w-16 shrink-0">{slotLabel}</span>
+                    <Input
+                      type="time"
+                      value={t.start}
+                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, start: e.target.value } : p))}
+                      className="h-8 text-xs"
+                    />
+                    <span className="text-xs">–</span>
+                    <Input
+                      type="time"
+                      value={t.end}
+                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, end: e.target.value } : p))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => setPeriodTimes(defaultPeriodTimes())}
+            >
+              Reset to defaults
+            </Button>
           </CardContent>
         </Card>
 
@@ -630,6 +755,7 @@ export default function TimetablePage() {
                 days={DAYS}
                 periodsPerDay={periodsPerDay}
                 breakPeriods={breakPeriods}
+                breakLabels={breakLabels}
                 classes={visibleBatchClasses.map(c => ({
                   grade: c.grade,
                   stream: c.stream,
@@ -666,7 +792,7 @@ export default function TimetablePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
+                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
                     </CardContent>
                   </Card>
                 );
@@ -687,7 +813,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -703,7 +829,7 @@ export default function TimetablePage() {
             </TabsList>
             <TabsContent value="class">
               <Card><CardContent className="p-0 overflow-x-auto">
-                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
+                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
               </CardContent></Card>
             </TabsContent>
             <TabsContent value="teachers" className="space-y-4">
@@ -721,7 +847,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -736,21 +862,45 @@ export default function TimetablePage() {
   );
 }
 
-function GridTable({ grid, days, periodsPerDay, breakPeriods, showTeacher, matchesSearch }: {
-  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriods?: number[]; showTeacher?: boolean; matchesSearch?: (c: TimetableSlot) => boolean;
+function GridTable({ grid, days, periodsPerDay, breakPeriods, breakLabels, periodTimes, showTeacher, matchesSearch }: {
+  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriods?: number[];
+  breakLabels?: string[]; periodTimes?: { start: string; end: string }[];
+  showTeacher?: boolean; matchesSearch?: (c: TimetableSlot) => boolean;
 }) {
   const breaks = new Set(breakPeriods || []);
+  const breakIdxOf = (slot: number) => (breakPeriods || []).indexOf(slot);
   return (
     <table className="w-full text-xs border-collapse">
       <thead>
         <tr className="bg-muted">
-          <th className="border p-2 text-left">Day</th>
-          {Array.from({ length: periodsPerDay }, (_, i) => (
-            <th key={i} className={`border p-2 ${breaks.has(i + 1) ? 'bg-muted-foreground/20' : ''}`}>
-              {breaks.has(i + 1) ? 'BREAK' : `P${i + 1}`}
-            </th>
-          ))}
+          <th className="border p-2 text-left" rowSpan={periodTimes ? 2 : 1}>Day</th>
+          {Array.from({ length: periodsPerDay }, (_, i) => {
+            const isBreak = breaks.has(i + 1);
+            const label = isBreak
+              ? (breakLabels?.[breakIdxOf(i + 1)] || 'BREAK')
+              : (() => {
+                  const teaching = i + 1 - (breakPeriods || []).filter(b => b <= i + 1).length;
+                  return `P${teaching}`;
+                })();
+            return (
+              <th key={i} className={`border p-2 ${isBreak ? 'bg-muted-foreground/20 text-[10px]' : ''}`}>
+                {label}
+              </th>
+            );
+          })}
         </tr>
+        {periodTimes && (
+          <tr className="bg-muted/60">
+            {Array.from({ length: periodsPerDay }, (_, i) => {
+              const t = periodTimes[i];
+              return (
+                <th key={i} className="border px-1 py-0.5 text-[9px] font-normal text-muted-foreground">
+                  {t?.start && t?.end ? `${t.start}–${t.end}` : ''}
+                </th>
+              );
+            })}
+          </tr>
+        )}
       </thead>
       <tbody>
         {days.map((d, di) => (
@@ -758,7 +908,10 @@ function GridTable({ grid, days, periodsPerDay, breakPeriods, showTeacher, match
             <td className="border p-2 font-semibold bg-muted/50">{d}</td>
             {Array.from({ length: periodsPerDay }, (_, p) => {
               const cell = grid[di]?.[p];
-              if (cell?.isBreak) return <td key={p} className="border p-2 text-center bg-muted/40 text-muted-foreground">BREAK</td>;
+              if (cell?.isBreak) {
+                const lbl = breakLabels?.[breakIdxOf(p + 1)] || 'BREAK';
+                return <td key={p} className="border p-1 text-center bg-muted/40 text-muted-foreground text-[10px] font-semibold">{lbl}</td>;
+              }
               if (cell?.isLocked) return <td key={p} className="border p-2 text-center bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-medium text-[11px]">{cell.lockedLabel}</td>;
               if (cell?.learningAreaName) {
                 const dim = matchesSearch && !matchesSearch(cell);
