@@ -160,6 +160,40 @@ export default function SettingsPage() {
           <p className="text-muted-foreground">Manage your school details that appear on reports and documents</p>
         </div>
 
+        {/* My Personal WhatsApp Number — used for click-to-send wa.me links */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              My WhatsApp Number
+            </CardTitle>
+            <CardDescription>
+              When you click <strong>"Send via my WhatsApp"</strong> on report sending, messages open in your personal WhatsApp app — so parents see <em>your</em> number as the sender. Save your number here so it's pre-filled.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                Your personal WhatsApp number
+              </Label>
+              <Input
+                value={waNumber}
+                onChange={e => setWaNumber(e.target.value)}
+                placeholder="e.g. +254 712 345 678"
+                inputMode="tel"
+              />
+              <p className="text-xs text-muted-foreground">
+                Include country code. WhatsApp must be installed on the device you'll send from.
+              </p>
+            </div>
+            <Button onClick={saveWaNumber} disabled={savingWa} variant="outline">
+              <Save className="mr-2 h-4 w-4" />
+              {savingWa ? 'Saving…' : 'Save number'}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* School Logo Card */}
         {canUploadLogo && (
           <Card>
