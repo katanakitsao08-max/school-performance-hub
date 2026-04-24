@@ -117,7 +117,38 @@ export default function TimetableKeysPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Issued Keys</CardTitle>
-            <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+            <div className="flex gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={!keys.some(isDeletable)}>
+                    <Trash2 className="h-4 w-4 mr-2" />Delete all expired/revoked
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete all expired & revoked keys?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes all keys that are expired or revoked. Active and pending keys are preserved. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        const ids = keys.filter(isDeletable).map(k => k.id);
+                        if (ids.length === 0) return;
+                        const { error } = await supabase
+                          .from('timetable_activation_keys').delete().in('id', ids);
+                        if (error) return toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+                        toast({ title: `Deleted ${ids.length} key(s)` });
+                        load();
+                      }}
+                    >Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -141,10 +172,36 @@ export default function TimetableKeysPage() {
                       <TableCell>{status(k)}</TableCell>
                       <TableCell className="text-xs">{k.expires_at ? new Date(k.expires_at).toLocaleDateString() : '—'}</TableCell>
                       <TableCell className="text-xs">{k.activated_at ? new Date(k.activated_at).toLocaleDateString() : '—'}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="ghost" onClick={() => copy(k.activation_key)}><Copy className="h-3 w-3" /></Button>
-                        {!k.is_revoked && (
-                          <Button size="sm" variant="ghost" onClick={() => revoke(k.id)}><Ban className="h-3 w-3 text-destructive" /></Button>
+                      <TableCell className="text-right space-x-1">
+                        <Button size="sm" variant="ghost" onClick={() => copy(k.activation_key)} title="Copy">
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        {!k.is_revoked && !isExpired(k) && (
+                          <Button size="sm" variant="ghost" onClick={() => revoke(k.id)} title="Revoke">
+                            <Ban className="h-3 w-3 text-destructive" />
+                          </Button>
+                        )}
+                        {isDeletable(k) && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" title="Delete permanently">
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this key?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Permanently delete the {k.is_revoked ? 'revoked' : 'expired'} key
+                                  {' '}<span className="font-mono">{k.activation_key}</span> for {sch?.school_name || 'this school'}. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteKey(k.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </TableCell>
                     </TableRow>
