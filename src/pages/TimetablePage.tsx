@@ -434,6 +434,7 @@ export default function TimetablePage() {
       days: DAYS,
       periodsPerDay,
       breakPeriods,
+      breakLabels,
       classes: visibleBatchClasses.map(c => ({
         grade: c.grade,
         stream: c.stream,
