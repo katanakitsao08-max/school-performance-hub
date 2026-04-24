@@ -145,9 +145,11 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    const isManualMode = body.mode === 'manual_links';
+
     const apiKey = Deno.env.get('AFRICAS_TALKING_API_KEY');
     const username = Deno.env.get('AFRICAS_TALKING_USERNAME');
-    if (!apiKey || !username) {
+    if (!isManualMode && (!apiKey || !username)) {
       return new Response(JSON.stringify({
         success: false, error: 'Africa\'s Talking credentials not configured',
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
