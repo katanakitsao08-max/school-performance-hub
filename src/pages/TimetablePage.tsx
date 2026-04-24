@@ -792,7 +792,7 @@ export default function TimetablePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
+                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
                     </CardContent>
                   </Card>
                 );
@@ -813,7 +813,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -829,7 +829,7 @@ export default function TimetablePage() {
             </TabsList>
             <TabsContent value="class">
               <Card><CardContent className="p-0 overflow-x-auto">
-                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} showTeacher matchesSearch={matchesSearch} />
+                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
               </CardContent></Card>
             </TabsContent>
             <TabsContent value="teachers" className="space-y-4">
@@ -847,7 +847,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
