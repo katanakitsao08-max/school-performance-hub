@@ -10,7 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { generateActivationKey } from '@/lib/timetable-engine';
-import { Key, Copy, Ban, RefreshCw } from 'lucide-react';
+import { Key, Copy, Ban, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface School { id: string; school_name: string; school_code: string; }
 interface KeyRow {
