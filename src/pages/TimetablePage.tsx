@@ -862,21 +862,45 @@ export default function TimetablePage() {
   );
 }
 
-function GridTable({ grid, days, periodsPerDay, breakPeriods, showTeacher, matchesSearch }: {
-  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriods?: number[]; showTeacher?: boolean; matchesSearch?: (c: TimetableSlot) => boolean;
+function GridTable({ grid, days, periodsPerDay, breakPeriods, breakLabels, periodTimes, showTeacher, matchesSearch }: {
+  grid: TimetableSlot[][]; days: string[]; periodsPerDay: number; breakPeriods?: number[];
+  breakLabels?: string[]; periodTimes?: { start: string; end: string }[];
+  showTeacher?: boolean; matchesSearch?: (c: TimetableSlot) => boolean;
 }) {
   const breaks = new Set(breakPeriods || []);
+  const breakIdxOf = (slot: number) => (breakPeriods || []).indexOf(slot);
   return (
     <table className="w-full text-xs border-collapse">
       <thead>
         <tr className="bg-muted">
-          <th className="border p-2 text-left">Day</th>
-          {Array.from({ length: periodsPerDay }, (_, i) => (
-            <th key={i} className={`border p-2 ${breaks.has(i + 1) ? 'bg-muted-foreground/20' : ''}`}>
-              {breaks.has(i + 1) ? 'BREAK' : `P${i + 1}`}
-            </th>
-          ))}
+          <th className="border p-2 text-left" rowSpan={periodTimes ? 2 : 1}>Day</th>
+          {Array.from({ length: periodsPerDay }, (_, i) => {
+            const isBreak = breaks.has(i + 1);
+            const label = isBreak
+              ? (breakLabels?.[breakIdxOf(i + 1)] || 'BREAK')
+              : (() => {
+                  const teaching = i + 1 - (breakPeriods || []).filter(b => b <= i + 1).length;
+                  return `P${teaching}`;
+                })();
+            return (
+              <th key={i} className={`border p-2 ${isBreak ? 'bg-muted-foreground/20 text-[10px]' : ''}`}>
+                {label}
+              </th>
+            );
+          })}
         </tr>
+        {periodTimes && (
+          <tr className="bg-muted/60">
+            {Array.from({ length: periodsPerDay }, (_, i) => {
+              const t = periodTimes[i];
+              return (
+                <th key={i} className="border px-1 py-0.5 text-[9px] font-normal text-muted-foreground">
+                  {t?.start && t?.end ? `${t.start}–${t.end}` : ''}
+                </th>
+              );
+            })}
+          </tr>
+        )}
       </thead>
       <tbody>
         {days.map((d, di) => (
