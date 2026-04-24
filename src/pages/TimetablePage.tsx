@@ -908,7 +908,10 @@ function GridTable({ grid, days, periodsPerDay, breakPeriods, breakLabels, perio
             <td className="border p-2 font-semibold bg-muted/50">{d}</td>
             {Array.from({ length: periodsPerDay }, (_, p) => {
               const cell = grid[di]?.[p];
-              if (cell?.isBreak) return <td key={p} className="border p-2 text-center bg-muted/40 text-muted-foreground">BREAK</td>;
+              if (cell?.isBreak) {
+                const lbl = breakLabels?.[breakIdxOf(p + 1)] || 'BREAK';
+                return <td key={p} className="border p-1 text-center bg-muted/40 text-muted-foreground text-[10px] font-semibold">{lbl}</td>;
+              }
               if (cell?.isLocked) return <td key={p} className="border p-2 text-center bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-medium text-[11px]">{cell.lockedLabel}</td>;
               if (cell?.learningAreaName) {
                 const dim = matchesSearch && !matchesSearch(cell);
