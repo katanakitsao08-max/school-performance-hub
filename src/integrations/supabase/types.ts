@@ -254,10 +254,14 @@ export type Database = {
           mpesa_reference: string | null
           payment_date: string | null
           payment_method: string | null
+          receipt_number: string | null
           recorded_by: string
           school_id: string | null
           term: number
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
           year: number
         }
         Insert: {
@@ -271,10 +275,14 @@ export type Database = {
           mpesa_reference?: string | null
           payment_date?: string | null
           payment_method?: string | null
+          receipt_number?: string | null
           recorded_by: string
           school_id?: string | null
           term: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           year?: number
         }
         Update: {
@@ -288,10 +296,14 @@ export type Database = {
           mpesa_reference?: string | null
           payment_date?: string | null
           payment_method?: string | null
+          receipt_number?: string | null
           recorded_by?: string
           school_id?: string | null
           term?: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           year?: number
         }
         Relationships: [
@@ -310,6 +322,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fee_structures: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          description: string | null
+          fee_type: string
+          grade: string
+          id: string
+          is_active: boolean
+          school_id: string
+          term: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by: string
+          description?: string | null
+          fee_type?: string
+          grade: string
+          id?: string
+          is_active?: boolean
+          school_id: string
+          term: number
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          fee_type?: string
+          grade?: string
+          id?: string
+          is_active?: boolean
+          school_id?: string
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       learners: {
         Row: {
@@ -1544,6 +1601,7 @@ export type Database = {
         Args: { _name: string; _school_id: string }
         Returns: string
       }
+      generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_school_code: { Args: never; Returns: string }
       get_school_plan_features: { Args: { _school_id: string }; Returns: Json }
       get_user_assigned_grades: {
