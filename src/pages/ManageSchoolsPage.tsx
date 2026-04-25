@@ -58,7 +58,10 @@ export default function ManageSchoolsPage() {
   const { data: schools = [] } = useQuery({
     queryKey: ['all-schools'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('schools').select('*').order('school_name');
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*, plan:subscription_plans(id, name, features)')
+        .order('school_name');
       if (error) throw error;
       return data || [];
     },
