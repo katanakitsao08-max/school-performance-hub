@@ -3,257 +3,797 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Plus, Search, Wallet, TrendingUp, AlertTriangle, FileDown, Receipt,
+  Layers, Users, MessageCircle, FileSpreadsheet, Edit, Trash2, Ban, CheckCircle, Eye
+} from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useMemo } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useSchoolGrades } from '@/hooks/use-school-grades';
+import {
+  generateFeeReceiptPDF, generateFeeStatementPDF, generateCollectionReportPDF,
+  exportCollectionReportXLSX, type CollectionReportRow,
+} from '@/lib/fee-pdf';
+import { buildWaMeLink, normalizeWhatsAppPhone } from '@/lib/wa-link';
+import { z } from 'zod';
 
 const FEE_TYPES = ['tuition', 'transport', 'lunch', 'boarding', 'activity', 'uniform', 'books', 'other'];
 const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
+
+const recordSchema = z.object({
+  learner_id: z.string().uuid('Select a learner'),
+  fee_type: z.string().min(1),
+  amount_charged: z.number().min(0).max(10_000_000),
+  amount_paid: z.number().min(0).max(10_000_000),
+  payment_method: z.string().min(1),
+  mpesa_reference: z.string().max(50).optional().nullable(),
+  description: z.string().max(255).optional().nullable(),
+});
+
+const structureSchema = z.object({
+  grade: z.string().min(1, 'Grade required'),
+  fee_type: z.string().min(1),
+  amount: z.number().min(0).max(10_000_000),
+  description: z.string().max(255).optional().nullable(),
+});
+
+const fmt = (n: number) => `KES ${Number(n || 0).toLocaleString()}`;
 
 export default function FeesPage() {
   const { user, schoolId } = useAuth();
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
+  const grades = useSchoolGrades();
 
-  const [selectedGrade, setSelectedGrade] = useState('');
+  const [tab, setTab] = useState('records');
+  const [selectedGrade, setSelectedGrade] = useState('all');
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [search, setSearch] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Form state
-  const [formLearnerId, setFormLearnerId] = useState('');
-  const [formFeeType, setFormFeeType] = useState('tuition');
-  const [formCharged, setFormCharged] = useState('');
-  const [formPaid, setFormPaid] = useState('');
-  const [formMethod, setFormMethod] = useState('cash');
-  const [formMpesaRef, setFormMpesaRef] = useState('');
-  const [formDescription, setFormDescription] = useState('');
+  // ---------- School + Learners ----------
+  const { data: schoolSettings = {} } = useQuery({
+    queryKey: ['fee-school-settings', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return {};
+      const { data } = await supabase.from('school_settings').select('key,value').eq('school_id', schoolId);
+      const m: Record<string, string> = {};
+      (data || []).forEach((r: any) => { m[r.key] = r.value; });
+      return m;
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: school } = useQuery({
+    queryKey: ['fee-school-name', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+
+  const schoolMeta = useMemo(() => ({
+    name: schoolSettings.school_name || school?.school_name || 'School',
+    motto: schoolSettings.school_motto,
+    address: schoolSettings.school_address,
+    phone: schoolSettings.school_phone,
+    email: schoolSettings.school_email,
+    logo: schoolSettings.school_logo_url || null,
+  }), [schoolSettings, school]);
 
   const { data: learners = [] } = useQuery({
     queryKey: ['fee-learners', schoolId, selectedGrade],
     queryFn: async () => {
       let q = supabase.from('learners').select('*').eq('school_id', schoolId!).eq('is_active', true);
-      if (selectedGrade) q = q.eq('grade', selectedGrade);
+      if (selectedGrade !== 'all') q = q.eq('grade', selectedGrade);
       const { data } = await q.order('full_name');
       return data || [];
     },
     enabled: !!schoolId,
   });
 
+  // ---------- Fee records (term-scoped) ----------
   const { data: feeRecords = [] } = useQuery({
     queryKey: ['fee-records', schoolId, selectedTerm, selectedYear, selectedGrade],
     queryFn: async () => {
-      let q = supabase.from('fee_records').select('*, learners!fee_records_learner_id_fkey(full_name, admission_number, grade, stream)')
+      const q = supabase.from('fee_records')
+        .select('*, learners!fee_records_learner_id_fkey(full_name, admission_number, grade, stream, parent_name, parent_phone)')
         .eq('school_id', schoolId!)
         .eq('term', Number(selectedTerm))
-        .eq('year', Number(selectedYear));
-      const { data } = await q.order('created_at', { ascending: false });
-      // Filter by grade client-side if needed
-      if (selectedGrade) {
-        return (data || []).filter(r => (r as any).learners?.grade === selectedGrade);
-      }
-      return data || [];
+        .eq('year', Number(selectedYear))
+        .order('created_at', { ascending: false });
+      const { data } = await q;
+      const rows = (data || []) as any[];
+      return selectedGrade !== 'all' ? rows.filter(r => r.learners?.grade === selectedGrade) : rows;
     },
     enabled: !!schoolId,
   });
 
   const summary = useMemo(() => {
-    const totalCharged = feeRecords.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = feeRecords.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const live = feeRecords.filter(r => !r.voided_at);
+    const totalCharged = live.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = live.reduce((s, r) => s + Number(r.amount_paid), 0);
     const balance = totalCharged - totalPaid;
-    const defaulters = new Set<string>();
-    const byLearner: Record<string, { charged: number; paid: number }> = {};
-    feeRecords.forEach(r => {
-      if (!byLearner[r.learner_id]) byLearner[r.learner_id] = { charged: 0, paid: 0 };
-      byLearner[r.learner_id].charged += Number(r.amount_charged);
-      byLearner[r.learner_id].paid += Number(r.amount_paid);
-    });
-    Object.entries(byLearner).forEach(([id, v]) => { if (v.charged - v.paid > 0) defaulters.add(id); });
-    return { totalCharged, totalPaid, balance, defaulters: defaulters.size };
+    const byLearner: Record<string, number> = {};
+    live.forEach(r => { byLearner[r.learner_id] = (byLearner[r.learner_id] || 0) + (Number(r.amount_charged) - Number(r.amount_paid)); });
+    const defaulters = Object.values(byLearner).filter(v => v > 0).length;
+    return { totalCharged, totalPaid, balance, defaulters };
   }, [feeRecords]);
 
-  const addFeeMutation = useMutation({
+  // ---------- Add/Edit Record ----------
+  const [recordDialog, setRecordDialog] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [recordForm, setRecordForm] = useState({
+    learner_id: '', fee_type: 'tuition', amount_charged: '', amount_paid: '',
+    payment_method: 'cash', mpesa_reference: '', description: '',
+  });
+
+  const openNewRecord = () => {
+    setEditingRecord(null);
+    setRecordForm({ learner_id: '', fee_type: 'tuition', amount_charged: '', amount_paid: '', payment_method: 'cash', mpesa_reference: '', description: '' });
+    setRecordDialog(true);
+  };
+  const openEditRecord = (r: any) => {
+    setEditingRecord(r);
+    setRecordForm({
+      learner_id: r.learner_id, fee_type: r.fee_type,
+      amount_charged: String(r.amount_charged), amount_paid: String(r.amount_paid),
+      payment_method: r.payment_method || 'cash', mpesa_reference: r.mpesa_reference || '',
+      description: r.description || '',
+    });
+    setRecordDialog(true);
+  };
+
+  const upsertRecord = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('fee_records').insert({
-        learner_id: formLearnerId,
-        school_id: schoolId!,
-        term: Number(selectedTerm),
-        year: Number(selectedYear),
-        fee_type: formFeeType,
-        amount_charged: Number(formCharged) || 0,
-        amount_paid: Number(formPaid) || 0,
-        payment_date: Number(formPaid) > 0 ? new Date().toISOString().split('T')[0] : null,
-        payment_method: formMethod,
-        mpesa_reference: formMpesaRef || null,
-        description: formDescription || null,
-        recorded_by: user!.id,
+      const parsed = recordSchema.safeParse({
+        learner_id: recordForm.learner_id,
+        fee_type: recordForm.fee_type,
+        amount_charged: Number(recordForm.amount_charged) || 0,
+        amount_paid: Number(recordForm.amount_paid) || 0,
+        payment_method: recordForm.payment_method,
+        mpesa_reference: recordForm.mpesa_reference || null,
+        description: recordForm.description || null,
       });
-      if (error) throw error;
+      if (!parsed.success) throw new Error(Object.values(parsed.error.flatten().fieldErrors)[0]?.[0] || 'Invalid input');
+      const v = parsed.data;
+      if (editingRecord) {
+        const { error } = await supabase.from('fee_records').update({
+          fee_type: v.fee_type, amount_charged: v.amount_charged, amount_paid: v.amount_paid,
+          payment_method: v.payment_method, mpesa_reference: v.mpesa_reference, description: v.description,
+          payment_date: v.amount_paid > 0 ? new Date().toISOString().split('T')[0] : null,
+        }).eq('id', editingRecord.id);
+        if (error) throw error;
+        return { record: editingRecord, isNew: false };
+      } else {
+        let receiptNumber: string | null = null;
+        if (v.amount_paid > 0) {
+          const { data: rn } = await supabase.rpc('generate_receipt_number', { _school_id: schoolId! });
+          receiptNumber = rn as string;
+        }
+        const { data: inserted, error } = await supabase.from('fee_records').insert({
+          learner_id: v.learner_id, school_id: schoolId!, term: Number(selectedTerm), year: Number(selectedYear),
+          fee_type: v.fee_type, amount_charged: v.amount_charged, amount_paid: v.amount_paid,
+          payment_date: v.amount_paid > 0 ? new Date().toISOString().split('T')[0] : null,
+          payment_method: v.payment_method, mpesa_reference: v.mpesa_reference, description: v.description,
+          receipt_number: receiptNumber, recorded_by: user!.id,
+        }).select('*, learners!fee_records_learner_id_fkey(full_name, admission_number, grade, stream)').single();
+        if (error) throw error;
+        return { record: inserted, isNew: true };
+      }
     },
-    onSuccess: () => {
+    onSuccess: ({ record, isNew }: any) => {
       queryClient.invalidateQueries({ queryKey: ['fee-records'] });
-      toast({ title: 'Fee record added' });
-      setDialogOpen(false);
-      setFormCharged(''); setFormPaid(''); setFormMpesaRef(''); setFormDescription('');
+      setRecordDialog(false);
+      toast({ title: editingRecord ? 'Record updated' : 'Record added' });
+      if (isNew && Number(record.amount_paid) > 0 && record.receipt_number) {
+        // Auto-print receipt
+        printReceipt(record);
+      }
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const voidRecord = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const { error } = await supabase.from('fee_records').update({
+        voided_at: new Date().toISOString(), voided_by: user!.id, void_reason: reason,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fee-records'] }); toast({ title: 'Record voided' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteRecord = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('fee_records').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fee-records'] }); toast({ title: 'Record deleted' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // ---------- Receipt printing ----------
+  const printReceipt = async (r: any) => {
+    if (!r.receipt_number) {
+      toast({ title: 'No receipt', description: 'This record has no payment.', variant: 'destructive' });
+      return;
+    }
+    // Compute term + total balance for this learner
+    const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
+    const allRows = (all || []) as any[];
+    const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
+    const termBal = termRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+    const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+    generateFeeReceiptPDF({
+      receiptNumber: r.receipt_number,
+      date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+      learnerName: r.learners?.full_name || '-',
+      admissionNumber: r.learners?.admission_number || '-',
+      grade: r.learners?.grade || '-',
+      stream: r.learners?.stream || '-',
+      feeType: r.fee_type,
+      amountPaid: Number(r.amount_paid),
+      paymentMethod: r.payment_method,
+      mpesaReference: r.mpesa_reference,
+      description: r.description,
+      termBalance: termBal,
+      totalBalance: totalBal,
+      receivedBy: user?.email || 'Cashier',
+      schoolName: schoolMeta.name, schoolAddress: schoolMeta.address, schoolPhone: schoolMeta.phone,
+      schoolEmail: schoolMeta.email, schoolMotto: schoolMeta.motto, logoBase64: schoolMeta.logo,
+    });
+  };
+
+  // ---------- Statement ----------
+  const printStatement = async (learner: any) => {
+    const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', learner.id).order('created_at');
+    const rows = ((all || []) as any[]).filter(r => !r.voided_at);
+    let running = 0;
+    const stRows = rows.map(r => {
+      const charged = Number(r.amount_charged);
+      const paid = Number(r.amount_paid);
+      running += charged - paid;
+      return {
+        date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+        description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
+        charged, paid, balance: running, receipt: r.receipt_number,
+      };
+    });
+    const totalCharged = rows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = rows.reduce((s, r) => s + Number(r.amount_paid), 0);
+    generateFeeStatementPDF({
+      learnerName: learner.full_name, admissionNumber: learner.admission_number,
+      grade: learner.grade, stream: learner.stream,
+      rows: stRows, totalCharged, totalPaid, outstanding: totalCharged - totalPaid,
+      generatedAt: new Date().toLocaleString(),
+      schoolName: schoolMeta.name, schoolAddress: schoolMeta.address, schoolPhone: schoolMeta.phone,
+      schoolEmail: schoolMeta.email, logoBase64: schoolMeta.logo,
+    });
+  };
+
+  // ---------- Fee Structures ----------
+  const [structureDialog, setStructureDialog] = useState(false);
+  const [structureForm, setStructureForm] = useState({ grade: '', fee_type: 'tuition', amount: '', description: '' });
+
+  const { data: structures = [] } = useQuery({
+    queryKey: ['fee-structures', schoolId, selectedTerm, selectedYear],
+    queryFn: async () => {
+      const { data } = await supabase.from('fee_structures').select('*')
+        .eq('school_id', schoolId!).eq('term', Number(selectedTerm)).eq('year', Number(selectedYear))
+        .eq('is_active', true).order('grade').order('fee_type');
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const addStructure = useMutation({
+    mutationFn: async () => {
+      const parsed = structureSchema.safeParse({
+        grade: structureForm.grade, fee_type: structureForm.fee_type,
+        amount: Number(structureForm.amount) || 0,
+        description: structureForm.description || null,
+      });
+      if (!parsed.success) throw new Error(Object.values(parsed.error.flatten().fieldErrors)[0]?.[0] || 'Invalid');
+      const v = parsed.data;
+      const { error } = await supabase.from('fee_structures').insert({
+        school_id: schoolId!, grade: v.grade, term: Number(selectedTerm), year: Number(selectedYear),
+        fee_type: v.fee_type, amount: v.amount, description: v.description, created_by: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fee-structures'] });
+      setStructureDialog(false);
+      setStructureForm({ grade: '', fee_type: 'tuition', amount: '', description: '' });
+      toast({ title: 'Fee structure added' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteStructure = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('fee_structures').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fee-structures'] }); toast({ title: 'Removed' }); },
+  });
+
+  // ---------- Bulk billing ----------
+  const [billGrade, setBillGrade] = useState('all');
+  const billRun = useMutation({
+    mutationFn: async () => {
+      // Pull active structures for term/year (optionally filter to one grade)
+      let q = supabase.from('fee_structures').select('*')
+        .eq('school_id', schoolId!).eq('term', Number(selectedTerm)).eq('year', Number(selectedYear)).eq('is_active', true);
+      if (billGrade !== 'all') q = q.eq('grade', billGrade);
+      const { data: structs } = await q;
+      if (!structs || structs.length === 0) throw new Error('No fee structures defined for this term/year');
+
+      const grades = Array.from(new Set(structs.map((s: any) => s.grade)));
+      const { data: lns } = await supabase.from('learners').select('id, grade')
+        .eq('school_id', schoolId!).eq('is_active', true).in('grade', grades);
+      if (!lns || lns.length === 0) throw new Error('No active learners found for these grades');
+
+      // Existing charges for term: skip if learner already has the same fee_type charged
+      const { data: existing } = await supabase.from('fee_records').select('learner_id, fee_type')
+        .eq('school_id', schoolId!).eq('term', Number(selectedTerm)).eq('year', Number(selectedYear)).is('voided_at', null);
+      const existingKey = new Set((existing || []).map((e: any) => `${e.learner_id}:${e.fee_type}`));
+
+      const inserts: any[] = [];
+      for (const ln of lns) {
+        const items = structs.filter((s: any) => s.grade === ln.grade);
+        for (const it of items) {
+          const k = `${ln.id}:${it.fee_type}`;
+          if (existingKey.has(k)) continue;
+          inserts.push({
+            learner_id: ln.id, school_id: schoolId!, term: Number(selectedTerm), year: Number(selectedYear),
+            fee_type: it.fee_type, amount_charged: Number(it.amount), amount_paid: 0,
+            description: it.description, recorded_by: user!.id, payment_method: 'cash',
+          });
+        }
+      }
+      if (inserts.length === 0) return { skipped: true, count: 0 };
+      // Chunked insert
+      const chunkSize = 500;
+      for (let i = 0; i < inserts.length; i += chunkSize) {
+        const { error } = await supabase.from('fee_records').insert(inserts.slice(i, i + chunkSize));
+        if (error) throw error;
+      }
+      return { skipped: false, count: inserts.length };
+    },
+    onSuccess: (r: any) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-records'] });
+      toast({ title: r.skipped ? 'No new charges (everyone already billed)' : `Billed ${r.count} new charges` });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // ---------- Defaulters ----------
+  const defaulters = useMemo(() => {
+    const map = new Map<string, { learner: any; charged: number; paid: number; bal: number }>();
+    feeRecords.filter(r => !r.voided_at).forEach((r: any) => {
+      const k = r.learner_id;
+      const cur = map.get(k) || { learner: r.learners, charged: 0, paid: 0, bal: 0 };
+      cur.charged += Number(r.amount_charged);
+      cur.paid += Number(r.amount_paid);
+      cur.bal = cur.charged - cur.paid;
+      map.set(k, cur);
+    });
+    return Array.from(map.values()).filter(v => v.bal > 0).sort((a, b) => b.bal - a.bal);
+  }, [feeRecords]);
+
+  const sendDefaulterReminder = (d: any) => {
+    const phone = d.learner?.parent_phone;
+    if (!phone || !normalizeWhatsAppPhone(phone)) {
+      toast({ title: 'No valid phone', description: 'Parent phone is missing or invalid.', variant: 'destructive' });
+      return;
+    }
+    const msg = `Dear ${d.learner.parent_name || 'Parent'},\n\nThis is a reminder that ${d.learner.full_name} (Adm ${d.learner.admission_number}, Grade ${d.learner.grade} ${d.learner.stream}) has an outstanding fee balance of ${fmt(d.bal)} for Term ${selectedTerm}, ${selectedYear}.\n\nKindly clear at your earliest convenience.\n\n- ${schoolMeta.name}`;
+    const url = buildWaMeLink(phone, msg);
+    if (url) window.open(url, '_blank');
+  };
+
+  // ---------- Filtered records ----------
   const filteredRecords = useMemo(() => {
     if (!search) return feeRecords;
     const s = search.toLowerCase();
-    return feeRecords.filter(r => {
-      const name = (r as any).learners?.full_name || '';
-      const adm = (r as any).learners?.admission_number || '';
-      return name.toLowerCase().includes(s) || adm.toLowerCase().includes(s);
+    return feeRecords.filter((r: any) => {
+      const name = r.learners?.full_name || '';
+      const adm = r.learners?.admission_number || '';
+      return name.toLowerCase().includes(s) || adm.toLowerCase().includes(s) || (r.receipt_number || '').toLowerCase().includes(s);
     });
   }, [feeRecords, search]);
 
-  const fmt = (n: number) => `KES ${n.toLocaleString()}`;
+  // ---------- Reports export ----------
+  const exportCollections = (kind: 'pdf' | 'xlsx') => {
+    const live = feeRecords.filter((r: any) => !r.voided_at && Number(r.amount_paid) > 0);
+    if (live.length === 0) { toast({ title: 'No payments to export' }); return; }
+    const rows: CollectionReportRow[] = live.map((r: any) => ({
+      date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+      receipt: r.receipt_number || '-',
+      learner: r.learners?.full_name || '-',
+      admission: r.learners?.admission_number || '-',
+      grade: r.learners?.grade || '-',
+      stream: r.learners?.stream || '',
+      feeType: r.fee_type, method: r.payment_method, reference: r.mpesa_reference || '',
+      amount: Number(r.amount_paid),
+    }));
+    const totals = {
+      byMethod: {} as Record<string, number>, byType: {} as Record<string, number>, grandTotal: 0,
+    };
+    rows.forEach(r => {
+      totals.byMethod[r.method] = (totals.byMethod[r.method] || 0) + r.amount;
+      totals.byType[r.feeType] = (totals.byType[r.feeType] || 0) + r.amount;
+      totals.grandTotal += r.amount;
+    });
+    if (kind === 'pdf') {
+      generateCollectionReportPDF({
+        rows, totals,
+        title: `Fee Collections — Term ${selectedTerm}, ${selectedYear}`,
+        periodLabel: selectedGrade !== 'all' ? `Grade ${selectedGrade}` : 'All Grades',
+        schoolName: schoolMeta.name, schoolAddress: schoolMeta.address,
+        schoolPhone: schoolMeta.phone, schoolEmail: schoolMeta.email, logoBase64: schoolMeta.logo,
+      });
+    } else {
+      exportCollectionReportXLSX(rows, `Collections-T${selectedTerm}-${selectedYear}.xlsx`);
+    }
+  };
+
+  // ---------- Void dialog ----------
+  const [voidTarget, setVoidTarget] = useState<any>(null);
+  const [voidReason, setVoidReason] = useState('');
 
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-display font-bold">Fee Management</h1>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Record</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Add Fee Record</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <Select value={formLearnerId} onValueChange={setFormLearnerId}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Learner" /></SelectTrigger>
-                  <SelectContent>
-                    {learners.map(l => (
-                      <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.admission_number})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={formFeeType} onValueChange={setFormFeeType}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input type="number" placeholder="Amount Charged" value={formCharged} onChange={e => setFormCharged(e.target.value)} className="h-9 text-xs" />
-                  <Input type="number" placeholder="Amount Paid" value={formPaid} onChange={e => setFormPaid(e.target.value)} className="h-9 text-xs" />
-                </div>
-                <Select value={formMethod} onValueChange={setFormMethod}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {formMethod === 'mpesa' && (
-                  <Input placeholder="M-Pesa Reference" value={formMpesaRef} onChange={e => setFormMpesaRef(e.target.value)} className="h-9 text-xs" />
-                )}
-                <Input placeholder="Description (optional)" value={formDescription} onChange={e => setFormDescription(e.target.value)} className="h-9 text-xs" />
-                <Button onClick={() => addFeeMutation.mutate()} disabled={!formLearnerId || addFeeMutation.isPending} className="w-full">
-                  {addFeeMutation.isPending ? 'Saving...' : 'Save Record'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-xl md:text-2xl font-display font-bold">Fee Management</h1>
+            <p className="text-xs text-muted-foreground">Structures, billing, payments, receipts and reports</p>
+          </div>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="All Grades" /></SelectTrigger>
+            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Grades</SelectItem>
-              {['1','2','3','4','5','6','7','8','9'].map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+              <SelectItem value="all">All Grades</SelectItem>
+              {grades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={selectedTerm} onValueChange={setSelectedTerm}>
             <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[1,2,3].map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}
-            </SelectContent>
+            <SelectContent>{[1,2,3].map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[currentYear, currentYear-1].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
+            <SelectContent>{[currentYear+1, currentYear, currentYear-1, currentYear-2].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
           </Select>
           <div className="relative">
-            <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-9 text-xs" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search name/adm/receipt..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-9 text-xs" />
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-2">
+        {/* Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
-            { label: 'Total Fees', value: fmt(summary.totalCharged), icon: Wallet, color: 'text-foreground' },
+            { label: 'Billed', value: fmt(summary.totalCharged), icon: Wallet, color: 'text-foreground' },
             { label: 'Collected', value: fmt(summary.totalPaid), icon: TrendingUp, color: 'text-success' },
-            { label: 'Balance', value: fmt(summary.balance), icon: Wallet, color: 'text-destructive' },
+            { label: 'Outstanding', value: fmt(summary.balance), icon: Wallet, color: 'text-destructive' },
             { label: 'Defaulters', value: summary.defaulters, icon: AlertTriangle, color: 'text-warning' },
           ].map(c => (
-            <Card key={c.label} className="shadow-card">
-              <CardContent className="p-3 text-center">
-                <c.icon className={cn("h-4 w-4 mx-auto mb-1", c.color)} />
-                <p className={cn("text-sm font-bold", c.color)}>{c.value}</p>
-                <p className="text-[10px] text-muted-foreground">{c.label}</p>
-              </CardContent>
-            </Card>
+            <Card key={c.label}><CardContent className="p-3 text-center">
+              <c.icon className={cn('h-4 w-4 mx-auto mb-1', c.color)} />
+              <p className={cn('text-base md:text-lg font-bold', c.color)}>{c.value}</p>
+              <p className="text-[10px] text-muted-foreground">{c.label}</p>
+            </CardContent></Card>
           ))}
         </div>
 
-        {/* Records Table */}
-        <Card className="shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Learner</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs text-right">Charged</TableHead>
-                  <TableHead className="text-xs text-right">Paid</TableHead>
-                  <TableHead className="text-xs text-right">Balance</TableHead>
-                  <TableHead className="text-xs">Method</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">No records</TableCell></TableRow>
-                ) : filteredRecords.map(r => {
-                  const bal = Number(r.amount_charged) - Number(r.amount_paid);
-                  return (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-xs font-medium">
-                        {(r as any).learners?.full_name || '-'}
-                        <br /><span className="text-muted-foreground">{(r as any).learners?.admission_number}</span>
-                      </TableCell>
-                      <TableCell className="text-xs capitalize">{r.fee_type}</TableCell>
-                      <TableCell className="text-xs text-right">{Number(r.amount_charged).toLocaleString()}</TableCell>
-                      <TableCell className="text-xs text-right text-success">{Number(r.amount_paid).toLocaleString()}</TableCell>
-                      <TableCell className={cn("text-xs text-right font-bold", bal > 0 ? "text-destructive" : "text-success")}>
-                        {bal.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-xs capitalize">
-                        {r.payment_method}
-                        {r.mpesa_reference && <span className="text-muted-foreground ml-1">({r.mpesa_reference})</span>}
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="records" className="text-xs"><Receipt className="h-3.5 w-3.5 mr-1" />Records</TabsTrigger>
+            <TabsTrigger value="structures" className="text-xs"><Layers className="h-3.5 w-3.5 mr-1" />Structures</TabsTrigger>
+            <TabsTrigger value="bulk" className="text-xs"><Users className="h-3.5 w-3.5 mr-1" />Bulk Bill</TabsTrigger>
+            <TabsTrigger value="defaulters" className="text-xs"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Defaulters</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs"><FileDown className="h-3.5 w-3.5 mr-1" />Reports</TabsTrigger>
+          </TabsList>
+
+          {/* RECORDS TAB */}
+          <TabsContent value="records" className="space-y-3">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={openNewRecord}><Plus className="h-4 w-4 mr-1" />Add Record</Button>
+            </div>
+            <Card className="overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Learner</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs text-right">Charged</TableHead>
+                    <TableHead className="text-xs text-right">Paid</TableHead>
+                    <TableHead className="text-xs text-right">Balance</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">Receipt</TableHead>
+                    <TableHead className="text-xs w-[150px]">Actions</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {filteredRecords.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">No records</TableCell></TableRow>
+                    ) : filteredRecords.map((r: any) => {
+                      const bal = Number(r.amount_charged) - Number(r.amount_paid);
+                      const voided = !!r.voided_at;
+                      return (
+                        <TableRow key={r.id} className={voided ? 'opacity-50' : ''}>
+                          <TableCell className="text-xs font-medium">
+                            {r.learners?.full_name || '-'}
+                            <br /><span className="text-muted-foreground">{r.learners?.admission_number} · G{r.learners?.grade}{r.learners?.stream}</span>
+                          </TableCell>
+                          <TableCell className="text-xs capitalize">{r.fee_type}</TableCell>
+                          <TableCell className="text-xs text-right">{Number(r.amount_charged).toLocaleString()}</TableCell>
+                          <TableCell className="text-xs text-right text-success">{Number(r.amount_paid).toLocaleString()}</TableCell>
+                          <TableCell className={cn('text-xs text-right font-bold', bal > 0 ? 'text-destructive' : 'text-success')}>{bal.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs capitalize">{r.payment_method}{r.mpesa_reference && <span className="text-muted-foreground ml-1">({r.mpesa_reference})</span>}</TableCell>
+                          <TableCell className="text-xs">
+                            {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (r.receipt_number || '-')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              {r.receipt_number && !voided && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => printReceipt(r)} title="Print receipt"><Receipt className="h-3.5 w-3.5" /></Button>
+                              )}
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditRecord(r)} title="Edit"><Edit className="h-3.5 w-3.5" /></Button>
+                              {!voided && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setVoidTarget(r); setVoidReason(''); }} title="Void"><Ban className="h-3.5 w-3.5 text-warning" /></Button>
+                              )}
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { if (confirm('Permanently delete this record?')) deleteRecord.mutate(r.id); }} title="Delete"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* STRUCTURES TAB */}
+          <TabsContent value="structures" className="space-y-3">
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">Standard fees per grade for Term {selectedTerm}, {selectedYear}</p>
+              <Button size="sm" onClick={() => setStructureDialog(true)}><Plus className="h-4 w-4 mr-1" />Add Item</Button>
+            </div>
+            <Card>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead className="text-xs">Grade</TableHead>
+                  <TableHead className="text-xs">Fee Type</TableHead>
+                  <TableHead className="text-xs text-right">Amount</TableHead>
+                  <TableHead className="text-xs">Description</TableHead>
+                  <TableHead className="text-xs w-[60px]"></TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {structures.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">No structures defined</TableCell></TableRow>
+                  ) : structures.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="text-xs font-medium">Grade {s.grade}</TableCell>
+                      <TableCell className="text-xs capitalize">{s.fee_type}</TableCell>
+                      <TableCell className="text-xs text-right font-bold">{fmt(Number(s.amount))}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{s.description || '-'}</TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteStructure.mutate(s.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* BULK BILL TAB */}
+          <TabsContent value="bulk" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Bulk Bill — Term {selectedTerm}, {selectedYear}</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  This will charge every active learner in the selected grade(s) using the fee structures defined for this term.
+                  Learners already billed for a fee type will be skipped (no duplicates).
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Apply to</Label>
+                    <Select value={billGrade} onValueChange={setBillGrade}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All grades with structures</SelectItem>
+                        {grades.map(g => <SelectItem key={g} value={g}>Grade {g} only</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="rounded-md bg-muted/50 p-3 text-xs space-y-1">
+                  <p className="font-semibold">Active structures: {structures.length}</p>
+                  {structures.length === 0 && <p className="text-destructive">Define structures first in the Structures tab.</p>}
+                </div>
+                <Button onClick={() => billRun.mutate()} disabled={billRun.isPending || structures.length === 0} className="w-full">
+                  <CheckCircle className="h-4 w-4 mr-1" /> {billRun.isPending ? 'Billing...' : 'Run Bulk Billing'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* DEFAULTERS TAB */}
+          <TabsContent value="defaulters" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Defaulters — Term {selectedTerm}, {selectedYear}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead className="text-xs">Learner</TableHead>
+                    <TableHead className="text-xs">Parent</TableHead>
+                    <TableHead className="text-xs text-right">Charged</TableHead>
+                    <TableHead className="text-xs text-right">Paid</TableHead>
+                    <TableHead className="text-xs text-right">Balance</TableHead>
+                    <TableHead className="text-xs w-[160px]">Actions</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {defaulters.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">No defaulters 🎉</TableCell></TableRow>
+                    ) : defaulters.map((d, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs font-medium">{d.learner?.full_name}<br /><span className="text-muted-foreground">{d.learner?.admission_number} · G{d.learner?.grade}{d.learner?.stream}</span></TableCell>
+                        <TableCell className="text-xs">{d.learner?.parent_name || '-'}<br /><span className="text-muted-foreground">{d.learner?.parent_phone || 'No phone'}</span></TableCell>
+                        <TableCell className="text-xs text-right">{d.charged.toLocaleString()}</TableCell>
+                        <TableCell className="text-xs text-right text-success">{d.paid.toLocaleString()}</TableCell>
+                        <TableCell className="text-xs text-right font-bold text-destructive">{d.bal.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => sendDefaulterReminder(d)}>
+                              <MessageCircle className="h-3 w-3 mr-1" />WhatsApp
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => printStatement(d.learner)} title="Statement"><Eye className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* REPORTS TAB */}
+          <TabsContent value="reports" className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Term Collection Report</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-muted-foreground">Cashbook of all payments collected in Term {selectedTerm}, {selectedYear}{selectedGrade !== 'all' ? ` for Grade ${selectedGrade}` : ''}.</p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => exportCollections('pdf')} className="flex-1"><FileDown className="h-4 w-4 mr-1" />Download PDF</Button>
+                  <Button size="sm" variant="outline" onClick={() => exportCollections('xlsx')} className="flex-1"><FileSpreadsheet className="h-4 w-4 mr-1" />Download Excel</Button>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Per-Learner Statements</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-muted-foreground">Pick a learner and download their full account statement (all terms).</p>
+                <Select onValueChange={(id) => { const l = learners.find((x: any) => x.id === id); if (l) printStatement(l); }}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select learner to download statement..." /></SelectTrigger>
+                  <SelectContent>
+                    {learners.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.admission_number}) · G{l.grade}{l.stream}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* ----- Record dialog ----- */}
+        <Dialog open={recordDialog} onOpenChange={setRecordDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{editingRecord ? 'Edit Fee Record' : 'Add Fee Record'}</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Learner</Label>
+                <Select value={recordForm.learner_id} onValueChange={v => setRecordForm(f => ({ ...f, learner_id: v }))} disabled={!!editingRecord}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select learner" /></SelectTrigger>
+                  <SelectContent>{learners.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.admission_number})</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Fee type</Label>
+                  <Select value={recordForm.fee_type} onValueChange={v => setRecordForm(f => ({ ...f, fee_type: v }))}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Method</Label>
+                  <Select value={recordForm.payment_method} onValueChange={v => setRecordForm(f => ({ ...f, payment_method: v }))}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{PAYMENT_METHODS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label className="text-xs">Charged (KES)</Label><Input type="number" min="0" value={recordForm.amount_charged} onChange={e => setRecordForm(f => ({ ...f, amount_charged: e.target.value }))} className="h-9 text-xs" /></div>
+                <div><Label className="text-xs">Paid (KES)</Label><Input type="number" min="0" value={recordForm.amount_paid} onChange={e => setRecordForm(f => ({ ...f, amount_paid: e.target.value }))} className="h-9 text-xs" /></div>
+              </div>
+              {recordForm.payment_method === 'mpesa' && (
+                <div><Label className="text-xs">M-Pesa Reference</Label><Input maxLength={50} value={recordForm.mpesa_reference} onChange={e => setRecordForm(f => ({ ...f, mpesa_reference: e.target.value }))} className="h-9 text-xs" /></div>
+              )}
+              <div><Label className="text-xs">Description (optional)</Label><Input maxLength={255} value={recordForm.description} onChange={e => setRecordForm(f => ({ ...f, description: e.target.value }))} className="h-9 text-xs" /></div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => upsertRecord.mutate()} disabled={upsertRecord.isPending} className="w-full">{upsertRecord.isPending ? 'Saving...' : (editingRecord ? 'Update' : 'Save & Print Receipt')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ----- Structure dialog ----- */}
+        <Dialog open={structureDialog} onOpenChange={setStructureDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Add Fee Structure (T{selectedTerm}/{selectedYear})</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Grade</Label>
+                <Select value={structureForm.grade} onValueChange={v => setStructureForm(f => ({ ...f, grade: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pick grade" /></SelectTrigger>
+                  <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label className="text-xs">Fee type</Label>
+                  <Select value={structureForm.fee_type} onValueChange={v => setStructureForm(f => ({ ...f, fee_type: v }))}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label className="text-xs">Amount</Label><Input type="number" min="0" value={structureForm.amount} onChange={e => setStructureForm(f => ({ ...f, amount: e.target.value }))} className="h-9 text-xs" /></div>
+              </div>
+              <div><Label className="text-xs">Description (optional)</Label><Input maxLength={255} value={structureForm.description} onChange={e => setStructureForm(f => ({ ...f, description: e.target.value }))} className="h-9 text-xs" /></div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => addStructure.mutate()} disabled={addStructure.isPending || !structureForm.grade} className="w-full">Add</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ----- Void dialog ----- */}
+        <Dialog open={!!voidTarget} onOpenChange={(o) => !o && setVoidTarget(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Void Record</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Voiding keeps an audit trail. The record stays visible but greyed out and is excluded from totals.</p>
+              <Textarea placeholder="Reason (required)" value={voidReason} maxLength={255} onChange={e => setVoidReason(e.target.value)} className="text-xs" rows={3} />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => { if (voidTarget && voidReason.trim()) { voidRecord.mutate({ id: voidTarget.id, reason: voidReason.trim() }); setVoidTarget(null); } }} disabled={!voidReason.trim()} variant="destructive" className="w-full">Void Record</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
