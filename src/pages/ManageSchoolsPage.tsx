@@ -40,6 +40,21 @@ export default function ManageSchoolsPage() {
   const [adminMode, setAdminMode] = useState<'new' | 'existing'>('new');
   const [selectedExistingUser, setSelectedExistingUser] = useState('');
 
+  // Plan dialog state
+  const [planDialog, setPlanDialog] = useState(false);
+  const [planTarget, setPlanTarget] = useState<any>(null);
+  const [planForm, setPlanForm] = useState<{ plan_id: string; plan_expires_at: string }>({ plan_id: '', plan_expires_at: '' });
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('subscription_plans').select('*').eq('is_active', true).order('sort_order');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const { data: schools = [] } = useQuery({
     queryKey: ['all-schools'],
     queryFn: async () => {
