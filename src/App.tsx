@@ -39,6 +39,7 @@ import CurriculumDesignManagerPage from "./pages/CurriculumDesignManagerPage";
 import CurriculumLibraryPage from "./pages/CurriculumLibraryPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
 import NotFound from "./pages/NotFound";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <RefreshRedirector />
+            <PwaInstallPrompt />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
