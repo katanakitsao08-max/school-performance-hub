@@ -19,11 +19,32 @@ export default function ParentFeesTab({ child }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from('fee_records')
-        .select('*')
+        .select('*, learners!fee_records_learner_id_fkey(full_name, admission_number, grade, stream, school_id)')
         .eq('learner_id', child.id)
+        .is('voided_at', null)
         .order('created_at', { ascending: false });
       return data || [];
     },
+  });
+
+  const learnerInfo = (feeRecords[0] as any)?.learners;
+  const schoolId = learnerInfo?.school_id;
+
+  const { data: schoolMeta } = useQuery({
+    queryKey: ['parent-fees-school', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const { data: settings } = await supabase.from('school_settings').select('key,value').eq('school_id', schoolId);
+      const { data: school } = await supabase.from('schools').select('school_name,contact_phone').eq('id', schoolId).maybeSingle();
+      const m: Record<string, string> = {};
+      (settings || []).forEach((r: any) => { m[r.key] = r.value; });
+      return {
+        name: m.school_name || school?.school_name || 'School',
+        address: m.school_address, phone: m.school_phone || school?.contact_phone, email: m.school_email,
+        logo: m.school_logo_url || null, paybill: m.mpesa_paybill, account: m.mpesa_account,
+      };
+    },
+    enabled: !!schoolId,
   });
 
   const summary = useMemo(() => {
@@ -33,15 +54,54 @@ export default function ParentFeesTab({ child }: Props) {
     return { totalCharged, totalPaid, balance };
   }, [feeRecords]);
 
-  const payments = useMemo(() => {
-    return feeRecords.filter(r => Number(r.amount_paid) > 0);
-  }, [feeRecords]);
+  const payments = useMemo(() => feeRecords.filter(r => Number(r.amount_paid) > 0), [feeRecords]);
 
   const formatAmount = (n: number) => `KES ${n.toLocaleString()}`;
 
+  const downloadStatement = () => {
+    if (!learnerInfo) return;
+    const sorted = [...feeRecords].reverse();
+    let running = 0;
+    const rows = sorted.map((r: any) => {
+      const charged = Number(r.amount_charged), paid = Number(r.amount_paid);
+      running += charged - paid;
+      return {
+        date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+        description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
+        charged, paid, balance: running, receipt: r.receipt_number,
+      };
+    });
+    generateFeeStatementPDF({
+      learnerName: learnerInfo.full_name, admissionNumber: learnerInfo.admission_number,
+      grade: learnerInfo.grade, stream: learnerInfo.stream,
+      rows, totalCharged: summary.totalCharged, totalPaid: summary.totalPaid, outstanding: summary.balance,
+      generatedAt: new Date().toLocaleString(),
+      schoolName: schoolMeta?.name || 'School',
+      schoolAddress: schoolMeta?.address, schoolPhone: schoolMeta?.phone, schoolEmail: schoolMeta?.email,
+      logoBase64: schoolMeta?.logo,
+    });
+  };
+
+  const showPayInstructions = () => {
+    const lines = [
+      `M-Pesa Payment Instructions for ${child.full_name}:`,
+      schoolMeta?.paybill ? `Paybill: ${schoolMeta.paybill}` : 'Paybill: (Contact school)',
+      schoolMeta?.account ? `Account: ${schoolMeta.account} / ${learnerInfo?.admission_number || ''}` : `Account: ${learnerInfo?.admission_number || 'Admission #'}`,
+      `Amount: ${formatAmount(summary.balance)}`,
+      `After payment, share the M-Pesa SMS with the school office.`,
+    ];
+    toast({ title: 'How to Pay', description: lines.join('\n') });
+  };
+
   return (
     <div className="space-y-4">
-      {/* Balance Summary */}
+      {/* Action buttons */}
+      {summary.balance > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" variant="outline" onClick={downloadStatement} className="text-xs"><FileDown className="h-3.5 w-3.5 mr-1" />Statement</Button>
+          <Button size="sm" onClick={showPayInstructions} className="text-xs"><Smartphone className="h-3.5 w-3.5 mr-1" />Pay via M-Pesa</Button>
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2">
         <Card className="shadow-card">
           <CardContent className="p-3 text-center">
