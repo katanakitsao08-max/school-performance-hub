@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, CreditCard, ArrowDownCircle } from 'lucide-react';
+import { Wallet, CreditCard, ArrowDownCircle, FileDown, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { generateFeeStatementPDF } from '@/lib/fee-pdf';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   child: { id: string; full_name: string };
