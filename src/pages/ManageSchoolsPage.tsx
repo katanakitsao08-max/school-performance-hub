@@ -554,7 +554,8 @@ export default function ManageSchoolsPage() {
                   <TableHead className="text-center">Staff</TableHead>
                   <TableHead className="text-center">Learners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[160px]">Actions</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="w-[200px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
