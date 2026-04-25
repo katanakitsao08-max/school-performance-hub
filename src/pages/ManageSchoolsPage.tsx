@@ -604,12 +604,34 @@ export default function ManageSchoolsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {(() => {
+                          const planName = school.plan?.name || '—';
+                          const expired = school.plan_expires_at && new Date(school.plan_expires_at) < new Date();
+                          return (
+                            <div className="space-y-0.5">
+                              <Badge variant={expired ? 'destructive' : 'secondary'} className="text-xs">
+                                <Crown className="h-3 w-3 mr-1" /> {planName}
+                              </Badge>
+                              {school.plan_expires_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  {expired ? 'Expired ' : 'Until '}
+                                  {new Date(school.plan_expires_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(school)} title="Edit school">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleAssignAdmin(school)} title="Assign admin">
                             <UserPlus className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleAssignPlan(school)} title="Assign plan / set expiry">
+                            <Crown className="h-4 w-4 text-warning" />
                           </Button>
                           <Button
                             variant="ghost"
