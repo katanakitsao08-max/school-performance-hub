@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown } from 'lucide-react';
 
 export default function ManageSchoolsPage() {
   const { toast } = useToast();
@@ -40,10 +40,28 @@ export default function ManageSchoolsPage() {
   const [adminMode, setAdminMode] = useState<'new' | 'existing'>('new');
   const [selectedExistingUser, setSelectedExistingUser] = useState('');
 
+  // Plan dialog state
+  const [planDialog, setPlanDialog] = useState(false);
+  const [planTarget, setPlanTarget] = useState<any>(null);
+  const [planForm, setPlanForm] = useState<{ plan_id: string; plan_expires_at: string }>({ plan_id: '', plan_expires_at: '' });
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('subscription_plans').select('*').eq('is_active', true).order('sort_order');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const { data: schools = [] } = useQuery({
     queryKey: ['all-schools'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('schools').select('*').order('school_name');
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*, plan:subscription_plans(id, name, features)')
+        .order('school_name');
       if (error) throw error;
       return data || [];
     },
@@ -259,6 +277,33 @@ export default function ManageSchoolsPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  // Assign / update plan + expiry (Super Admin only)
+  const updatePlan = useMutation({
+    mutationFn: async () => {
+      if (!planTarget) return;
+      const payload: any = { plan_id: planForm.plan_id || null };
+      payload.plan_expires_at = planForm.plan_expires_at ? new Date(planForm.plan_expires_at).toISOString() : null;
+      const { error } = await supabase.from('schools').update(payload).eq('id', planTarget.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'Plan updated' });
+      setPlanDialog(false);
+      setPlanTarget(null);
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const handleAssignPlan = (school: any) => {
+    setPlanTarget(school);
+    setPlanForm({
+      plan_id: school.plan?.id || school.plan_id || '',
+      plan_expires_at: school.plan_expires_at ? school.plan_expires_at.slice(0, 10) : '',
+    });
+    setPlanDialog(true);
+  };
+
   const resetForm = () => {
     setForm({ school_name: '', county: '', contact_email: '', contact_phone: '', subscription_status: 'trial' });
     setAdminForm({ username: '', password: '', full_name: '' });
@@ -373,6 +418,49 @@ export default function ManageSchoolsPage() {
           </Dialog>
         </div>
 
+        {/* Assign Plan Dialog (Super Admin only) */}
+        <Dialog open={planDialog} onOpenChange={(v) => { setPlanDialog(v); if (!v) setPlanTarget(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Subscription Plan – {planTarget?.school_name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); updatePlan.mutate(); }} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Plan</Label>
+                <Select value={planForm.plan_id} onValueChange={v => setPlanForm(f => ({ ...f, plan_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Choose a plan..." /></SelectTrigger>
+                  <SelectContent>
+                    {plans.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.price_monthly > 0 ? `– KES ${p.price_monthly}/mo` : '(Free)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Plan Expiry Date</Label>
+                <Input type="date" value={planForm.plan_expires_at} onChange={e => setPlanForm(f => ({ ...f, plan_expires_at: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Leave blank for no expiry. After this date the school auto-falls back to the Free plan features.</p>
+              </div>
+              {planForm.plan_id && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-xs space-y-1">
+                  <p className="font-medium text-foreground mb-1">Included features:</p>
+                  {Object.entries((plans.find((p: any) => p.id === planForm.plan_id)?.features || {}) as Record<string, any>).map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="font-mono">{typeof v === 'boolean' ? (v ? '✓' : '—') : String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={updatePlan.isPending || !planForm.plan_id}>
+                <Crown className="mr-2 h-4 w-4" /> Save Plan
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {/* Assign Admin Dialog */}
         <Dialog open={adminDialog} onOpenChange={(v) => { setAdminDialog(v); if (!v) { setAdminTarget(null); setAdminMode('new'); } }}>
           <DialogContent className="max-w-md">
@@ -466,7 +554,8 @@ export default function ManageSchoolsPage() {
                   <TableHead className="text-center">Staff</TableHead>
                   <TableHead className="text-center">Learners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[160px]">Actions</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="w-[200px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -515,12 +604,34 @@ export default function ManageSchoolsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        {(() => {
+                          const planName = school.plan?.name || '—';
+                          const expired = school.plan_expires_at && new Date(school.plan_expires_at) < new Date();
+                          return (
+                            <div className="space-y-0.5">
+                              <Badge variant={expired ? 'destructive' : 'secondary'} className="text-xs">
+                                <Crown className="h-3 w-3 mr-1" /> {planName}
+                              </Badge>
+                              {school.plan_expires_at && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  {expired ? 'Expired ' : 'Until '}
+                                  {new Date(school.plan_expires_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(school)} title="Edit school">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleAssignAdmin(school)} title="Assign admin">
                             <UserPlus className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleAssignPlan(school)} title="Assign plan / set expiry">
+                            <Crown className="h-4 w-4 text-warning" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -559,7 +670,7 @@ export default function ManageSchoolsPage() {
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       No schools found
                     </TableCell>
                   </TableRow>

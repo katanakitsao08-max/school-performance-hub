@@ -768,6 +768,8 @@ export type Database = {
           county: string
           created_at: string
           id: string
+          plan_expires_at: string | null
+          plan_id: string | null
           school_code: string
           school_name: string
           subscription_status: string
@@ -779,6 +781,8 @@ export type Database = {
           county?: string
           created_at?: string
           id?: string
+          plan_expires_at?: string | null
+          plan_id?: string | null
           school_code: string
           school_name: string
           subscription_status?: string
@@ -790,12 +794,22 @@ export type Database = {
           county?: string
           created_at?: string
           id?: string
+          plan_expires_at?: string | null
+          plan_id?: string | null
           school_code?: string
           school_name?: string
           subscription_status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schools_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scores: {
         Row: {
@@ -1036,6 +1050,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: Json
+          id: string
+          is_active: boolean
+          name: string
+          price_monthly: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          price_monthly?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_monthly?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       teacher_assignments: {
         Row: {
@@ -1495,6 +1545,7 @@ export type Database = {
         Returns: string
       }
       generate_school_code: { Args: never; Returns: string }
+      get_school_plan_features: { Args: { _school_id: string }; Returns: Json }
       get_user_assigned_grades: {
         Args: { _user_id: string }
         Returns: string[]
