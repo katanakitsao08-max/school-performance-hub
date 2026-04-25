@@ -277,6 +277,33 @@ export default function ManageSchoolsPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  // Assign / update plan + expiry (Super Admin only)
+  const updatePlan = useMutation({
+    mutationFn: async () => {
+      if (!planTarget) return;
+      const payload: any = { plan_id: planForm.plan_id || null };
+      payload.plan_expires_at = planForm.plan_expires_at ? new Date(planForm.plan_expires_at).toISOString() : null;
+      const { error } = await supabase.from('schools').update(payload).eq('id', planTarget.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'Plan updated' });
+      setPlanDialog(false);
+      setPlanTarget(null);
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const handleAssignPlan = (school: any) => {
+    setPlanTarget(school);
+    setPlanForm({
+      plan_id: school.plan?.id || school.plan_id || '',
+      plan_expires_at: school.plan_expires_at ? school.plan_expires_at.slice(0, 10) : '',
+    });
+    setPlanDialog(true);
+  };
+
   const resetForm = () => {
     setForm({ school_name: '', county: '', contact_email: '', contact_phone: '', subscription_status: 'trial' });
     setAdminForm({ username: '', password: '', full_name: '' });
