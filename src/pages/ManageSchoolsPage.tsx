@@ -418,6 +418,49 @@ export default function ManageSchoolsPage() {
           </Dialog>
         </div>
 
+        {/* Assign Plan Dialog (Super Admin only) */}
+        <Dialog open={planDialog} onOpenChange={(v) => { setPlanDialog(v); if (!v) setPlanTarget(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Subscription Plan – {planTarget?.school_name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); updatePlan.mutate(); }} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Plan</Label>
+                <Select value={planForm.plan_id} onValueChange={v => setPlanForm(f => ({ ...f, plan_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Choose a plan..." /></SelectTrigger>
+                  <SelectContent>
+                    {plans.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.price_monthly > 0 ? `– KES ${p.price_monthly}/mo` : '(Free)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Plan Expiry Date</Label>
+                <Input type="date" value={planForm.plan_expires_at} onChange={e => setPlanForm(f => ({ ...f, plan_expires_at: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Leave blank for no expiry. After this date the school auto-falls back to the Free plan features.</p>
+              </div>
+              {planForm.plan_id && (
+                <div className="rounded-lg border bg-muted/40 p-3 text-xs space-y-1">
+                  <p className="font-medium text-foreground mb-1">Included features:</p>
+                  {Object.entries((plans.find((p: any) => p.id === planForm.plan_id)?.features || {}) as Record<string, any>).map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="font-mono">{typeof v === 'boolean' ? (v ? '✓' : '—') : String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={updatePlan.isPending || !planForm.plan_id}>
+                <Crown className="mr-2 h-4 w-4" /> Save Plan
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {/* Assign Admin Dialog */}
         <Dialog open={adminDialog} onOpenChange={(v) => { setAdminDialog(v); if (!v) { setAdminTarget(null); setAdminMode('new'); } }}>
           <DialogContent className="max-w-md">
