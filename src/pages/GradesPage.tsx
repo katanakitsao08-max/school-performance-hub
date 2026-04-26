@@ -164,7 +164,7 @@ export default function GradesPage() {
                     <TableBody>
                       {grouped[lvl].map(g => (
                         <TableRow key={g}>
-                          <TableCell className="font-medium">Grade {g}</TableCell>
+                          <TableCell className="font-medium">{formatGradeLabel(g)}</TableCell>
                           <TableCell>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
