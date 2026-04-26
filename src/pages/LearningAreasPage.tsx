@@ -15,15 +15,18 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { formatGradeLabel, getGradeLevel } from '@/lib/grade-levels';
 
 // CBC default learning areas per grade group
 const CBC_DEFAULTS: Record<string, string[]> = {
+  'ecde': ['LANGUAGE ACTIVITIES', 'MATHEMATICAL ACTIVITIES', 'ENVIRONMENTAL ACTIVITIES', 'PSYCHOMOTOR & CREATIVE ACTIVITIES', 'RELIGIOUS EDUCATION ACTIVITIES'],
   'lower': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'ENVIRONMENTAL ACTIVITIES', 'CREATIVE ARTS', 'RELIGIOUS EDUCATION'],
   'upper': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS'],
   'jss': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS', 'PRE-TECHNICAL STUDIES'],
 };
 
-function getGradeGroup(grade: string): 'lower' | 'upper' | 'jss' {
+function getGradeGroup(grade: string): 'ecde' | 'lower' | 'upper' | 'jss' {
+  if (getGradeLevel(grade) === 'ecde') return 'ecde';
   const num = parseInt(grade, 10);
   if (num >= 7) return 'jss';
   if (num >= 4) return 'upper';
