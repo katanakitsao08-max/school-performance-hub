@@ -570,7 +570,18 @@ export default function FeesPage() {
                           <TableCell className={cn('text-xs text-right font-bold', bal > 0 ? 'text-destructive' : 'text-success')}>{bal.toLocaleString()}</TableCell>
                           <TableCell className="text-xs capitalize">{r.payment_method}{r.mpesa_reference && <span className="text-muted-foreground ml-1">({r.mpesa_reference})</span>}</TableCell>
                           <TableCell className="text-xs">
-                            {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (r.receipt_number || '-')}
+                            {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (
+                              <div className="flex flex-col gap-0.5">
+                                <span>{r.receipt_number || '-'}</span>
+                                {bal <= 0 ? (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-success/40 text-success">Cleared</Badge>
+                                ) : Number(r.amount_paid) > 0 ? (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-warning/40 text-warning">Partial</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-destructive/40 text-destructive">Pending</Badge>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-0.5">
