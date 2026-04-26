@@ -33,11 +33,14 @@ const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
 const recordSchema = z.object({
   learner_id: z.string().uuid('Select a learner'),
   fee_type: z.string().min(1),
-  amount_charged: z.number().min(0).max(10_000_000),
-  amount_paid: z.number().min(0).max(10_000_000),
+  amount_charged: z.number().min(0, 'Charged must be ≥ 0').max(10_000_000),
+  amount_paid: z.number().min(0, 'Paid must be ≥ 0').max(10_000_000),
   payment_method: z.string().min(1),
   mpesa_reference: z.string().max(50).optional().nullable(),
   description: z.string().max(255).optional().nullable(),
+}).refine(v => v.amount_charged > 0 || v.amount_paid > 0, {
+  message: 'Enter a charge or a payment',
+  path: ['amount_charged'],
 });
 
 const structureSchema = z.object({
