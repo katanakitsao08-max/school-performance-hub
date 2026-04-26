@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import ManageSchoolsPage from "./pages/ManageSchoolsPage";
+import PriceBoardPage from "./pages/PriceBoardPage";
 import UsersPage from "./pages/UsersPage";
 import LearningAreasPage from "./pages/LearningAreasPage";
 import StreamsPage from "./pages/StreamsPage";
@@ -125,6 +126,7 @@ const App = () => (
               {/* Super Admin routes */}
               <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
               <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
+              <Route path="/price-board" element={<ProtectedRoute allowedRoles={['super_admin']}><PriceBoardPage /></ProtectedRoute>} />
               <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/curriculum-manager" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Curriculum Design Manager"><CurriculumDesignManagerPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/curriculum-library" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Curriculum Library"><CurriculumLibraryPage /></ErrorBoundary></ProtectedRoute>} />

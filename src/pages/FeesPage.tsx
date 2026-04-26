@@ -33,11 +33,14 @@ const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
 const recordSchema = z.object({
   learner_id: z.string().uuid('Select a learner'),
   fee_type: z.string().min(1),
-  amount_charged: z.number().min(0).max(10_000_000),
-  amount_paid: z.number().min(0).max(10_000_000),
+  amount_charged: z.number().min(0, 'Charged must be ≥ 0').max(10_000_000),
+  amount_paid: z.number().min(0, 'Paid must be ≥ 0').max(10_000_000),
   payment_method: z.string().min(1),
   mpesa_reference: z.string().max(50).optional().nullable(),
   description: z.string().max(255).optional().nullable(),
+}).refine(v => v.amount_charged > 0 || v.amount_paid > 0, {
+  message: 'Enter a charge or a payment',
+  path: ['amount_charged'],
 });
 
 const structureSchema = z.object({
@@ -169,6 +172,22 @@ export default function FeesPage() {
       });
       if (!parsed.success) throw new Error(Object.values(parsed.error.flatten().fieldErrors)[0]?.[0] || 'Invalid input');
       const v = parsed.data;
+
+      // Overpayment guard: total paid (across all live records for this learner)
+      // must not exceed total charged unless explicitly confirmed as a credit.
+      const { data: ledger } = await supabase.from('fee_records')
+        .select('amount_charged, amount_paid, id')
+        .eq('learner_id', v.learner_id).is('voided_at', null);
+      const otherCharged = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_charged), 0);
+      const otherPaid = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_paid), 0);
+      const newTotalCharged = otherCharged + v.amount_charged;
+      const newTotalPaid = otherPaid + v.amount_paid;
+      if (newTotalPaid > newTotalCharged) {
+        const overage = newTotalPaid - newTotalCharged;
+        const ok = window.confirm(`This payment exceeds the learner's total charges by KES ${overage.toLocaleString()}. Save as credit/overpayment?`);
+        if (!ok) throw new Error('Cancelled — overpayment not confirmed');
+      }
+
       if (editingRecord) {
         const { error } = await supabase.from('fee_records').update({
           fee_type: v.fee_type, amount_charged: v.amount_charged, amount_paid: v.amount_paid,
@@ -551,7 +570,18 @@ export default function FeesPage() {
                           <TableCell className={cn('text-xs text-right font-bold', bal > 0 ? 'text-destructive' : 'text-success')}>{bal.toLocaleString()}</TableCell>
                           <TableCell className="text-xs capitalize">{r.payment_method}{r.mpesa_reference && <span className="text-muted-foreground ml-1">({r.mpesa_reference})</span>}</TableCell>
                           <TableCell className="text-xs">
-                            {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (r.receipt_number || '-')}
+                            {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (
+                              <div className="flex flex-col gap-0.5">
+                                <span>{r.receipt_number || '-'}</span>
+                                {bal <= 0 ? (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-success/40 text-success">Cleared</Badge>
+                                ) : Number(r.amount_paid) > 0 ? (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-warning/40 text-warning">Partial</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-destructive/40 text-destructive">Pending</Badge>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-0.5">

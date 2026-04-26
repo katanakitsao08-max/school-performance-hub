@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx';
 import { GradeAnalysisTable } from '@/components/GradeAnalysisTable';
 import { GradeAnalysisInsights } from '@/components/GradeAnalysisInsights';
 import { toast } from 'sonner';
+import { fetchAllPaged } from '@/lib/fetch-all';
 
 export default function GradeAnalysisPage() {
   const { user, schoolId } = useAuth();
@@ -89,10 +90,21 @@ export default function GradeAnalysisPage() {
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear)
-        .eq('assessment_type', selectedAssessment);
-      return data || [];
+      // Page in chunks: avoid Postgres URL-length limits when learner list is huge,
+      // and use fetchAllPaged to bypass the silent 1000-row cap.
+      const learnerChunks: string[][] = [];
+      const CHUNK = 200;
+      for (let i = 0; i < ids.length; i += CHUNK) learnerChunks.push(ids.slice(i, i + CHUNK));
+      const all: any[] = [];
+      for (const chunk of learnerChunks) {
+        const rows = await fetchAllPaged<any>(() =>
+          supabase.from('scores').select('*')
+            .in('learner_id', chunk).eq('term', selectedTerm).eq('year', selectedYear)
+            .eq('assessment_type', selectedAssessment)
+        );
+        all.push(...rows);
+      }
+      return all;
     },
     enabled: learners.length > 0,
   });
