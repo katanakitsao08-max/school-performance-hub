@@ -205,6 +205,8 @@ export default function LearningAreasPage() {
                   <AlertDialogDescription>
                     This will add the standard CBC learning areas for all your configured grades:
                     <br /><br />
+                    <strong>PP1 / PP2 (ECDE):</strong> Language, Mathematical, Environmental, Psychomotor & Creative, Religious Education Activities
+                    <br /><br />
                     <strong>Grade 1–3:</strong> English, Kiswahili, Mathematics, Environmental Activities, Creative Arts, Religious Education
                     <br /><br />
                     <strong>Grade 4–6:</strong> English, Kiswahili, Mathematics, Integrated Science, Agriculture, Religious Education, Social Studies, Creative Arts
