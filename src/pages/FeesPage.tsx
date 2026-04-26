@@ -172,6 +172,22 @@ export default function FeesPage() {
       });
       if (!parsed.success) throw new Error(Object.values(parsed.error.flatten().fieldErrors)[0]?.[0] || 'Invalid input');
       const v = parsed.data;
+
+      // Overpayment guard: total paid (across all live records for this learner)
+      // must not exceed total charged unless explicitly confirmed as a credit.
+      const { data: ledger } = await supabase.from('fee_records')
+        .select('amount_charged, amount_paid, id')
+        .eq('learner_id', v.learner_id).is('voided_at', null);
+      const otherCharged = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_charged), 0);
+      const otherPaid = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_paid), 0);
+      const newTotalCharged = otherCharged + v.amount_charged;
+      const newTotalPaid = otherPaid + v.amount_paid;
+      if (newTotalPaid > newTotalCharged) {
+        const overage = newTotalPaid - newTotalCharged;
+        const ok = window.confirm(`This payment exceeds the learner's total charges by KES ${overage.toLocaleString()}. Save as credit/overpayment?`);
+        if (!ok) throw new Error('Cancelled — overpayment not confirmed');
+      }
+
       if (editingRecord) {
         const { error } = await supabase.from('fee_records').update({
           fee_type: v.fee_type, amount_charged: v.amount_charged, amount_paid: v.amount_paid,
