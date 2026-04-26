@@ -174,7 +174,7 @@ export default function GradesPage() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove Grade {g}?</AlertDialogTitle>
+                                  <AlertDialogTitle>Remove {formatGradeLabel(g)}?</AlertDialogTitle>
                                   <AlertDialogDescription>
                                     This won't delete learners in this grade, just removes it from the available list.
                                   </AlertDialogDescription>
