@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { SchoolLevel, LEVEL_LABELS, LEVEL_ORDER, getGradeLevel, groupGradesByLevel } from '@/lib/grade-levels';
+import { SchoolLevel, LEVEL_LABELS, LEVEL_ORDER, getGradeLevel, groupGradesByLevel, formatGradeLabel } from '@/lib/grade-levels';
 
 export default function GradesPage() {
   const { toast } = useToast();
