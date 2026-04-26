@@ -25,3 +25,11 @@ export function groupGradesByLevel(grades: string[]): Record<SchoolLevel, string
   grades.forEach(g => out[getGradeLevel(g)].push(g));
   return out;
 }
+
+/** Format grade label for display: "PP1" stays "PP1", numbers become "Grade 4". */
+export function formatGradeLabel(grade: string): string {
+  if (!grade) return '';
+  const lvl = getGradeLevel(grade);
+  if (lvl === 'ecde') return grade.toUpperCase();
+  return `Grade ${grade}`;
+}
