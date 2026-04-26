@@ -187,7 +187,7 @@ export default function LearningAreasPage() {
               <SelectContent>
                 <SelectItem value="all">All Grades</SelectItem>
                 {schoolGrades.map(g => (
-                  <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                  <SelectItem key={g} value={g}>{formatGradeLabel(g)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
