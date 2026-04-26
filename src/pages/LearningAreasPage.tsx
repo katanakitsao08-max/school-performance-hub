@@ -239,7 +239,7 @@ export default function LearningAreasPage() {
                     <Select value={form.grade} onValueChange={v => setForm(f => ({ ...f, grade: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
                       <SelectContent>
-                        {schoolGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        {schoolGrades.map(g => <SelectItem key={g} value={g}>{formatGradeLabel(g)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
