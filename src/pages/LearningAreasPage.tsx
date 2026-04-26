@@ -15,15 +15,18 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { formatGradeLabel, getGradeLevel } from '@/lib/grade-levels';
 
 // CBC default learning areas per grade group
 const CBC_DEFAULTS: Record<string, string[]> = {
+  'ecde': ['LANGUAGE ACTIVITIES', 'MATHEMATICAL ACTIVITIES', 'ENVIRONMENTAL ACTIVITIES', 'PSYCHOMOTOR & CREATIVE ACTIVITIES', 'RELIGIOUS EDUCATION ACTIVITIES'],
   'lower': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'ENVIRONMENTAL ACTIVITIES', 'CREATIVE ARTS', 'RELIGIOUS EDUCATION'],
   'upper': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS'],
   'jss': ['ENGLISH', 'KISWAHILI', 'MATHEMATICS', 'INTEGRATED SCIENCE', 'AGRICULTURE', 'RELIGIOUS EDUCATION', 'SOCIAL STUDIES', 'CREATIVE ARTS', 'PRE-TECHNICAL STUDIES'],
 };
 
-function getGradeGroup(grade: string): 'lower' | 'upper' | 'jss' {
+function getGradeGroup(grade: string): 'ecde' | 'lower' | 'upper' | 'jss' {
+  if (getGradeLevel(grade) === 'ecde') return 'ecde';
   const num = parseInt(grade, 10);
   if (num >= 7) return 'jss';
   if (num >= 4) return 'upper';
@@ -184,7 +187,7 @@ export default function LearningAreasPage() {
               <SelectContent>
                 <SelectItem value="all">All Grades</SelectItem>
                 {schoolGrades.map(g => (
-                  <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                  <SelectItem key={g} value={g}>{formatGradeLabel(g)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -201,6 +204,8 @@ export default function LearningAreasPage() {
                   <AlertDialogTitle>Load CBC Default Subjects?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will add the standard CBC learning areas for all your configured grades:
+                    <br /><br />
+                    <strong>PP1 / PP2 (ECDE):</strong> Language, Mathematical, Environmental, Psychomotor & Creative, Religious Education Activities
                     <br /><br />
                     <strong>Grade 1–3:</strong> English, Kiswahili, Mathematics, Environmental Activities, Creative Arts, Religious Education
                     <br /><br />
@@ -236,7 +241,7 @@ export default function LearningAreasPage() {
                     <Select value={form.grade} onValueChange={v => setForm(f => ({ ...f, grade: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
                       <SelectContent>
-                        {schoolGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
+                        {schoolGrades.map(g => <SelectItem key={g} value={g}>{formatGradeLabel(g)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -276,7 +281,7 @@ export default function LearningAreasPage() {
                 {filteredAreas.map((area: any) => (
                   <TableRow key={area.id} className={!area.is_active ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">{area.name}</TableCell>
-                    <TableCell>Grade {area.grade}</TableCell>
+                    <TableCell>{formatGradeLabel(area.grade)}</TableCell>
                     <TableCell>{area.max_score}</TableCell>
                     <TableCell>
                       <Badge variant={area.is_active ? 'default' : 'secondary'}>
