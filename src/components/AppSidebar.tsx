@@ -16,6 +16,7 @@ import performTrackLogo from "@/assets/performtrack-logo.png";
 const superAdminItems = [
   { title: "Dashboard", url: "/super-admin", icon: LayoutDashboard },
   { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+  { title: "Price Board", url: "/price-board", icon: Wallet },
   { title: "Curriculum Designs", url: "/curriculum-manager", icon: BookMarked },
   { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
 ];
