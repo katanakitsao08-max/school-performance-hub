@@ -279,7 +279,7 @@ export default function LearningAreasPage() {
                 {filteredAreas.map((area: any) => (
                   <TableRow key={area.id} className={!area.is_active ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">{area.name}</TableCell>
-                    <TableCell>Grade {area.grade}</TableCell>
+                    <TableCell>{formatGradeLabel(area.grade)}</TableCell>
                     <TableCell>{area.max_score}</TableCell>
                     <TableCell>
                       <Badge variant={area.is_active ? 'default' : 'secondary'}>
