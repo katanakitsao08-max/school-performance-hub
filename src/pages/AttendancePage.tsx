@@ -13,7 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX } from 'lucide-react';
+import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX, ScanFace, ClipboardList } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { lazy, Suspense } from 'react';
+const BiometricAttendance = lazy(() => import('@/components/BiometricAttendance'));
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
@@ -174,6 +177,15 @@ export default function AttendancePage() {
           </div>
         </div>
 
+        <Tabs defaultValue="manual" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="manual"><ClipboardList className="h-4 w-4 mr-1.5" /> Manual</TabsTrigger>
+            <TabsTrigger value="biometric"><ScanFace className="h-4 w-4 mr-1.5" /> Biometric (Face)</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="manual" className="space-y-6">
+
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="border-emerald-200 dark:border-emerald-800">
@@ -288,6 +300,22 @@ export default function AttendancePage() {
             </Table>
           </CardContent>
         </Card>
+        </TabsContent>
+
+        <TabsContent value="biometric">
+          <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading biometric module…</div>}>
+            {schoolId && user && (
+              <BiometricAttendance
+                schoolId={schoolId}
+                userId={user.id}
+                learners={learners as any}
+                selectedDate={selectedDate}
+                onAttendanceMarked={(id) => setAttendance(prev => ({ ...prev, [id]: { status: 'present', remarks: prev[id]?.remarks || '' } }))}
+              />
+            )}
+          </Suspense>
+        </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
