@@ -133,6 +133,8 @@ export default function SuperAdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        {/* New: Revenue & Subscriptions (additive, non-destructive) */}
+        <RevenueSubscriptionSection schools={schools} />
       </div>
     </DashboardLayout>
   );
