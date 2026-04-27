@@ -300,6 +300,22 @@ export default function AttendancePage() {
             </Table>
           </CardContent>
         </Card>
+        </TabsContent>
+
+        <TabsContent value="biometric">
+          <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading biometric module…</div>}>
+            {schoolId && user && (
+              <BiometricAttendance
+                schoolId={schoolId}
+                userId={user.id}
+                learners={learners as any}
+                selectedDate={selectedDate}
+                onAttendanceMarked={(id) => setAttendance(prev => ({ ...prev, [id]: { status: 'present', remarks: prev[id]?.remarks || '' } }))}
+              />
+            )}
+          </Suspense>
+        </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
