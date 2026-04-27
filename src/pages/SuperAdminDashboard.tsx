@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, GraduationCap, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import RevenueSubscriptionSection from '@/components/superadmin/RevenueSubscriptionSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -132,6 +133,8 @@ export default function SuperAdminDashboard() {
             </div>
           </CardContent>
         </Card>
+        {/* New: Revenue & Subscriptions (additive, non-destructive) */}
+        <RevenueSubscriptionSection schools={schools} />
       </div>
     </DashboardLayout>
   );
