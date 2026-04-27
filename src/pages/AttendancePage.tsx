@@ -13,7 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX } from 'lucide-react';
+import { Save, CheckCircle2, XCircle, Clock, ShieldCheck, Users, UserCheck, UserX, ScanFace, ClipboardList } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { lazy, Suspense } from 'react';
+const BiometricAttendance = lazy(() => import('@/components/BiometricAttendance'));
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
