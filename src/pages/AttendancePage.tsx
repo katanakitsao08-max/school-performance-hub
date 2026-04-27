@@ -177,6 +177,15 @@ export default function AttendancePage() {
           </div>
         </div>
 
+        <Tabs defaultValue="manual" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="manual"><ClipboardList className="h-4 w-4 mr-1.5" /> Manual</TabsTrigger>
+            <TabsTrigger value="biometric"><ScanFace className="h-4 w-4 mr-1.5" /> Biometric (Face)</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="manual" className="space-y-6">
+
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="border-emerald-200 dark:border-emerald-800">
