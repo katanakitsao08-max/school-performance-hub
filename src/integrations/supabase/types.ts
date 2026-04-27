@@ -21,6 +21,7 @@ export type Database = {
           id: string
           learner_id: string
           marked_by: string
+          marked_via: string
           remarks: string | null
           school_id: string | null
           status: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           learner_id: string
           marked_by: string
+          marked_via?: string
           remarks?: string | null
           school_id?: string | null
           status?: string
@@ -43,6 +45,7 @@ export type Database = {
           id?: string
           learner_id?: string
           marked_by?: string
+          marked_via?: string
           remarks?: string | null
           school_id?: string | null
           status?: string
@@ -365,6 +368,36 @@ export type Database = {
           term?: number
           updated_at?: string
           year?: number
+        }
+        Relationships: []
+      }
+      learner_face_descriptors: {
+        Row: {
+          descriptor: Json
+          enrolled_at: string
+          enrolled_by: string
+          id: string
+          learner_id: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          descriptor: Json
+          enrolled_at?: string
+          enrolled_by: string
+          id?: string
+          learner_id: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          descriptor?: Json
+          enrolled_at?: string
+          enrolled_by?: string
+          id?: string
+          learner_id?: string
+          school_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
