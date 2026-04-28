@@ -26,6 +26,11 @@ Rules:
 - For every sub-strand, capture: lesson_allocation (integer, default 1 if unclear),
   specific learning outcomes (slos), suggested learning experiences (activities),
   assessment_methods, inquiry_questions, resources, core competencies, values, pcis (Pertinent and Contemporary Issues).
+- Detect the official "lessons_per_week" allocation (an integer, e.g. 5 for Mathematics).
+  Look for phrases like "5 lessons per week", "Time allocation: 5 lessons", "weekly lessons: 5",
+  the time allocation table at the start of the design, or a "Suggested Time" column.
+  If you cannot find it explicitly, infer from the total lesson_allocation across the year
+  divided by 39 weeks. If still unclear, set lessons_per_week to 0.
 - Use the document's exact wording. Do not invent content. If a field is missing leave it as an empty array.
 - Return ONLY through the provided tool call.`;
 
