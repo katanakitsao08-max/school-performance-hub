@@ -40,14 +40,16 @@ export default function AnalyticsPage() {
   const termNum = Number(selectedTerm);
   const isKJSEA = isKJSEAGradeLevel(selectedGrade);
 
-  // ── Data queries ──
+  // ── Data queries (paged to bypass Supabase 1000-row cap) ──
   const { data: learners = [] } = useQuery({
     queryKey: ['analytics-learners', selectedGrade, selectedStream, schoolId],
     queryFn: async () => {
-      let q = supabase.from('learners').select('*').eq('grade', selectedGrade).eq('is_active', true);
-      if (selectedStream !== 'all') q = q.eq('stream', selectedStream);
-      const { data } = await q;
-      return data || [];
+      const rows = await fetchAllPaged<any>(() => {
+        let q = supabase.from('learners').select('*').eq('grade', selectedGrade).eq('is_active', true);
+        if (selectedStream !== 'all') q = q.eq('stream', selectedStream);
+        return q;
+      });
+      return rows;
     },
     enabled: !!selectedGrade && !!schoolId,
   });
@@ -61,28 +63,34 @@ export default function AnalyticsPage() {
     enabled: !!selectedGrade && !!schoolId,
   });
 
+  // Chunk learner ids to avoid URL-length limits and page each chunk through fetchAllPaged.
+  const fetchScoresForTerm = async (ids: string[], term: number | null) => {
+    if (!ids.length) return [];
+    const CHUNK = 200;
+    const all: any[] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const rows = await fetchAllPaged<any>(() => {
+        let q = supabase.from('scores').select('*')
+          .in('learner_id', chunk).eq('year', selectedYear);
+        if (term !== null) q = q.eq('term', term);
+        return q;
+      });
+      all.push(...rows);
+    }
+    return all;
+  };
+
   const { data: scores = [] } = useQuery({
-    queryKey: ['analytics-scores', selectedGrade, selectedStream, termNum, selectedYear, schoolId],
-    queryFn: async () => {
-      const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', termNum).eq('year', selectedYear);
-      return data || [];
-    },
+    queryKey: ['analytics-scores', selectedGrade, selectedStream, termNum, selectedYear, schoolId, learners.length],
+    queryFn: async () => fetchScoresForTerm(learners.map(l => l.id), termNum),
     enabled: learners.length > 0,
   });
 
   // Trend data – all terms for the year
   const { data: allTermScores = [] } = useQuery({
-    queryKey: ['analytics-trend', selectedGrade, selectedStream, selectedYear, schoolId],
-    queryFn: async () => {
-      const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('year', selectedYear);
-      return data || [];
-    },
+    queryKey: ['analytics-trend', selectedGrade, selectedStream, selectedYear, schoolId, learners.length],
+    queryFn: async () => fetchScoresForTerm(learners.map(l => l.id), null),
     enabled: learners.length > 0,
   });
 
