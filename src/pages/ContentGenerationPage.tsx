@@ -461,6 +461,7 @@ export default function ContentGenerationPage() {
                           const w = defaultWeeksForTerm(term);
                           setTotalWeeks(w);
                           setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+                          setLessonsPerWeek(0);
                         }}
                       >
                         Reset to KICD
