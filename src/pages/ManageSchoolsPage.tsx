@@ -68,22 +68,37 @@ export default function ManageSchoolsPage() {
     enabled: !!user,
   });
 
+  // IMPORTANT: page through ALL rows (Supabase caps single-shot SELECTs at 1000).
+  // For very large tenants, count via paged fetch so the dashboard reflects real totals.
   const { data: schoolStats = {} } = useQuery({
     queryKey: ['school-stats'],
     queryFn: async () => {
       const stats: Record<string, { teachers: number; learners: number }> = {};
-      const { data: profiles } = await supabase.from('profiles').select('school_id');
-      const { data: learners } = await supabase.from('learners').select('school_id').eq('is_active', true);
-      (profiles || []).forEach(p => {
-        if (!p.school_id) return;
-        if (!stats[p.school_id]) stats[p.school_id] = { teachers: 0, learners: 0 };
-        stats[p.school_id].teachers++;
-      });
-      (learners || []).forEach(l => {
-        if (!l.school_id) return;
-        if (!stats[l.school_id]) stats[l.school_id] = { teachers: 0, learners: 0 };
-        stats[l.school_id].learners++;
-      });
+      const PAGE = 1000;
+      // profiles
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('profiles').select('school_id').range(from, from + PAGE - 1);
+        if (error) throw error;
+        (data || []).forEach(p => {
+          if (!p.school_id) return;
+          if (!stats[p.school_id]) stats[p.school_id] = { teachers: 0, learners: 0 };
+          stats[p.school_id].teachers++;
+        });
+        if (!data || data.length < PAGE) break;
+      }
+      // learners (only active)
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('learners').select('school_id').eq('is_active', true).range(from, from + PAGE - 1);
+        if (error) throw error;
+        (data || []).forEach(l => {
+          if (!l.school_id) return;
+          if (!stats[l.school_id]) stats[l.school_id] = { teachers: 0, learners: 0 };
+          stats[l.school_id].learners++;
+        });
+        if (!data || data.length < PAGE) break;
+      }
       return stats;
     },
     enabled: !!user,
