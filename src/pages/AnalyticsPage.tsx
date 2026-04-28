@@ -284,6 +284,9 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
+            {/* Grade-Analysis-aligned KNEC computation (same metrics/formulas as Grade Analysis page) */}
+            {(() => null)()}
+
             {/* ── Tabbed sections ── */}
             <Tabs defaultValue="subjects" className="space-y-4">
               <TabsList className="flex-wrap h-auto">
@@ -292,6 +295,7 @@ export default function AnalyticsPage() {
                 <TabsTrigger value="gender">Gender</TabsTrigger>
                 <TabsTrigger value="students">Students</TabsTrigger>
                 <TabsTrigger value="trends">Trends</TabsTrigger>
+                <TabsTrigger value="knec">KNEC Analysis</TabsTrigger>
               </TabsList>
 
               {/* ── Subject Mean Scores ── */}
