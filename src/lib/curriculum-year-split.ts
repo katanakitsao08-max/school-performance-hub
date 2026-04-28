@@ -49,6 +49,7 @@ export interface YearReview {
   grade: string;
   subject: string;
   title?: string;
+  lessonsPerWeek: number;
   strands: StrandWithTerms[];
 }
 
