@@ -164,8 +164,12 @@ export default function CurriculumDesignManagerPage() {
               term_hint: (ss as any).term_hint,
             })),
           })),
-        }));
-        toast.success("Whole-year curriculum extracted — review the term split below, then save.");
+        }, design.lessons_per_week));
+        toast.success(
+          design.lessons_per_week
+            ? `Detected ${design.lessons_per_week} lessons/week from the PDF — split across T1/T2/T3.`
+            : "Whole-year curriculum extracted — review the term split below, then save.",
+        );
       } else {
         setYearReview(null);
         toast.success("Curriculum extracted — review then save as draft.");
