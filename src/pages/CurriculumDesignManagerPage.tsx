@@ -45,6 +45,7 @@ interface ExtractedDesign {
   subject: string;
   coverage?: "year" | "term";
   term: number; // 0 when coverage = year
+  lessons_per_week?: number; // AI-detected from PDF (0 if unknown)
   title?: string;
   strands: { name: string; sub_strands: ExtractedSubStrand[] }[];
 }
