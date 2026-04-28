@@ -60,6 +60,8 @@ export default function ContentGenerationPage() {
   // --- Term scheduling (teacher-customisable) ---
   const [totalWeeks, setTotalWeeks] = useState<number>(13);
   const [midTermWeek, setMidTermWeek] = useState<number>(7);
+  // Lessons per week (teacher override). 0 = use official KICD LPW.
+  const [lessonsPerWeek, setLessonsPerWeek] = useState<number>(0);
 
   // Reset weeks/mid-term when term changes (use KICD defaults)
   useEffect(() => {
@@ -69,6 +71,16 @@ export default function ContentGenerationPage() {
       setMidTermWeek(Math.max(1, Math.floor(w / 2)));
     }
   }, [term]);
+
+  // Reset LPW override whenever grade/subject changes — fall back to official
+  useEffect(() => {
+    setLessonsPerWeek(0);
+  }, [grade, subject]);
+
+  const officialLpwForUI = useMemo(
+    () => (grade && subject ? (getOfficialLessonsPerWeek(grade, subject) ?? 5) : 5),
+    [grade, subject],
+  );
 
   // Subjects come strictly from CBC official list for the selected grade
   const subjects = useMemo(() => grade ? getCbcSubjectsForGrade(grade) : [], [grade]);
