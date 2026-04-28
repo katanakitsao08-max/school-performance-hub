@@ -202,6 +202,12 @@ export default function AnalyticsPage() {
   const bestSubject = subjectMeanData.length > 0 ? subjectMeanData[0] : null;
   const weakestSubject = subjectMeanData.length > 0 ? subjectMeanData[subjectMeanData.length - 1] : null;
 
+  // KNEC-aligned grade analysis (same engine as the Grade Analysis page)
+  const knecAnalysis = useMemo(
+    () => computeGradeAnalysis(learners, subjects, scores),
+    [learners, subjects, scores],
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-5 animate-fade-in">
