@@ -538,6 +538,31 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* ── KNEC Sub-Level Analysis (same engine as Grade Analysis) ── */}
+              <TabsContent value="knec">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">KNEC Sub-Level Analysis</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Identical metrics, ranking and grade-distribution logic used in the Grade Analysis report.
+                      Includes ALL learners — no row caps, no exclusions.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    {knecAnalysis.subjects.length > 0 ? (
+                      <GradeAnalysisTable analysis={knecAnalysis} />
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No scores entered for this filter.</p>
+                    )}
+                  </CardContent>
+                </Card>
+                {knecAnalysis.subjects.length > 0 && (
+                  <div className="mt-4">
+                    <GradeAnalysisInsights analysis={knecAnalysis} />
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
           </>
         )}
