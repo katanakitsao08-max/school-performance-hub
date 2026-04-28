@@ -45,6 +45,7 @@ interface ExtractedDesign {
   subject: string;
   coverage?: "year" | "term";
   term: number; // 0 when coverage = year
+  lessons_per_week?: number; // AI-detected from PDF (0 if unknown)
   title?: string;
   strands: { name: string; sub_strands: ExtractedSubStrand[] }[];
 }
@@ -163,8 +164,12 @@ export default function CurriculumDesignManagerPage() {
               term_hint: (ss as any).term_hint,
             })),
           })),
-        }));
-        toast.success("Whole-year curriculum extracted — review the term split below, then save.");
+        }, design.lessons_per_week));
+        toast.success(
+          design.lessons_per_week
+            ? `Detected ${design.lessons_per_week} lessons/week from the PDF — split across T1/T2/T3.`
+            : "Whole-year curriculum extracted — review the term split below, then save.",
+        );
       } else {
         setYearReview(null);
         toast.success("Curriculum extracted — review then save as draft.");
@@ -573,11 +578,37 @@ export default function CurriculumDesignManagerPage() {
                     <strong>{yearReview.grade}</strong> · {yearReview.subject}
                     {yearReview.title ? <span className="text-muted-foreground"> — {yearReview.title}</span> : null}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    The AI assigned every sub-strand to a term using KICD lesson allocations
-                    (T1=14&nbsp;wks, T2=13&nbsp;wks, T3=12&nbsp;wks). Use the buttons to move any sub-strand
-                    to a different term before saving.
-                  </p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-xs text-muted-foreground flex-1 min-w-[220px]">
+                      Auto-distributed using KICD lesson allocations
+                      (T1=14&nbsp;wks, T2=13&nbsp;wks, T3=12&nbsp;wks). Move sub-strands between terms below.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Lessons / week</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={yearReview.lessonsPerWeek}
+                        onChange={(e) => {
+                          const lpw = Math.max(1, parseInt(e.target.value || "1", 10));
+                          // Re-plan with new LPW, preserving the user's per-sub-strand assignments.
+                          setYearReview((prev) => prev ? planYearReview({
+                            grade: prev.grade,
+                            subject: prev.subject,
+                            coverage: "year",
+                            term: 0,
+                            title: prev.title,
+                            strands: prev.strands.map((s) => ({
+                              name: s.name,
+                              sub_strands: s.sub_strands.map(({ __key, ...rest }) => rest),
+                            })),
+                          }, lpw) : prev);
+                        }}
+                        className="w-20 h-8"
+                      />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {([1, 2, 3] as const).map((t) => {
                       const items: { strand: string; ss: SubStrandWithTerm }[] = [];

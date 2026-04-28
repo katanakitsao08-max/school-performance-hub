@@ -49,6 +49,7 @@ export interface YearReview {
   grade: string;
   subject: string;
   title?: string;
+  lessonsPerWeek: number;
   strands: StrandWithTerms[];
 }
 
@@ -65,9 +66,17 @@ const TERM_WEEKS: Record<1 | 2 | 3, number> = { 1: 14, 2: 13, 3: 12 };
 /**
  * Take a whole-year design and assign every sub-strand to a term.
  * Honours `term_hint` first; fills the rest by lesson allocation capacity.
+ *
+ * @param input  Whole-year extracted design.
+ * @param lessonsPerWeekOverride  Optional. If the AI detected the official LPW from
+ *   the document (or the Super Admin manually set it), use that instead of the
+ *   static `cbc-subjects` map.
  */
-export function planYearReview(input: YearDesignIn): YearReview {
-  const lpw = getOfficialLessonsPerWeek(input.grade, input.subject) ?? 5;
+export function planYearReview(input: YearDesignIn, lessonsPerWeekOverride?: number): YearReview {
+  const detected = lessonsPerWeekOverride && lessonsPerWeekOverride > 0
+    ? lessonsPerWeekOverride
+    : (getOfficialLessonsPerWeek(input.grade, input.subject) ?? 5);
+  const lpw = detected;
   const capacity: Record<1 | 2 | 3, number> = {
     1: TERM_WEEKS[1] * lpw,
     2: TERM_WEEKS[2] * lpw,
@@ -116,7 +125,7 @@ export function planYearReview(input: YearDesignIn): YearReview {
     })),
   }));
 
-  return { grade: input.grade, subject: input.subject, title: input.title, strands };
+  return { grade: input.grade, subject: input.subject, title: input.title, lessonsPerWeek: lpw, strands };
 }
 
 /** Convert the (possibly user-edited) review board into 3 per-term designs. */

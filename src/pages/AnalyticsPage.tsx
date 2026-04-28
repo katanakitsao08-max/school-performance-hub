@@ -11,6 +11,10 @@ import { TERMS, getGradeForLevel, getGradeColor, isKJSEAGradeLevel, type AnyGrad
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchAllPaged } from '@/lib/fetch-all';
+import { computeGradeAnalysis } from '@/lib/cbc-analysis-utils';
+import { GradeAnalysisTable } from '@/components/GradeAnalysisTable';
+import { GradeAnalysisInsights } from '@/components/GradeAnalysisInsights';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -39,14 +43,16 @@ export default function AnalyticsPage() {
   const termNum = Number(selectedTerm);
   const isKJSEA = isKJSEAGradeLevel(selectedGrade);
 
-  // ── Data queries ──
+  // ── Data queries (paged to bypass Supabase 1000-row cap) ──
   const { data: learners = [] } = useQuery({
     queryKey: ['analytics-learners', selectedGrade, selectedStream, schoolId],
     queryFn: async () => {
-      let q = supabase.from('learners').select('*').eq('grade', selectedGrade).eq('is_active', true);
-      if (selectedStream !== 'all') q = q.eq('stream', selectedStream);
-      const { data } = await q;
-      return data || [];
+      const rows = await fetchAllPaged<any>(() => {
+        let q = supabase.from('learners').select('*').eq('grade', selectedGrade).eq('is_active', true);
+        if (selectedStream !== 'all') q = q.eq('stream', selectedStream);
+        return q;
+      });
+      return rows;
     },
     enabled: !!selectedGrade && !!schoolId,
   });
@@ -60,28 +66,34 @@ export default function AnalyticsPage() {
     enabled: !!selectedGrade && !!schoolId,
   });
 
+  // Chunk learner ids to avoid URL-length limits and page each chunk through fetchAllPaged.
+  const fetchScoresForTerm = async (ids: string[], term: number | null) => {
+    if (!ids.length) return [];
+    const CHUNK = 200;
+    const all: any[] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const rows = await fetchAllPaged<any>(() => {
+        let q = supabase.from('scores').select('*')
+          .in('learner_id', chunk).eq('year', selectedYear);
+        if (term !== null) q = q.eq('term', term);
+        return q;
+      });
+      all.push(...rows);
+    }
+    return all;
+  };
+
   const { data: scores = [] } = useQuery({
-    queryKey: ['analytics-scores', selectedGrade, selectedStream, termNum, selectedYear, schoolId],
-    queryFn: async () => {
-      const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', termNum).eq('year', selectedYear);
-      return data || [];
-    },
+    queryKey: ['analytics-scores', selectedGrade, selectedStream, termNum, selectedYear, schoolId, learners.length],
+    queryFn: async () => fetchScoresForTerm(learners.map(l => l.id), termNum),
     enabled: learners.length > 0,
   });
 
   // Trend data – all terms for the year
   const { data: allTermScores = [] } = useQuery({
-    queryKey: ['analytics-trend', selectedGrade, selectedStream, selectedYear, schoolId],
-    queryFn: async () => {
-      const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('year', selectedYear);
-      return data || [];
-    },
+    queryKey: ['analytics-trend', selectedGrade, selectedStream, selectedYear, schoolId, learners.length],
+    queryFn: async () => fetchScoresForTerm(learners.map(l => l.id), null),
     enabled: learners.length > 0,
   });
 
@@ -190,6 +202,12 @@ export default function AnalyticsPage() {
   const bestSubject = subjectMeanData.length > 0 ? subjectMeanData[0] : null;
   const weakestSubject = subjectMeanData.length > 0 ? subjectMeanData[subjectMeanData.length - 1] : null;
 
+  // KNEC-aligned grade analysis (same engine as the Grade Analysis page)
+  const knecAnalysis = useMemo(
+    () => computeGradeAnalysis(learners, subjects, scores),
+    [learners, subjects, scores],
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-5 animate-fade-in">
@@ -272,6 +290,9 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
+            {/* Grade-Analysis-aligned KNEC computation (same metrics/formulas as Grade Analysis page) */}
+            {(() => null)()}
+
             {/* ── Tabbed sections ── */}
             <Tabs defaultValue="subjects" className="space-y-4">
               <TabsList className="flex-wrap h-auto">
@@ -280,6 +301,7 @@ export default function AnalyticsPage() {
                 <TabsTrigger value="gender">Gender</TabsTrigger>
                 <TabsTrigger value="students">Students</TabsTrigger>
                 <TabsTrigger value="trends">Trends</TabsTrigger>
+                <TabsTrigger value="knec">KNEC Analysis</TabsTrigger>
               </TabsList>
 
               {/* ── Subject Mean Scores ── */}
@@ -515,6 +537,31 @@ export default function AnalyticsPage() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* ── KNEC Sub-Level Analysis (same engine as Grade Analysis) ── */}
+              <TabsContent value="knec">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">KNEC Sub-Level Analysis</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Identical metrics, ranking and grade-distribution logic used in the Grade Analysis report.
+                      Includes ALL learners — no row caps, no exclusions.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    {knecAnalysis.subjects.length > 0 ? (
+                      <GradeAnalysisTable analysis={knecAnalysis} />
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No scores entered for this filter.</p>
+                    )}
+                  </CardContent>
+                </Card>
+                {knecAnalysis.subjects.length > 0 && (
+                  <div className="mt-4">
+                    <GradeAnalysisInsights analysis={knecAnalysis} />
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </>
