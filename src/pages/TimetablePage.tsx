@@ -755,6 +755,81 @@ export default function TimetablePage() {
           </Card>
         )}
 
+        {requirements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Layers className="h-4 w-4" /> Merged subjects (combined classes)
+              </CardTitle>
+              <CardDescription>
+                Group subjects that share one slot — e.g. <strong>IRE/CRE</strong>, <strong>French/German</strong>.
+                The combined slot uses the larger lessons-per-week of its members and any
+                of the merged subjects' assigned teachers can teach it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-2 md:grid-cols-[1fr_220px_auto]">
+                <div className="space-y-1">
+                  <Label className="text-xs">Subjects to merge (pick 2 or more)</Label>
+                  <div className="flex flex-wrap gap-1.5 rounded border p-2 max-h-32 overflow-y-auto">
+                    {requirements.map(r => {
+                      const checked = newMergeIds.includes(r.learningAreaId);
+                      return (
+                        <label
+                          key={r.learningAreaId}
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded cursor-pointer border ${
+                            checked ? 'bg-primary/10 border-primary' : 'border-transparent hover:bg-muted'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5"
+                            checked={checked}
+                            onChange={e => {
+                              setNewMergeIds(prev =>
+                                e.target.checked
+                                  ? [...prev, r.learningAreaId]
+                                  : prev.filter(id => id !== r.learningAreaId),
+                              );
+                            }}
+                          />
+                          {r.learningAreaName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Combined label</Label>
+                  <Input
+                    value={newMergeLabel}
+                    onChange={e => setNewMergeLabel(e.target.value)}
+                    placeholder="e.g. IRE/CRE"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={addMergeGroup} variant="outline" disabled={newMergeIds.length < 2}>
+                    <Plus className="h-4 w-4 mr-1" /> Add merge
+                  </Button>
+                </div>
+              </div>
+
+              {mergeGroups.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {mergeGroups.map(g => (
+                    <Badge key={g.id} variant="secondary" className="gap-1.5">
+                      {g.label} ({g.learningAreaIds.length} subjects)
+                      <button onClick={() => removeMergeGroup(g.id)} className="hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex flex-wrap gap-2">
           <Button onClick={generate} disabled={generating || !grade || !stream}>
             <Sparkles className="h-4 w-4 mr-2" />
