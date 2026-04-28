@@ -159,6 +159,10 @@ Deno.serve(async (req) => {
                   subject: { type: "string" },
                   coverage: { type: "string", enum: ["year", "term"] },
                   term: { type: "integer", description: "0 if coverage=year, else 1|2|3" },
+                  lessons_per_week: {
+                    type: "integer",
+                    description: "Official KICD lessons-per-week allocation for this subject at this grade. 0 if not detected.",
+                  },
                   title: { type: "string" },
                   strands: {
                     type: "array",
