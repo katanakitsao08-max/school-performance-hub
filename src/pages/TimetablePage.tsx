@@ -303,8 +303,10 @@ export default function TimetablePage() {
     }
     setGenerating(true);
     setBatchMode(false);
+    const baseReqs = requirements.filter(r => r.lessonsPerWeek > 0);
+    const merged = applyMerges(baseReqs, streamAssignments);
     const reqMap: Record<string, SubjectRequirement[]> = {};
-    reqMap[`${grade}|${stream}`] = requirements.filter(r => r.lessonsPerWeek > 0);
+    reqMap[`${grade}|${stream}`] = merged.reqs;
     const r = generateTimetable({
       classes: [{ grade, stream }],
       days: DAYS,
@@ -312,7 +314,7 @@ export default function TimetablePage() {
       breakPeriods,
       lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
-      assignments: streamAssignments,
+      assignments: merged.assigns,
     });
     setResult(r);
     setGenerating(false);
