@@ -11,6 +11,7 @@ import { TERMS, getGradeForLevel, getGradeColor, isKJSEAGradeLevel, type AnyGrad
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchAllPaged } from '@/lib/fetch-all';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
