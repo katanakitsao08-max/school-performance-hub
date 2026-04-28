@@ -226,6 +226,62 @@ export default function TimetablePage() {
   };
   const removeLock = (i: number) => setLockedSlots(prev => prev.filter((_, idx) => idx !== i));
 
+  const addMergeGroup = () => {
+    if (newMergeIds.length < 2) {
+      return toast({ title: 'Pick at least 2 subjects to merge', variant: 'destructive' });
+    }
+    const names = requirements.filter(r => newMergeIds.includes(r.learningAreaId)).map(r => r.learningAreaName);
+    const label = (newMergeLabel || names.join('/')).trim() || 'Merged';
+    setMergeGroups(prev => [
+      ...prev,
+      { id: `merge-${Date.now()}`, label, learningAreaIds: [...newMergeIds] },
+    ]);
+    setNewMergeIds([]);
+    setNewMergeLabel('');
+    toast({ title: 'Merged group added', description: `${label} will share one slot.` });
+  };
+  const removeMergeGroup = (id: string) =>
+    setMergeGroups(prev => prev.filter(g => g.id !== id));
+
+  /**
+   * Collapse merged subjects into single synthetic requirements.
+   * - The merged requirement uses the FIRST member's learningAreaId (so the
+   *   teacher pool lookup works); the engine matches by id+grade+stream.
+   * - Teacher assignments for OTHER members are remapped to the primary id so
+   *   any of those teachers can take the combined slot.
+   * - The merged requirement's name becomes the configured label (e.g. "IRE/CRE").
+   * - LessonsPerWeek = MAX of members (so we don't double-count).
+   */
+  const applyMerges = (
+    reqs: SubjectRequirement[],
+    assigns: TeacherAssignmentRow[],
+  ): { reqs: SubjectRequirement[]; assigns: TeacherAssignmentRow[] } => {
+    if (mergeGroups.length === 0) return { reqs, assigns };
+    let outReqs = [...reqs];
+    let outAssigns = [...assigns];
+    for (const g of mergeGroups) {
+      const members = outReqs.filter(r => g.learningAreaIds.includes(r.learningAreaId));
+      if (members.length < 2) continue;
+      const primaryId = members[0].learningAreaId;
+      const otherIds = members.slice(1).map(m => m.learningAreaId);
+      const lpw = Math.max(...members.map(m => m.lessonsPerWeek));
+      // Replace requirements
+      outReqs = outReqs.filter(r => !g.learningAreaIds.includes(r.learningAreaId));
+      outReqs.push({
+        learningAreaId: primaryId,
+        learningAreaName: g.label,
+        lessonsPerWeek: lpw,
+      });
+      // Remap assignments of other members → primary
+      outAssigns = outAssigns.map(a =>
+        otherIds.includes(a.learning_area_id)
+          ? { ...a, learning_area_id: primaryId }
+          : a,
+      );
+    }
+    return { reqs: outReqs, assigns: outAssigns };
+  };
+
   const generate = () => {
     if (!grade) return toast({ title: 'Select a grade', variant: 'destructive' });
     if (!stream) return toast({ title: 'Select a stream', variant: 'destructive' });
