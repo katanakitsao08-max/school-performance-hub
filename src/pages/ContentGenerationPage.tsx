@@ -466,7 +466,7 @@ export default function ContentGenerationPage() {
                         Reset to KICD
                       </Button>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Total weeks in this term</Label>
                         <Input
@@ -493,6 +493,24 @@ export default function ContentGenerationPage() {
                           onChange={(e) => {
                             const n = Math.max(0, Math.min(totalWeeks - 1, Number(e.target.value) || 0));
                             setMidTermWeek(n);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Lessons per week{' '}
+                          <span className="text-muted-foreground">
+                            (KICD: {officialLpwForUI})
+                          </span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={15}
+                          value={lessonsPerWeek === 0 ? officialLpwForUI : lessonsPerWeek}
+                          onChange={(e) => {
+                            const n = Math.max(1, Math.min(15, Number(e.target.value) || 1));
+                            setLessonsPerWeek(n);
                           }}
                         />
                       </div>
