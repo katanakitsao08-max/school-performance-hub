@@ -89,6 +89,12 @@ export default function TimetablePage() {
   const [lockedSlots, setLockedSlots] = useState<LockedSlot[]>([]);
   const [newLock, setNewLock] = useState({ day: 'Monday', period: 1, label: 'Assembly' });
 
+  // Merged subject groups (e.g. IRE/CRE share one slot). Local-only (per session).
+  type MergeGroup = { id: string; label: string; learningAreaIds: string[] };
+  const [mergeGroups, setMergeGroups] = useState<MergeGroup[]>([]);
+  const [newMergeIds, setNewMergeIds] = useState<string[]>([]);
+  const [newMergeLabel, setNewMergeLabel] = useState('');
+
   const breakPeriods = useMemo(() => {
     return breakInput
       .split(',')
