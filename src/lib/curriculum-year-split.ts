@@ -125,7 +125,7 @@ export function planYearReview(input: YearDesignIn, lessonsPerWeekOverride?: num
     })),
   }));
 
-  return { grade: input.grade, subject: input.subject, title: input.title, strands };
+  return { grade: input.grade, subject: input.subject, title: input.title, lessonsPerWeek: lpw, strands };
 }
 
 /** Convert the (possibly user-edited) review board into 3 per-term designs. */
