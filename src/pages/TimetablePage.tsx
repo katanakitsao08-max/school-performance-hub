@@ -380,11 +380,15 @@ export default function TimetablePage() {
       });
 
       const reqMap: Record<string, SubjectRequirement[]> = {};
+      let mergedAssignments = allAssignments;
       classList.forEach(c => {
         const areas = areasByGrade[c.grade] || [];
-        reqMap[`${c.grade}|${c.stream}`] = areas.map(a => ({
+        const baseReqs: SubjectRequirement[] = areas.map(a => ({
           learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
         }));
+        const m = applyMerges(baseReqs, mergedAssignments);
+        reqMap[`${c.grade}|${c.stream}`] = m.reqs;
+        mergedAssignments = m.assigns;
       });
 
       const r = generateTimetable({
@@ -394,7 +398,7 @@ export default function TimetablePage() {
         breakPeriods,
         lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
-        assignments: allAssignments,
+        assignments: mergedAssignments,
       });
       setResult(r);
       setBatchClasses(classList);
