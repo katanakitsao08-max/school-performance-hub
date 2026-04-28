@@ -89,6 +89,12 @@ export default function TimetablePage() {
   const [lockedSlots, setLockedSlots] = useState<LockedSlot[]>([]);
   const [newLock, setNewLock] = useState({ day: 'Monday', period: 1, label: 'Assembly' });
 
+  // Merged subject groups (e.g. IRE/CRE share one slot). Local-only (per session).
+  type MergeGroup = { id: string; label: string; learningAreaIds: string[] };
+  const [mergeGroups, setMergeGroups] = useState<MergeGroup[]>([]);
+  const [newMergeIds, setNewMergeIds] = useState<string[]>([]);
+  const [newMergeLabel, setNewMergeLabel] = useState('');
+
   const breakPeriods = useMemo(() => {
     return breakInput
       .split(',')
@@ -220,6 +226,62 @@ export default function TimetablePage() {
   };
   const removeLock = (i: number) => setLockedSlots(prev => prev.filter((_, idx) => idx !== i));
 
+  const addMergeGroup = () => {
+    if (newMergeIds.length < 2) {
+      return toast({ title: 'Pick at least 2 subjects to merge', variant: 'destructive' });
+    }
+    const names = requirements.filter(r => newMergeIds.includes(r.learningAreaId)).map(r => r.learningAreaName);
+    const label = (newMergeLabel || names.join('/')).trim() || 'Merged';
+    setMergeGroups(prev => [
+      ...prev,
+      { id: `merge-${Date.now()}`, label, learningAreaIds: [...newMergeIds] },
+    ]);
+    setNewMergeIds([]);
+    setNewMergeLabel('');
+    toast({ title: 'Merged group added', description: `${label} will share one slot.` });
+  };
+  const removeMergeGroup = (id: string) =>
+    setMergeGroups(prev => prev.filter(g => g.id !== id));
+
+  /**
+   * Collapse merged subjects into single synthetic requirements.
+   * - The merged requirement uses the FIRST member's learningAreaId (so the
+   *   teacher pool lookup works); the engine matches by id+grade+stream.
+   * - Teacher assignments for OTHER members are remapped to the primary id so
+   *   any of those teachers can take the combined slot.
+   * - The merged requirement's name becomes the configured label (e.g. "IRE/CRE").
+   * - LessonsPerWeek = MAX of members (so we don't double-count).
+   */
+  const applyMerges = (
+    reqs: SubjectRequirement[],
+    assigns: TeacherAssignmentRow[],
+  ): { reqs: SubjectRequirement[]; assigns: TeacherAssignmentRow[] } => {
+    if (mergeGroups.length === 0) return { reqs, assigns };
+    let outReqs = [...reqs];
+    let outAssigns = [...assigns];
+    for (const g of mergeGroups) {
+      const members = outReqs.filter(r => g.learningAreaIds.includes(r.learningAreaId));
+      if (members.length < 2) continue;
+      const primaryId = members[0].learningAreaId;
+      const otherIds = members.slice(1).map(m => m.learningAreaId);
+      const lpw = Math.max(...members.map(m => m.lessonsPerWeek));
+      // Replace requirements
+      outReqs = outReqs.filter(r => !g.learningAreaIds.includes(r.learningAreaId));
+      outReqs.push({
+        learningAreaId: primaryId,
+        learningAreaName: g.label,
+        lessonsPerWeek: lpw,
+      });
+      // Remap assignments of other members → primary
+      outAssigns = outAssigns.map(a =>
+        otherIds.includes(a.learning_area_id)
+          ? { ...a, learning_area_id: primaryId }
+          : a,
+      );
+    }
+    return { reqs: outReqs, assigns: outAssigns };
+  };
+
   const generate = () => {
     if (!grade) return toast({ title: 'Select a grade', variant: 'destructive' });
     if (!stream) return toast({ title: 'Select a stream', variant: 'destructive' });
@@ -241,8 +303,10 @@ export default function TimetablePage() {
     }
     setGenerating(true);
     setBatchMode(false);
+    const baseReqs = requirements.filter(r => r.lessonsPerWeek > 0);
+    const merged = applyMerges(baseReqs, streamAssignments);
     const reqMap: Record<string, SubjectRequirement[]> = {};
-    reqMap[`${grade}|${stream}`] = requirements.filter(r => r.lessonsPerWeek > 0);
+    reqMap[`${grade}|${stream}`] = merged.reqs;
     const r = generateTimetable({
       classes: [{ grade, stream }],
       days: DAYS,
@@ -250,7 +314,7 @@ export default function TimetablePage() {
       breakPeriods,
       lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
-      assignments: streamAssignments,
+      assignments: merged.assigns,
     });
     setResult(r);
     setGenerating(false);
@@ -316,11 +380,15 @@ export default function TimetablePage() {
       });
 
       const reqMap: Record<string, SubjectRequirement[]> = {};
+      let mergedAssignments = allAssignments;
       classList.forEach(c => {
         const areas = areasByGrade[c.grade] || [];
-        reqMap[`${c.grade}|${c.stream}`] = areas.map(a => ({
+        const baseReqs: SubjectRequirement[] = areas.map(a => ({
           learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
         }));
+        const m = applyMerges(baseReqs, mergedAssignments);
+        reqMap[`${c.grade}|${c.stream}`] = m.reqs;
+        mergedAssignments = m.assigns;
       });
 
       const r = generateTimetable({
@@ -330,7 +398,7 @@ export default function TimetablePage() {
         breakPeriods,
         lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
-        assignments: allAssignments,
+        assignments: mergedAssignments,
       });
       setResult(r);
       setBatchClasses(classList);
@@ -683,6 +751,81 @@ export default function TimetablePage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {requirements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Layers className="h-4 w-4" /> Merged subjects (combined classes)
+              </CardTitle>
+              <CardDescription>
+                Group subjects that share one slot — e.g. <strong>IRE/CRE</strong>, <strong>French/German</strong>.
+                The combined slot uses the larger lessons-per-week of its members and any
+                of the merged subjects' assigned teachers can teach it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-2 md:grid-cols-[1fr_220px_auto]">
+                <div className="space-y-1">
+                  <Label className="text-xs">Subjects to merge (pick 2 or more)</Label>
+                  <div className="flex flex-wrap gap-1.5 rounded border p-2 max-h-32 overflow-y-auto">
+                    {requirements.map(r => {
+                      const checked = newMergeIds.includes(r.learningAreaId);
+                      return (
+                        <label
+                          key={r.learningAreaId}
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded cursor-pointer border ${
+                            checked ? 'bg-primary/10 border-primary' : 'border-transparent hover:bg-muted'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5"
+                            checked={checked}
+                            onChange={e => {
+                              setNewMergeIds(prev =>
+                                e.target.checked
+                                  ? [...prev, r.learningAreaId]
+                                  : prev.filter(id => id !== r.learningAreaId),
+                              );
+                            }}
+                          />
+                          {r.learningAreaName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Combined label</Label>
+                  <Input
+                    value={newMergeLabel}
+                    onChange={e => setNewMergeLabel(e.target.value)}
+                    placeholder="e.g. IRE/CRE"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={addMergeGroup} variant="outline" disabled={newMergeIds.length < 2}>
+                    <Plus className="h-4 w-4 mr-1" /> Add merge
+                  </Button>
+                </div>
+              </div>
+
+              {mergeGroups.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {mergeGroups.map(g => (
+                    <Badge key={g.id} variant="secondary" className="gap-1.5">
+                      {g.label} ({g.learningAreaIds.length} subjects)
+                      <button onClick={() => removeMergeGroup(g.id)} className="hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

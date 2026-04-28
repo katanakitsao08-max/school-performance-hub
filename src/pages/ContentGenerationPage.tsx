@@ -60,6 +60,8 @@ export default function ContentGenerationPage() {
   // --- Term scheduling (teacher-customisable) ---
   const [totalWeeks, setTotalWeeks] = useState<number>(13);
   const [midTermWeek, setMidTermWeek] = useState<number>(7);
+  // Lessons per week (teacher override). 0 = use official KICD LPW.
+  const [lessonsPerWeek, setLessonsPerWeek] = useState<number>(0);
 
   // Reset weeks/mid-term when term changes (use KICD defaults)
   useEffect(() => {
@@ -69,6 +71,16 @@ export default function ContentGenerationPage() {
       setMidTermWeek(Math.max(1, Math.floor(w / 2)));
     }
   }, [term]);
+
+  // Reset LPW override whenever grade/subject changes — fall back to official
+  useEffect(() => {
+    setLessonsPerWeek(0);
+  }, [grade, subject]);
+
+  const officialLpwForUI = useMemo(
+    () => (grade && subject ? (getOfficialLessonsPerWeek(grade, subject) ?? 5) : 5),
+    [grade, subject],
+  );
 
   // Subjects come strictly from CBC official list for the selected grade
   const subjects = useMemo(() => grade ? getCbcSubjectsForGrade(grade) : [], [grade]);
@@ -148,12 +160,13 @@ export default function ContentGenerationPage() {
     } : undefined;
 
     const officialLpw = getOfficialLessonsPerWeek(grade, subject);
+    const effectiveLpw = lessonsPerWeek > 0 ? lessonsPerWeek : (officialLpw ?? undefined);
     const result = await generateCurriculumScheme({
       grade, subject, term, mode: curriculumMode, flex,
       selectedSubStrandIds,
       totalWeeks,
       midTermWeek,
-      lessonsPerWeek: officialLpw ?? undefined,
+      lessonsPerWeek: effectiveLpw,
     });
     if (!result) {
       toast.error('Could not load the curriculum design');
@@ -448,12 +461,13 @@ export default function ContentGenerationPage() {
                           const w = defaultWeeksForTerm(term);
                           setTotalWeeks(w);
                           setMidTermWeek(Math.max(1, Math.floor(w / 2)));
+                          setLessonsPerWeek(0);
                         }}
                       >
                         Reset to KICD
                       </Button>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Total weeks in this term</Label>
                         <Input
@@ -480,6 +494,24 @@ export default function ContentGenerationPage() {
                           onChange={(e) => {
                             const n = Math.max(0, Math.min(totalWeeks - 1, Number(e.target.value) || 0));
                             setMidTermWeek(n);
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">
+                          Lessons per week{' '}
+                          <span className="text-muted-foreground">
+                            (KICD: {officialLpwForUI})
+                          </span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={15}
+                          value={lessonsPerWeek === 0 ? officialLpwForUI : lessonsPerWeek}
+                          onChange={(e) => {
+                            const n = Math.max(1, Math.min(15, Number(e.target.value) || 1));
+                            setLessonsPerWeek(n);
                           }}
                         />
                       </div>
