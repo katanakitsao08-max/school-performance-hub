@@ -40,6 +40,12 @@ export interface LockedSlot {
   label: string;           // e.g. 'Assembly', 'Pastoral'
 }
 
+export interface TeacherUnavailable {
+  teacher_id: string;
+  day: string;             // 'Monday' or '*' for every day
+  period: number;          // 1-indexed
+}
+
 export interface GenerateOptions {
   classes: ClassKey[];
   days: string[];
@@ -49,6 +55,10 @@ export interface GenerateOptions {
   lockedSlots?: LockedSlot[];      // NEW: fixed periods (assembly etc.)
   requirementsByClass: Record<string, SubjectRequirement[]>;
   assignments: TeacherAssignmentRow[];
+  // Advanced rules (all optional / additive)
+  maxLessonsPerDayPerSubject?: number;     // cap same-subject lessons in a day per class
+  allowDoubleLessons?: boolean;            // allow back-to-back same subject
+  teacherUnavailable?: TeacherUnavailable[]; // per-teacher blackout slots
 }
 
 export interface GenerationResult {
