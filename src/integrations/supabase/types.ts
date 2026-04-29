@@ -405,6 +405,7 @@ export type Database = {
         Row: {
           academic_year: number
           admission_number: string
+          assessment_number: string | null
           created_at: string
           full_name: string
           gender: string
@@ -420,6 +421,7 @@ export type Database = {
         Insert: {
           academic_year?: number
           admission_number: string
+          assessment_number?: string | null
           created_at?: string
           full_name: string
           gender?: string
@@ -435,6 +437,7 @@ export type Database = {
         Update: {
           academic_year?: number
           admission_number?: string
+          assessment_number?: string | null
           created_at?: string
           full_name?: string
           gender?: string
