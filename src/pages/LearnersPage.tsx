@@ -257,6 +257,12 @@ export default function LearnersPage() {
                       <Label>Admission No. <span className="text-xs text-muted-foreground">(auto-generated if empty)</span></Label>
                       <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder={generateAdmNumber() || 'Auto-generated'} />
                   </div>
+                  {showAssessment && (
+                    <div className="space-y-2">
+                      <Label>Assessment No. <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                      <Input value={form.assessment_number} onChange={e => setForm(f => ({ ...f, assessment_number: e.target.value }))} placeholder="e.g. KCPE-1234" />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Full Name</Label>
                     <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} required />
@@ -325,6 +331,7 @@ export default function LearnersPage() {
               <TableHeader>
                  <TableRow>
                    <TableHead>Adm No.</TableHead>
+                   {showAssessment && <TableHead>Assessment No.</TableHead>}
                    <TableHead>Name</TableHead>
                    <TableHead>Gender</TableHead>
                    <TableHead>Grade</TableHead>
@@ -338,6 +345,7 @@ export default function LearnersPage() {
                 {filtered.map(l => (
                   <TableRow key={l.id}>
                      <TableCell>{l.admission_number}</TableCell>
+                     {showAssessment && <TableCell className="text-muted-foreground">{(l as any).assessment_number || '-'}</TableCell>}
                      <TableCell className="font-medium">{l.full_name}</TableCell>
                      <TableCell>{(l as any).gender || 'Male'}</TableCell>
                      <TableCell>Grade {l.grade}</TableCell>
@@ -378,7 +386,7 @@ export default function LearnersPage() {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={showAssessment ? 9 : 8} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
