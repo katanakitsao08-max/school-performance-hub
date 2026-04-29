@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Building2, Users, GraduationCap, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import RevenueSubscriptionSection from '@/components/superadmin/RevenueSubscriptionSection';
+import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTogglesSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -135,6 +136,9 @@ export default function SuperAdminDashboard() {
         </Card>
         {/* New: Revenue & Subscriptions (additive, non-destructive) */}
         <RevenueSubscriptionSection schools={schools} />
+
+        {/* New: Per-school feature toggles (additive) */}
+        <SchoolFeatureTogglesSection schools={schools} />
       </div>
     </DashboardLayout>
   );

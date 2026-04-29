@@ -17,6 +17,7 @@ import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import BulkUploadDialog from '@/components/BulkUploadDialog';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 
 export default function LearnersPage() {
   const { toast } = useToast();
@@ -28,6 +29,8 @@ export default function LearnersPage() {
   const assignedStreams = profile?.assigned_streams || [];
   const availableGrades = role === 'teacher' ? assignedGrades.filter(g => dynamicGrades.includes(g)) : dynamicGrades;
   const isAdmin = role === 'admin';
+  const { isOn } = useSchoolFeatureToggles();
+  const showAssessment = isOn('feature_assessment_number');
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -35,7 +38,7 @@ export default function LearnersPage() {
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
+    admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
@@ -86,17 +89,23 @@ export default function LearnersPage() {
 
   const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
-  const filtered = learners.filter(l =>
-    l.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    l.admission_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = learners.filter(l => {
+    const q = search.toLowerCase();
+    return (
+      l.full_name.toLowerCase().includes(q) ||
+      l.admission_number.toLowerCase().includes(q) ||
+      ((l as any).assessment_number || '').toLowerCase().includes(q)
+    );
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const formData = { ...form };
+      const formData: any = { ...form };
       if (!editing && !formData.admission_number) {
         formData.admission_number = generateAdmNumber();
       }
+      // Normalize empty assessment_number to null so unique index allows multiple blanks
+      if (!formData.assessment_number) formData.assessment_number = null;
       if (editing) {
         const { error } = await supabase.from('learners').update(formData).eq('id', editing.id);
         if (error) throw error;
@@ -203,14 +212,16 @@ export default function LearnersPage() {
   };
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
+    admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 
   const handleEdit = (l: any) => {
     setEditing(l);
     setForm({
-      admission_number: l.admission_number, full_name: l.full_name,
+      admission_number: l.admission_number,
+      assessment_number: l.assessment_number || '',
+      full_name: l.full_name,
       grade: l.grade, stream: l.stream,
       parent_name: l.parent_name || '', parent_phone: l.parent_phone || '',
       academic_year: l.academic_year, gender: l.gender || 'Male',
@@ -246,6 +257,12 @@ export default function LearnersPage() {
                       <Label>Admission No. <span className="text-xs text-muted-foreground">(auto-generated if empty)</span></Label>
                       <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder={generateAdmNumber() || 'Auto-generated'} />
                   </div>
+                  {showAssessment && (
+                    <div className="space-y-2">
+                      <Label>Assessment No. <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                      <Input value={form.assessment_number} onChange={e => setForm(f => ({ ...f, assessment_number: e.target.value }))} placeholder="e.g. KCPE-1234" />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Full Name</Label>
                     <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} required />
@@ -314,6 +331,7 @@ export default function LearnersPage() {
               <TableHeader>
                  <TableRow>
                    <TableHead>Adm No.</TableHead>
+                   {showAssessment && <TableHead>Assessment No.</TableHead>}
                    <TableHead>Name</TableHead>
                    <TableHead>Gender</TableHead>
                    <TableHead>Grade</TableHead>
@@ -327,6 +345,7 @@ export default function LearnersPage() {
                 {filtered.map(l => (
                   <TableRow key={l.id}>
                      <TableCell>{l.admission_number}</TableCell>
+                     {showAssessment && <TableCell className="text-muted-foreground">{(l as any).assessment_number || '-'}</TableCell>}
                      <TableCell className="font-medium">{l.full_name}</TableCell>
                      <TableCell>{(l as any).gender || 'Male'}</TableCell>
                      <TableCell>Grade {l.grade}</TableCell>
@@ -367,7 +386,7 @@ export default function LearnersPage() {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={showAssessment ? 9 : 8} className="text-center text-muted-foreground py-8">No learners found</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
