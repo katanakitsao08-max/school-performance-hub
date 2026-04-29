@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -33,7 +34,10 @@ export default function ReportsPage() {
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
-  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType | 'merged'>('end_term');
+  const isMerged = selectedAssessment === 'merged';
+  // For downstream calls expecting an AssessmentType, fall back to end_term when merged
+  const effectiveAssessment: AssessmentType = isMerged ? 'end_term' : selectedAssessment;
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
