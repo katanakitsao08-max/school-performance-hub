@@ -169,15 +169,31 @@ export default function ReportsPage() {
       const all: any[] = [];
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
-        const rows = await fetchAllPaged(() =>
-          supabase.from('scores').select('*')
-            .in('learner_id', slice)
-            .eq('term', selectedTerm).eq('year', selectedYear)
-            .eq('assessment_type', selectedAssessment)
-        );
+        let q = supabase.from('scores').select('*')
+          .in('learner_id', slice)
+          .eq('term', selectedTerm).eq('year', selectedYear);
+        if (isMerged) {
+          q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
+        } else {
+          q = q.eq('assessment_type', selectedAssessment);
+        }
+        const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      return all;
+      if (!isMerged) return all;
+      // Merge: average opener+mid+end per (learner, learning_area) — simple average of available
+      const map = new Map<string, { sum: number; count: number; row: any }>();
+      for (const r of all) {
+        const k = `${r.learner_id}::${r.learning_area_id}`;
+        const cur = map.get(k);
+        if (cur) { cur.sum += Number(r.score) || 0; cur.count += 1; }
+        else map.set(k, { sum: Number(r.score) || 0, count: 1, row: r });
+      }
+      const merged: any[] = [];
+      map.forEach(({ sum, count, row }) => {
+        merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
+      });
+      return merged;
     },
     enabled: learners.length > 0 && !!user,
   });
@@ -255,13 +271,30 @@ export default function ReportsPage() {
       const all: any[] = [];
       for (let i = 0; i < learnerIds.length; i += CHUNK) {
         const slice = learnerIds.slice(i, i + CHUNK);
-        const rows = await fetchAllPaged(() => supabase.from('strand_scores').select('*')
+        let q = supabase.from('strand_scores').select('*')
           .in('learner_id', slice)
-          .eq('term', selectedTerm).eq('year', selectedYear)
-          .eq('assessment_type', selectedAssessment));
+          .eq('term', selectedTerm).eq('year', selectedYear);
+        if (isMerged) {
+          q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
+        } else {
+          q = q.eq('assessment_type', selectedAssessment);
+        }
+        const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      return all;
+      if (!isMerged) return all;
+      const map = new Map<string, { sum: number; count: number; row: any }>();
+      for (const r of all) {
+        const k = `${r.learner_id}::${r.strand_id}`;
+        const cur = map.get(k);
+        if (cur) { cur.sum += Number(r.score) || 0; cur.count += 1; }
+        else map.set(k, { sum: Number(r.score) || 0, count: 1, row: r });
+      }
+      const merged: any[] = [];
+      map.forEach(({ sum, count, row }) => {
+        merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
+      });
+      return merged;
     },
     enabled: learners.length > 0 && !!schoolId,
   });
