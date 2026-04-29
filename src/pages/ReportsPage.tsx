@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -27,13 +28,18 @@ import JSZip from 'jszip';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
+  const { isOn: isFeatureOn } = useSchoolFeatureToggles();
+  const mergedReportsOn = isFeatureOn('feature_merged_reports');
   const dynamicGrades = useSchoolGrades();
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
-  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType>('end_term');
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentType | 'merged'>('end_term');
+  const isMerged = selectedAssessment === 'merged';
+  // For downstream calls expecting an AssessmentType, fall back to end_term when merged
+  const effectiveAssessment: AssessmentType = isMerged ? 'end_term' : selectedAssessment;
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
@@ -165,15 +171,31 @@ export default function ReportsPage() {
       const all: any[] = [];
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
-        const rows = await fetchAllPaged(() =>
-          supabase.from('scores').select('*')
-            .in('learner_id', slice)
-            .eq('term', selectedTerm).eq('year', selectedYear)
-            .eq('assessment_type', selectedAssessment)
-        );
+        let q = supabase.from('scores').select('*')
+          .in('learner_id', slice)
+          .eq('term', selectedTerm).eq('year', selectedYear);
+        if (isMerged) {
+          q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
+        } else {
+          q = q.eq('assessment_type', effectiveAssessment);
+        }
+        const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      return all;
+      if (!isMerged) return all;
+      // Merge: average opener+mid+end per (learner, learning_area) — simple average of available
+      const map = new Map<string, { sum: number; count: number; row: any }>();
+      for (const r of all) {
+        const k = `${r.learner_id}::${r.learning_area_id}`;
+        const cur = map.get(k);
+        if (cur) { cur.sum += Number(r.score) || 0; cur.count += 1; }
+        else map.set(k, { sum: Number(r.score) || 0, count: 1, row: r });
+      }
+      const merged: any[] = [];
+      map.forEach(({ sum, count, row }) => {
+        merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
+      });
+      return merged;
     },
     enabled: learners.length > 0 && !!user,
   });
@@ -251,13 +273,30 @@ export default function ReportsPage() {
       const all: any[] = [];
       for (let i = 0; i < learnerIds.length; i += CHUNK) {
         const slice = learnerIds.slice(i, i + CHUNK);
-        const rows = await fetchAllPaged(() => supabase.from('strand_scores').select('*')
+        let q = supabase.from('strand_scores').select('*')
           .in('learner_id', slice)
-          .eq('term', selectedTerm).eq('year', selectedYear)
-          .eq('assessment_type', selectedAssessment));
+          .eq('term', selectedTerm).eq('year', selectedYear);
+        if (isMerged) {
+          q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
+        } else {
+          q = q.eq('assessment_type', effectiveAssessment);
+        }
+        const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      return all;
+      if (!isMerged) return all;
+      const map = new Map<string, { sum: number; count: number; row: any }>();
+      for (const r of all) {
+        const k = `${r.learner_id}::${r.strand_id}`;
+        const cur = map.get(k);
+        if (cur) { cur.sum += Number(r.score) || 0; cur.count += 1; }
+        else map.set(k, { sum: Number(r.score) || 0, count: 1, row: r });
+      }
+      const merged: any[] = [];
+      map.forEach(({ sum, count, row }) => {
+        merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
+      });
+      return merged;
     },
     enabled: learners.length > 0 && !!schoolId,
   });
@@ -721,7 +760,7 @@ export default function ReportsPage() {
       totalPoints,
       selectedTerm,
       selectedYear,
-      assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+      assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
       classTeacherComment: comments[ld.id] || '',
       principalComment: principalComments[ld.id] || '',
       schoolSettings: schoolSettingsWithName,
@@ -776,7 +815,7 @@ export default function ReportsPage() {
         totalInClass: reportData.length,
         totalInStream: streamCounts[streamKey] || reportData.length,
         totalPoints, selectedTerm, selectedYear,
-        assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
         classTeacherComment: comments[ld.id] || '',
         principalComment: principalComments[ld.id] || '',
         schoolSettings: schoolSettingsWithName,
@@ -938,7 +977,7 @@ export default function ReportsPage() {
           recipients={waRecipients}
           term={selectedTerm}
           year={selectedYear}
-          assessmentType={selectedAssessment}
+          assessmentType={effectiveAssessment}
           schoolName={schoolName}
           title={waTitle}
         />
@@ -1023,9 +1062,12 @@ export default function ReportsPage() {
 
           <div className="space-y-1">
             <Label className="text-xs">Assessment</Label>
-            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType | 'merged')}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}
+                {mergedReportsOn && <SelectItem value="merged">Merged (Opener+Mid+End avg)</SelectItem>}
+              </SelectContent>
             </Select>
           </div>
 

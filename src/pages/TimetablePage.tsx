@@ -17,11 +17,13 @@ import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { getGradeLevel, type SchoolLevel } from '@/lib/grade-levels';
 import {
   generateTimetable, type SubjectRequirement, type TeacherAssignmentRow, type TimetableSlot, type LockedSlot,
+  type TeacherUnavailable,
 } from '@/lib/timetable-engine';
 import { exportTimetablePdf } from '@/lib/timetable-pdf';
 import { exportTimetableExcel, exportTimetableExcelMulti } from '@/lib/timetable-excel';
 import { exportTimetableSummaryPdf } from '@/lib/timetable-summary-pdf';
 import { SummaryAllClassesView } from '@/components/SummaryAllClassesView';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -94,6 +96,16 @@ export default function TimetablePage() {
   const [mergeGroups, setMergeGroups] = useState<MergeGroup[]>([]);
   const [newMergeIds, setNewMergeIds] = useState<string[]>([]);
   const [newMergeLabel, setNewMergeLabel] = useState('');
+
+  // Advanced timetable rules (gated by school feature toggle)
+  const { isOn: isFeatureOn } = useSchoolFeatureToggles();
+  const advancedRulesOn = isFeatureOn('feature_advanced_timetable_rules');
+  const [maxLessonsPerDay, setMaxLessonsPerDay] = useState<number>(0); // 0 = no cap
+  const [allowDoubleLessons, setAllowDoubleLessons] = useState<boolean>(true);
+  const [teacherUnavailable, setTeacherUnavailable] = useState<TeacherUnavailable[]>([]);
+  const [newUnavail, setNewUnavail] = useState<{ teacher_id: string; day: string; period: number }>({
+    teacher_id: '', day: 'Monday', period: 1,
+  });
 
   const breakPeriods = useMemo(() => {
     return breakInput
@@ -315,6 +327,11 @@ export default function TimetablePage() {
       lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
       assignments: merged.assigns,
+      ...(advancedRulesOn ? {
+        maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+        allowDoubleLessons,
+        teacherUnavailable,
+      } : {}),
     });
     setResult(r);
     setGenerating(false);
@@ -399,6 +416,11 @@ export default function TimetablePage() {
         lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
         assignments: mergedAssignments,
+        ...(advancedRulesOn ? {
+          maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+          allowDoubleLessons,
+          teacherUnavailable,
+        } : {}),
       });
       setResult(r);
       setBatchClasses(classList);
@@ -738,6 +760,81 @@ export default function TimetablePage() {
             )}
           </CardContent>
         </Card>
+
+        {advancedRulesOn && isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Advanced timetable rules</CardTitle>
+              <CardDescription>Optional constraints applied during generation.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Max lessons per day per subject (per class)</Label>
+                  <Input
+                    type="number" min={0} max={periodsPerDay}
+                    value={maxLessonsPerDay}
+                    onChange={e => setMaxLessonsPerDay(Math.max(0, Number(e.target.value) || 0))}
+                    placeholder="0 = no cap"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Allow back-to-back same subject (double lessons)</Label>
+                  <Select value={allowDoubleLessons ? 'yes' : 'no'} onValueChange={v => setAllowDoubleLessons(v === 'yes')}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes — allow doubles</SelectItem>
+                      <SelectItem value="no">No — block consecutive same subject</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Teacher unavailable slots</Label>
+                <div className="grid gap-2 md:grid-cols-4">
+                  <Select value={newUnavail.teacher_id} onValueChange={v => setNewUnavail(s => ({ ...s, teacher_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Map(assignments.map(a => [a.teacher_id, a.teacher_name])).entries()).map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={newUnavail.day} onValueChange={v => setNewUnavail(s => ({ ...s, day: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="*">Every day</SelectItem>
+                      {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" min={1} max={periodsPerDay}
+                    value={newUnavail.period}
+                    onChange={e => setNewUnavail(s => ({ ...s, period: Number(e.target.value) || 1 }))}
+                    placeholder="Period" />
+                  <Button variant="outline" onClick={() => {
+                    if (!newUnavail.teacher_id) return;
+                    setTeacherUnavailable(prev => [...prev, { ...newUnavail }]);
+                  }}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+                </div>
+                {teacherUnavailable.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {teacherUnavailable.map((u, i) => {
+                      const tname = assignments.find(a => a.teacher_id === u.teacher_id)?.teacher_name || 'Teacher';
+                      return (
+                        <Badge key={i} variant="secondary" className="gap-1.5">
+                          {tname} — {u.day === '*' ? 'Daily' : u.day} P{u.period}
+                          <button onClick={() => setTeacherUnavailable(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">If no teachers appear, load assignments by selecting a Grade & Stream first.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {requirements.length > 0 && (
           <Card>
