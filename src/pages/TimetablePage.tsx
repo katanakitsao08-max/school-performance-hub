@@ -327,6 +327,11 @@ export default function TimetablePage() {
       lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
       assignments: merged.assigns,
+      ...(advancedRulesOn ? {
+        maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+        allowDoubleLessons,
+        teacherUnavailable,
+      } : {}),
     });
     setResult(r);
     setGenerating(false);
@@ -411,6 +416,11 @@ export default function TimetablePage() {
         lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
         assignments: mergedAssignments,
+        ...(advancedRulesOn ? {
+          maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+          allowDoubleLessons,
+          teacherUnavailable,
+        } : {}),
       });
       setResult(r);
       setBatchClasses(classList);
