@@ -28,6 +28,8 @@ import JSZip from 'jszip';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
+  const { isOn: isFeatureOn } = useSchoolFeatureToggles();
+  const mergedReportsOn = isFeatureOn('feature_merged_reports');
   const dynamicGrades = useSchoolGrades();
   const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
   const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
