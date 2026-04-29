@@ -177,7 +177,7 @@ export default function ReportsPage() {
         if (isMerged) {
           q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
         } else {
-          q = q.eq('assessment_type', selectedAssessment);
+          q = q.eq('assessment_type', effectiveAssessment);
         }
         const rows = await fetchAllPaged(() => q);
         all.push(...rows);
@@ -279,7 +279,7 @@ export default function ReportsPage() {
         if (isMerged) {
           q = q.in('assessment_type', ['opener', 'mid_term', 'end_term']);
         } else {
-          q = q.eq('assessment_type', selectedAssessment);
+          q = q.eq('assessment_type', effectiveAssessment);
         }
         const rows = await fetchAllPaged(() => q);
         all.push(...rows);
