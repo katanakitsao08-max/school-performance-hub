@@ -160,29 +160,50 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
     let placed = false;
     const candidates: { d: number; p: number; score: number }[] = [];
     for (let d = 0; d < days.length; d++) {
+      // Enforce max lessons per day per subject (per class)
+      if (opts.maxLessonsPerDayPerSubject && opts.maxLessonsPerDayPerSubject > 0) {
+        const sameSubjCount = grid[d].filter(s => s.learningAreaId === lesson.req.learningAreaId).length;
+        if (sameSubjCount >= opts.maxLessonsPerDayPerSubject) continue;
+      }
       for (let p = 0; p < periodsPerDay; p++) {
         const slot = grid[d][p];
         if (slot.isBreak || slot.isLocked || slot.learningAreaId) continue;
+        // Block back-to-back same subject if double lessons disabled
+        if (opts.allowDoubleLessons === false) {
+          const prev = p > 0 ? grid[d][p - 1] : null;
+          const next = p < periodsPerDay - 1 ? grid[d][p + 1] : null;
+          if (prev?.learningAreaId === lesson.req.learningAreaId) continue;
+          if (next?.learningAreaId === lesson.req.learningAreaId) continue;
+        }
         const sameDay = grid[d].some((s) => s.learningAreaId === lesson.req.learningAreaId);
-        // Penalize: same-day repeat, repeated start period, day already used for this subject
         const periodUseCount = subjectPeriodUse[`${subjKey}::${p}`] || 0;
         const dayAlreadyUsed = subjectDayUse[subjKey].has(d);
         const score =
-          (sameDay ? 100 : 0) +              // strongly avoid double-up same day
-          (dayAlreadyUsed ? 50 : 0) +        // prefer unused days
-          periodUseCount * 10 +              // rotate start period across week
-          Math.random() * 0.5;               // tiny jitter to break ties
+          (sameDay ? 100 : 0) +
+          (dayAlreadyUsed ? 50 : 0) +
+          periodUseCount * 10 +
+          Math.random() * 0.5;
         candidates.push({ d, p, score });
       }
     }
     candidates.sort((a, b) => a.score - b.score);
+
+    // Pre-compute teacher unavailability set
+    const unavailableSet = new Set<string>();
+    (opts.teacherUnavailable || []).forEach(u => {
+      const dayList = u.day === '*' ? days : [u.day];
+      dayList.forEach(d => unavailableSet.add(`${u.teacher_id}::${d}:${u.period}`));
+    });
 
     for (const c of candidates) {
       const sortedPool = [...pool].sort(
         (x, y) => (teacherLoad[x.teacher_id] || 0) - (teacherLoad[y.teacher_id] || 0),
       );
       const slotKey = `${days[c.d]}:${c.p + 1}`;
-      const teacher = sortedPool.find((t) => !(teacherBusy[t.teacher_id]?.has(slotKey)));
+      const teacher = sortedPool.find((t) =>
+        !(teacherBusy[t.teacher_id]?.has(slotKey)) &&
+        !unavailableSet.has(`${t.teacher_id}::${slotKey}`)
+      );
       if (!teacher) continue;
 
       grid[c.d][c.p] = {
