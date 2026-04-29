@@ -17,11 +17,13 @@ import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { getGradeLevel, type SchoolLevel } from '@/lib/grade-levels';
 import {
   generateTimetable, type SubjectRequirement, type TeacherAssignmentRow, type TimetableSlot, type LockedSlot,
+  type TeacherUnavailable,
 } from '@/lib/timetable-engine';
 import { exportTimetablePdf } from '@/lib/timetable-pdf';
 import { exportTimetableExcel, exportTimetableExcelMulti } from '@/lib/timetable-excel';
 import { exportTimetableSummaryPdf } from '@/lib/timetable-summary-pdf';
 import { SummaryAllClassesView } from '@/components/SummaryAllClassesView';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -94,6 +96,16 @@ export default function TimetablePage() {
   const [mergeGroups, setMergeGroups] = useState<MergeGroup[]>([]);
   const [newMergeIds, setNewMergeIds] = useState<string[]>([]);
   const [newMergeLabel, setNewMergeLabel] = useState('');
+
+  // Advanced timetable rules (gated by school feature toggle)
+  const { isOn: isFeatureOn } = useSchoolFeatureToggles();
+  const advancedRulesOn = isFeatureOn('feature_advanced_timetable_rules');
+  const [maxLessonsPerDay, setMaxLessonsPerDay] = useState<number>(0); // 0 = no cap
+  const [allowDoubleLessons, setAllowDoubleLessons] = useState<boolean>(true);
+  const [teacherUnavailable, setTeacherUnavailable] = useState<TeacherUnavailable[]>([]);
+  const [newUnavail, setNewUnavail] = useState<{ teacher_id: string; day: string; period: number }>({
+    teacher_id: '', day: 'Monday', period: 1,
+  });
 
   const breakPeriods = useMemo(() => {
     return breakInput
