@@ -758,7 +758,7 @@ export default function ReportsPage() {
       totalPoints,
       selectedTerm,
       selectedYear,
-      assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+      assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
       classTeacherComment: comments[ld.id] || '',
       principalComment: principalComments[ld.id] || '',
       schoolSettings: schoolSettingsWithName,
@@ -813,7 +813,7 @@ export default function ReportsPage() {
         totalInClass: reportData.length,
         totalInStream: streamCounts[streamKey] || reportData.length,
         totalPoints, selectedTerm, selectedYear,
-        assessmentLabel: ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
         classTeacherComment: comments[ld.id] || '',
         principalComment: principalComments[ld.id] || '',
         schoolSettings: schoolSettingsWithName,
@@ -975,7 +975,7 @@ export default function ReportsPage() {
           recipients={waRecipients}
           term={selectedTerm}
           year={selectedYear}
-          assessmentType={selectedAssessment}
+          assessmentType={effectiveAssessment}
           schoolName={schoolName}
           title={waTitle}
         />
