@@ -1062,9 +1062,12 @@ export default function ReportsPage() {
 
           <div className="space-y-1">
             <Label className="text-xs">Assessment</Label>
-            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType)}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}</SelectContent>
+            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType | 'merged')}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}
+                {mergedReportsOn && <SelectItem value="merged">Merged (Opener+Mid+End avg)</SelectItem>}
+              </SelectContent>
             </Select>
           </div>
 
