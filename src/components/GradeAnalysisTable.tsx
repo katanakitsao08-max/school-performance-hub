@@ -12,7 +12,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
         {/* Top header row with level groups */}
         <TableRow className="bg-muted/50 border-b-0">
           <TableHead rowSpan={2} className="min-w-[120px] text-xs font-bold border-r">SUBJECT</TableHead>
-          <TableHead colSpan={2} className="text-center text-xs font-bold border-r">ENTRY</TableHead>
+          <TableHead colSpan={3} className="text-center text-xs font-bold border-r">ENTRY</TableHead>
           {SUB_LEVELS.map(lv => (
             <TableHead key={lv} colSpan={2} className="text-center text-xs font-bold border-r">{lv}</TableHead>
           ))}
@@ -24,6 +24,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
         <TableRow className="bg-muted/30">
           <TableHead className="text-center text-[10px] border-r px-1">M</TableHead>
           <TableHead className="text-center text-[10px] border-r px-1">F</TableHead>
+          <TableHead className="text-center text-[10px] border-r px-1 font-bold">T</TableHead>
           {SUB_LEVELS.map(lv => (
             <TableHead key={lv} colSpan={2} className="text-center text-[10px] border-r px-0">
               <span className="inline-flex w-full">
@@ -40,6 +41,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
             <TableCell className="font-medium text-xs border-r">{sa.subjectName}</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{sa.entryM}</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{sa.entryF}</TableCell>
+            <TableCell className="text-center text-xs border-r px-1 font-semibold">{sa.entryM + sa.entryF}</TableCell>
             {SUB_LEVELS.map(lv => (
               <TableCell key={lv} colSpan={2} className="text-center text-xs border-r px-0">
                 <span className="inline-flex w-full">
@@ -58,6 +60,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
             <TableCell className="text-xs border-r">OVERALL</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{analysis.totalM}</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{analysis.totalF}</TableCell>
+            <TableCell className="text-center text-xs border-r px-1 font-bold">{analysis.totalM + analysis.totalF}</TableCell>
             {SUB_LEVELS.map(lv => (
               <TableCell key={lv} colSpan={2} className="text-center text-xs border-r px-0">
                 <span className="inline-flex w-full">
@@ -73,7 +76,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
         )}
         {analysis.subjects.length === 0 && (
           <TableRow>
-            <TableCell colSpan={22} className="text-center py-12 text-muted-foreground">
+            <TableCell colSpan={23} className="text-center py-12 text-muted-foreground">
               No data available. Select a grade and stream with scores entered.
             </TableCell>
           </TableRow>
