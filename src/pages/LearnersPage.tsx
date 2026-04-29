@@ -17,6 +17,7 @@ import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import BulkUploadDialog from '@/components/BulkUploadDialog';
+import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 
 export default function LearnersPage() {
   const { toast } = useToast();
@@ -28,6 +29,8 @@ export default function LearnersPage() {
   const assignedStreams = profile?.assigned_streams || [];
   const availableGrades = role === 'teacher' ? assignedGrades.filter(g => dynamicGrades.includes(g)) : dynamicGrades;
   const isAdmin = role === 'admin';
+  const { isOn } = useSchoolFeatureToggles();
+  const showAssessment = isOn('feature_assessment_number');
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -35,7 +38,7 @@ export default function LearnersPage() {
   const [filterGrade, setFilterGrade] = useState(role === 'teacher' ? (availableGrades[0] || 'all') : 'all');
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
+    admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
@@ -86,17 +89,23 @@ export default function LearnersPage() {
 
   const availableStreams = role === 'teacher' && assignedStreams.length > 0 ? allStreams.filter(s => assignedStreams.includes(s)) : allStreams;
 
-  const filtered = learners.filter(l =>
-    l.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    l.admission_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = learners.filter(l => {
+    const q = search.toLowerCase();
+    return (
+      l.full_name.toLowerCase().includes(q) ||
+      l.admission_number.toLowerCase().includes(q) ||
+      ((l as any).assessment_number || '').toLowerCase().includes(q)
+    );
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const formData = { ...form };
+      const formData: any = { ...form };
       if (!editing && !formData.admission_number) {
         formData.admission_number = generateAdmNumber();
       }
+      // Normalize empty assessment_number to null so unique index allows multiple blanks
+      if (!formData.assessment_number) formData.assessment_number = null;
       if (editing) {
         const { error } = await supabase.from('learners').update(formData).eq('id', editing.id);
         if (error) throw error;
@@ -203,14 +212,16 @@ export default function LearnersPage() {
   };
 
   const resetForm = () => setForm({
-    admission_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
+    admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
     parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 
   const handleEdit = (l: any) => {
     setEditing(l);
     setForm({
-      admission_number: l.admission_number, full_name: l.full_name,
+      admission_number: l.admission_number,
+      assessment_number: l.assessment_number || '',
+      full_name: l.full_name,
       grade: l.grade, stream: l.stream,
       parent_name: l.parent_name || '', parent_phone: l.parent_phone || '',
       academic_year: l.academic_year, gender: l.gender || 'Male',
