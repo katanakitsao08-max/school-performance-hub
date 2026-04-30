@@ -19,6 +19,29 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [topup, setTopup] = useState<number>(0);
 
+  const DEFAULT_BODY_TEMPLATE = {
+    method: 'POST',
+    body_type: 'json',
+    body: {
+      apikey: '{{api_key}}',
+      partnerID: '',
+      message: '{{message}}',
+      shortcode: '{{sender_id}}',
+      mobile: '{{phone}}',
+    },
+  };
+
+  const [schoolCfg, setSchoolCfg] = useState({
+    provider: 'olympus_teleserve',
+    endpoint: '',
+    api_key: '',
+    sender_id: '',
+    headers_json: '{}',
+    body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
+    is_active: true,
+  });
+  const [savingSchool, setSavingSchool] = useState(false);
+
   const [global, setGlobal] = useState({
     provider: 'olympus_teleserve',
     endpoint: '',
@@ -29,6 +52,70 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
     is_active: true,
   });
   const [savingGlobal, setSavingGlobal] = useState(false);
+
+  const { data: selectedSchoolCfg } = useQuery({
+    queryKey: ['sa-school-sms-config', selectedSchool],
+    queryFn: async () => {
+      if (!selectedSchool) return null;
+      const { data } = await supabase.from('school_sms_config' as any).select('*').eq('school_id', selectedSchool).maybeSingle();
+      return data;
+    },
+    enabled: !!selectedSchool,
+  });
+
+  useEffect(() => {
+    if (selectedSchoolCfg) {
+      const c: any = selectedSchoolCfg;
+      setSchoolCfg({
+        provider: c.provider || 'olympus_teleserve',
+        endpoint: c.endpoint || '',
+        api_key: c.api_key || '',
+        sender_id: c.sender_id || '',
+        headers_json: JSON.stringify(c.headers_json || {}, null, 2),
+        body_template: JSON.stringify(c.body_template || DEFAULT_BODY_TEMPLATE, null, 2),
+        is_active: c.is_active ?? true,
+      });
+    } else if (selectedSchool) {
+      setSchoolCfg({
+        provider: 'olympus_teleserve',
+        endpoint: '',
+        api_key: '',
+        sender_id: '',
+        headers_json: '{}',
+        body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
+        is_active: true,
+      });
+    }
+  }, [selectedSchoolCfg, selectedSchool]);
+
+  const saveSchoolCfg = async () => {
+    if (!selectedSchool) return;
+    setSavingSchool(true);
+    try {
+      let headers_json: any = {}, body_template: any = {};
+      try { headers_json = JSON.parse(schoolCfg.headers_json || '{}'); } catch { throw new Error('Headers JSON invalid'); }
+      try { body_template = JSON.parse(schoolCfg.body_template || '{}'); } catch { throw new Error('Body template JSON invalid'); }
+      const payload: any = {
+        school_id: selectedSchool,
+        provider: schoolCfg.provider,
+        endpoint: schoolCfg.endpoint.trim(),
+        api_key: schoolCfg.api_key,
+        sender_id: schoolCfg.sender_id.trim().slice(0, 11),
+        headers_json,
+        body_template,
+        is_active: schoolCfg.is_active,
+      };
+      const { error } = await supabase.from('school_sms_config' as any).upsert(payload, { onConflict: 'school_id' });
+      if (error) throw error;
+      toast({ title: 'School SMS provider saved' });
+      qc.invalidateQueries({ queryKey: ['sa-school-sms-config', selectedSchool] });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e?.message || String(e), variant: 'destructive' });
+    } finally {
+      setSavingSchool(false);
+    }
+  };
+
 
   const { data: globalCfg } = useQuery({
     queryKey: ['global-sms-config'],
