@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import SchoolSmsConfigCard from '@/components/SchoolSmsConfigCard';
+
 
 const SETTING_KEYS = [
   { key: 'school_name', label: 'School Name', icon: School, placeholder: 'e.g. TAKAYE SCHOOL' },
@@ -284,7 +284,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {(role === 'admin' || role === 'super_admin') && <SchoolSmsConfigCard />}
       </div>
     </DashboardLayout>
   );
