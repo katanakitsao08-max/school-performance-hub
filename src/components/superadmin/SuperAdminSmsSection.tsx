@@ -278,6 +278,60 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Per-School SMS Provider</CardTitle>
+          <CardDescription>
+            Configure the provider, endpoint, API key and Sender ID for the selected school. School admins cannot edit these.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!selectedSchool && (
+            <p className="text-sm text-muted-foreground">Select a school above to configure its SMS provider.</p>
+          )}
+          {selectedSchool && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Provider</Label>
+                  <Input value={schoolCfg.provider} onChange={e => setSchoolCfg(s => ({ ...s, provider: e.target.value }))} placeholder="olympus_teleserve" />
+                </div>
+                <div>
+                  <Label>Sender ID (max 11 chars)</Label>
+                  <Input value={schoolCfg.sender_id} maxLength={11} onChange={e => setSchoolCfg(s => ({ ...s, sender_id: e.target.value }))} placeholder="STMARYS" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Endpoint</Label>
+                  <Input value={schoolCfg.endpoint} onChange={e => setSchoolCfg(s => ({ ...s, endpoint: e.target.value }))} placeholder="https://api.olympusteleserve.co.ke/api/services/sendsms/" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>API Key</Label>
+                  <Input type="password" value={schoolCfg.api_key} onChange={e => setSchoolCfg(s => ({ ...s, api_key: e.target.value }))} placeholder="Provider API key" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Headers JSON</Label>
+                  <Textarea rows={3} className="font-mono text-xs" value={schoolCfg.headers_json} onChange={e => setSchoolCfg(s => ({ ...s, headers_json: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Body Template JSON</Label>
+                  <Textarea rows={6} className="font-mono text-xs" value={schoolCfg.body_template} onChange={e => setSchoolCfg(s => ({ ...s, body_template: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 md:col-span-2">
+                  <Switch checked={schoolCfg.is_active} onCheckedChange={v => setSchoolCfg(s => ({ ...s, is_active: v }))} />
+                  <Label className="!m-0">Active (uncheck to fall back to global config)</Label>
+                </div>
+              </div>
+              <Button onClick={saveSchoolCfg} disabled={savingSchool} className="w-full">
+                <Save className="h-4 w-4 mr-2" /> {savingSchool ? 'Saving…' : 'Save School SMS Provider'}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
+        <CardHeader>
           <CardTitle className="text-base">Global SMS Fallback</CardTitle>
           <CardDescription>Used when a school has no active SMS configuration.</CardDescription>
         </CardHeader>
