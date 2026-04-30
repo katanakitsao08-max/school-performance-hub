@@ -331,8 +331,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
       </Card>
 
       <Card>
-
-          <CardTitle className="text-base">Global SMS Fallback</CardTitle>
+        <CardHeader>
           <CardDescription>Used when a school has no active SMS configuration.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
