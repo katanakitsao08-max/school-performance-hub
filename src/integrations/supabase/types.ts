@@ -371,6 +371,48 @@ export type Database = {
         }
         Relationships: []
       }
+      global_sms_config: {
+        Row: {
+          api_key: string
+          body_template: Json
+          created_at: string
+          endpoint: string
+          headers_json: Json
+          id: string
+          is_active: boolean
+          provider: string
+          sender_id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          body_template?: Json
+          created_at?: string
+          endpoint?: string
+          headers_json?: Json
+          id?: string
+          is_active?: boolean
+          provider?: string
+          sender_id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          body_template?: Json
+          created_at?: string
+          endpoint?: string
+          headers_json?: Json
+          id?: string
+          is_active?: boolean
+          provider?: string
+          sender_id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       learner_face_descriptors: {
         Row: {
           descriptor: Json
@@ -854,6 +896,81 @@ export type Database = {
           },
         ]
       }
+      school_sms_config: {
+        Row: {
+          api_key: string
+          body_template: Json
+          created_at: string
+          endpoint: string
+          headers_json: Json
+          id: string
+          is_active: boolean
+          notes: string | null
+          provider: string
+          school_id: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          body_template?: Json
+          created_at?: string
+          endpoint?: string
+          headers_json?: Json
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          provider?: string
+          school_id: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          body_template?: Json
+          created_at?: string
+          endpoint?: string
+          headers_json?: Json
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          provider?: string
+          school_id?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      school_sms_credits: {
+        Row: {
+          balance: number
+          enabled: boolean
+          id: string
+          low_threshold: number
+          school_id: string
+          updated_at: string
+          used: number
+        }
+        Insert: {
+          balance?: number
+          enabled?: boolean
+          id?: string
+          low_threshold?: number
+          school_id: string
+          updated_at?: string
+          used?: number
+        }
+        Update: {
+          balance?: number
+          enabled?: boolean
+          id?: string
+          low_threshold?: number
+          school_id?: string
+          updated_at?: string
+          used?: number
+        }
+        Relationships: []
+      }
       schools: {
         Row: {
           contact_email: string
@@ -967,6 +1084,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sms_logs: {
+        Row: {
+          error: string | null
+          id: string
+          message: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient: string
+          school_id: string
+          segments: number
+          sender_id: string | null
+          sent_at: string
+          sent_by: string | null
+          status: string
+          used_global_fallback: boolean
+        }
+        Insert: {
+          error?: string | null
+          id?: string
+          message: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient: string
+          school_id: string
+          segments?: number
+          sender_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          used_global_fallback?: boolean
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          message?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient?: string
+          school_id?: string
+          segments?: number
+          sender_id?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          used_global_fallback?: boolean
+        }
+        Relationships: []
       }
       strand_scores: {
         Row: {
@@ -1632,6 +1797,10 @@ export type Database = {
           _user_id: string
         }
         Returns: string
+      }
+      deduct_sms_credits: {
+        Args: { _amount: number; _school_id: string }
+        Returns: boolean
       }
       find_system_wa_template: {
         Args: { _name: string; _school_id: string }

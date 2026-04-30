@@ -6,6 +6,7 @@ import { Building2, Users, GraduationCap, CheckCircle2, AlertTriangle, Clock } f
 import { useAuth } from '@/contexts/AuthContext';
 import RevenueSubscriptionSection from '@/components/superadmin/RevenueSubscriptionSection';
 import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTogglesSection';
+import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -139,6 +140,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: Per-school feature toggles (additive) */}
         <SchoolFeatureTogglesSection schools={schools} />
+
+        {/* New: SMS management (additive) */}
+        <SuperAdminSmsSection schools={schools} />
       </div>
     </DashboardLayout>
   );
