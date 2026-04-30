@@ -158,7 +158,13 @@ serve(async (req) => {
 
     // Refund failed credits
     if (refundCount > 0) {
-      await admin.rpc('deduct_sms_credits', { _school_id: body.school_id, _amount: -refundCount });
+      const { data: cur } = await admin.from('school_sms_credits').select('balance, used').eq('school_id', body.school_id).maybeSingle();
+      if (cur) {
+        await admin.from('school_sms_credits').update({
+          balance: (cur.balance || 0) + refundCount,
+          used: Math.max(0, (cur.used || 0) - refundCount),
+        }).eq('school_id', body.school_id);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, sent: body.messages.length - refundCount, failed: refundCount, results }), {
