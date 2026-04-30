@@ -19,6 +19,29 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
   const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [topup, setTopup] = useState<number>(0);
 
+  const DEFAULT_BODY_TEMPLATE = {
+    method: 'POST',
+    body_type: 'json',
+    body: {
+      apikey: '{{api_key}}',
+      partnerID: '',
+      message: '{{message}}',
+      shortcode: '{{sender_id}}',
+      mobile: '{{phone}}',
+    },
+  };
+
+  const [schoolCfg, setSchoolCfg] = useState({
+    provider: 'olympus_teleserve',
+    endpoint: '',
+    api_key: '',
+    sender_id: '',
+    headers_json: '{}',
+    body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
+    is_active: true,
+  });
+  const [savingSchool, setSavingSchool] = useState(false);
+
   const [global, setGlobal] = useState({
     provider: 'olympus_teleserve',
     endpoint: '',
@@ -29,6 +52,70 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
     is_active: true,
   });
   const [savingGlobal, setSavingGlobal] = useState(false);
+
+  const { data: selectedSchoolCfg } = useQuery({
+    queryKey: ['sa-school-sms-config', selectedSchool],
+    queryFn: async () => {
+      if (!selectedSchool) return null;
+      const { data } = await supabase.from('school_sms_config' as any).select('*').eq('school_id', selectedSchool).maybeSingle();
+      return data;
+    },
+    enabled: !!selectedSchool,
+  });
+
+  useEffect(() => {
+    if (selectedSchoolCfg) {
+      const c: any = selectedSchoolCfg;
+      setSchoolCfg({
+        provider: c.provider || 'olympus_teleserve',
+        endpoint: c.endpoint || '',
+        api_key: c.api_key || '',
+        sender_id: c.sender_id || '',
+        headers_json: JSON.stringify(c.headers_json || {}, null, 2),
+        body_template: JSON.stringify(c.body_template || DEFAULT_BODY_TEMPLATE, null, 2),
+        is_active: c.is_active ?? true,
+      });
+    } else if (selectedSchool) {
+      setSchoolCfg({
+        provider: 'olympus_teleserve',
+        endpoint: '',
+        api_key: '',
+        sender_id: '',
+        headers_json: '{}',
+        body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
+        is_active: true,
+      });
+    }
+  }, [selectedSchoolCfg, selectedSchool]);
+
+  const saveSchoolCfg = async () => {
+    if (!selectedSchool) return;
+    setSavingSchool(true);
+    try {
+      let headers_json: any = {}, body_template: any = {};
+      try { headers_json = JSON.parse(schoolCfg.headers_json || '{}'); } catch { throw new Error('Headers JSON invalid'); }
+      try { body_template = JSON.parse(schoolCfg.body_template || '{}'); } catch { throw new Error('Body template JSON invalid'); }
+      const payload: any = {
+        school_id: selectedSchool,
+        provider: schoolCfg.provider,
+        endpoint: schoolCfg.endpoint.trim(),
+        api_key: schoolCfg.api_key,
+        sender_id: schoolCfg.sender_id.trim().slice(0, 11),
+        headers_json,
+        body_template,
+        is_active: schoolCfg.is_active,
+      };
+      const { error } = await supabase.from('school_sms_config' as any).upsert(payload, { onConflict: 'school_id' });
+      if (error) throw error;
+      toast({ title: 'School SMS provider saved' });
+      qc.invalidateQueries({ queryKey: ['sa-school-sms-config', selectedSchool] });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e?.message || String(e), variant: 'destructive' });
+    } finally {
+      setSavingSchool(false);
+    }
+  };
+
 
   const { data: globalCfg } = useQuery({
     queryKey: ['global-sms-config'],
@@ -191,7 +278,60 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Global SMS Fallback</CardTitle>
+          <CardTitle className="text-base">Per-School SMS Provider</CardTitle>
+          <CardDescription>
+            Configure the provider, endpoint, API key and Sender ID for the selected school. School admins cannot edit these.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!selectedSchool && (
+            <p className="text-sm text-muted-foreground">Select a school above to configure its SMS provider.</p>
+          )}
+          {selectedSchool && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Provider</Label>
+                  <Input value={schoolCfg.provider} onChange={e => setSchoolCfg(s => ({ ...s, provider: e.target.value }))} placeholder="olympus_teleserve" />
+                </div>
+                <div>
+                  <Label>Sender ID (max 11 chars)</Label>
+                  <Input value={schoolCfg.sender_id} maxLength={11} onChange={e => setSchoolCfg(s => ({ ...s, sender_id: e.target.value }))} placeholder="STMARYS" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Endpoint</Label>
+                  <Input value={schoolCfg.endpoint} onChange={e => setSchoolCfg(s => ({ ...s, endpoint: e.target.value }))} placeholder="https://api.olympusteleserve.co.ke/api/services/sendsms/" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>API Key</Label>
+                  <Input type="password" value={schoolCfg.api_key} onChange={e => setSchoolCfg(s => ({ ...s, api_key: e.target.value }))} placeholder="Provider API key" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Headers JSON</Label>
+                  <Textarea rows={3} className="font-mono text-xs" value={schoolCfg.headers_json} onChange={e => setSchoolCfg(s => ({ ...s, headers_json: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Body Template JSON</Label>
+                  <Textarea rows={6} className="font-mono text-xs" value={schoolCfg.body_template} onChange={e => setSchoolCfg(s => ({ ...s, body_template: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 md:col-span-2">
+                  <Switch checked={schoolCfg.is_active} onCheckedChange={v => setSchoolCfg(s => ({ ...s, is_active: v }))} />
+                  <Label className="!m-0">Active (uncheck to fall back to global config)</Label>
+                </div>
+              </div>
+              <Button onClick={saveSchoolCfg} disabled={savingSchool} className="w-full">
+                <Save className="h-4 w-4 mr-2" /> {savingSchool ? 'Saving…' : 'Save School SMS Provider'}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardDescription>Used when a school has no active SMS configuration.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
