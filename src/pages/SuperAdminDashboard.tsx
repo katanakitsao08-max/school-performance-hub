@@ -140,6 +140,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: Per-school feature toggles (additive) */}
         <SchoolFeatureTogglesSection schools={schools} />
+
+        {/* New: SMS management (additive) */}
+        <SuperAdminSmsSection schools={schools} />
       </div>
     </DashboardLayout>
   );
