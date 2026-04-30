@@ -283,6 +283,8 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        {(role === 'admin' || role === 'super_admin') && <SchoolSmsConfigCard />}
       </div>
     </DashboardLayout>
   );
