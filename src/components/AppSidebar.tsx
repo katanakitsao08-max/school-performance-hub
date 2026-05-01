@@ -37,6 +37,7 @@ const adminItems = [
   { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "SMS", url: "/sms", icon: MessageSquare },
+  { title: "Parent Communication", url: "/parent-communication", icon: MessageSquare },
   { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
   { title: "Fees", url: "/fees", icon: Wallet },
   { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
