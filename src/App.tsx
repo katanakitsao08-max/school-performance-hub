@@ -44,6 +44,8 @@ const SharedReportPage = lazy(() => import("./pages/SharedReportPage"));
 const CurriculumDesignManagerPage = lazy(() => import("./pages/CurriculumDesignManagerPage"));
 const CurriculumLibraryPage = lazy(() => import("./pages/CurriculumLibraryPage"));
 const WhatsAppPage = lazy(() => import("./pages/WhatsAppPage"));
+const ParentPortalLinkPage = lazy(() => import("./pages/ParentPortalLinkPage"));
+const ParentCommunicationPage = lazy(() => import("./pages/ParentCommunicationPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -100,7 +102,8 @@ function RefreshRedirector() {
       path === '/login' ||
       path === '/forgot-password' ||
       path === '/reset-password' ||
-      path.startsWith('/r/');
+      path.startsWith('/r/') ||
+      path.startsWith('/p/');
 
     handled.current = true;
 
@@ -135,6 +138,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/r/:token" element={<SharedReportPage />} />
+                <Route path="/p/:token" element={<ParentPortalLinkPage />} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
@@ -156,6 +160,7 @@ const App = () => (
                 <Route path="/reports" element={<ProtectedRoute><ErrorBoundary inline label="Reports"><ReportsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
                 <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
+                <Route path="/parent-communication" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Parent Communication"><ParentCommunicationPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="WhatsApp"><WhatsAppPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/promotion" element={<ProtectedRoute allowedRoles={['admin']}><PromotionPage /></ProtectedRoute>} />
                 <Route path="/strands" element={<ProtectedRoute allowedRoles={['admin']}><StrandsPage /></ProtectedRoute>} />

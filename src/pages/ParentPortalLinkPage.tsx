@@ -47,10 +47,11 @@ export default function ParentPortalLinkPage() {
   );
 
   const { learner, school, results = [], total, average, term, year } = data;
-  const grade = results.length > 0 && average != null
+  const overallGrade = results.length > 0 && average != null
     ? getGradeForLevel(average, results[0].max || 100, learner.grade)
-    : '-';
-  const points = getGradePoints(grade);
+    : null;
+  const points = overallGrade ? getGradePoints(overallGrade) : 0;
+  const gradeDisplay: string = overallGrade ?? '-';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/20 to-background py-8 px-4">
@@ -112,7 +113,7 @@ export default function ParentPortalLinkPage() {
               </div>
               <div className="text-center">
                 <div className="text-xs text-muted-foreground">Grade</div>
-                <div className="font-display font-bold text-lg">{grade} <span className="text-xs text-muted-foreground">({points}pts)</span></div>
+                <div className="font-display font-bold text-lg">{gradeDisplay} <span className="text-xs text-muted-foreground">({points}pts)</span></div>
               </div>
             </div>
           </CardContent>
