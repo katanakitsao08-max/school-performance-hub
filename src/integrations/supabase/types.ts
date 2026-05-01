@@ -626,6 +626,54 @@ export type Database = {
           },
         ]
       }
+      parent_portal_links: {
+        Row: {
+          assessment_type: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_viewed_at: string | null
+          learner_id: string
+          school_id: string
+          term: number
+          token: string
+          view_count: number
+          year: number
+        }
+        Insert: {
+          assessment_type?: string
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_viewed_at?: string | null
+          learner_id: string
+          school_id: string
+          term: number
+          token: string
+          view_count?: number
+          year: number
+        }
+        Update: {
+          assessment_type?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          last_viewed_at?: string | null
+          learner_id?: string
+          school_id?: string
+          term?: number
+          token?: string
+          view_count?: number
+          year?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           assigned_grades: string[] | null
