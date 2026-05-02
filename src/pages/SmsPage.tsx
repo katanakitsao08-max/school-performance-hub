@@ -87,18 +87,42 @@ export default function SmsPage() {
   });
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
+    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear, selectedAssessment],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
       const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
+        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
     enabled: learners.length > 0,
   });
 
   const subjectMap = useMemo(() => Object.fromEntries(subjects.map((s: any) => [s.id, s])), [subjects]);
+
+  // Dedupe scores: keep highest per (learner_id, learning_area_id) — guards against legacy duplicates
+  const dedupedScores = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of scores as any[]) {
+      const key = `${s.learner_id}::${s.learning_area_id}`;
+      const existing = map.get(key);
+      if (!existing || Number(s.score) > Number(existing.score)) map.set(key, s);
+    }
+    return Array.from(map.values());
+  }, [scores]);
+
+  const smsData = useMemo(() => {
+    const results = learners.map((l: any) => {
+      const ls = dedupedScores.filter((s: any) => s.learner_id === l.id);
+      const total = ls.reduce((sum: number, sc: any) => sum + Number(sc.score || 0), 0);
+      const mean = ls.length > 0 ? total / ls.length : 0;
+      const avgMax = subjects.length > 0 ? subjects.reduce((s: number, sub: any) => s + sub.max_score, 0) / subjects.length : 100;
+      const grade = ls.length > 0 ? getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1') : '-';
+      return { ...l, scores: ls, total, mean, grade };
+    }).sort((a, b) => b.total - a.total);
+    return results.map((l, i) => ({ ...l, position: i + 1 }));
+  }, [learners, dedupedScores, subjects, selectedGrade]);
 
   const smsData = useMemo(() => {
     const results = learners.map((l: any) => {
