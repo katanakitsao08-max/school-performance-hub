@@ -35,6 +35,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
     provider: 'olympus_teleserve',
     endpoint: '',
     api_key: '',
+    partner_id: '',
     sender_id: '',
     headers_json: '{}',
     body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
@@ -70,6 +71,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
         provider: c.provider || 'olympus_teleserve',
         endpoint: c.endpoint || '',
         api_key: c.api_key || '',
+        partner_id: c.body_template?.body?.partnerID || c.headers_json?.partnerID || '',
         sender_id: c.sender_id || '',
         headers_json: JSON.stringify(c.headers_json || {}, null, 2),
         body_template: JSON.stringify(c.body_template || DEFAULT_BODY_TEMPLATE, null, 2),
@@ -80,6 +82,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
         provider: 'olympus_teleserve',
         endpoint: '',
         api_key: '',
+        partner_id: '',
         sender_id: '',
         headers_json: '{}',
         body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
@@ -95,6 +98,11 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
       let headers_json: any = {}, body_template: any = {};
       try { headers_json = JSON.parse(schoolCfg.headers_json || '{}'); } catch { throw new Error('Headers JSON invalid'); }
       try { body_template = JSON.parse(schoolCfg.body_template || '{}'); } catch { throw new Error('Body template JSON invalid'); }
+      if (!schoolCfg.partner_id.trim()) throw new Error('Partner ID is required for Olympus SMS');
+      body_template = {
+        ...body_template,
+        body: { ...(body_template.body || {}), partnerID: schoolCfg.partner_id.trim() },
+      };
       const payload: any = {
         school_id: selectedSchool,
         provider: schoolCfg.provider,
