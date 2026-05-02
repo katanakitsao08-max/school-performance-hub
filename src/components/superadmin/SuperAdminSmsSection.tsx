@@ -35,6 +35,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
     provider: 'olympus_teleserve',
     endpoint: '',
     api_key: '',
+    partner_id: '',
     sender_id: '',
     headers_json: '{}',
     body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
@@ -70,6 +71,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
         provider: c.provider || 'olympus_teleserve',
         endpoint: c.endpoint || '',
         api_key: c.api_key || '',
+        partner_id: c.body_template?.body?.partnerID || c.headers_json?.partnerID || '',
         sender_id: c.sender_id || '',
         headers_json: JSON.stringify(c.headers_json || {}, null, 2),
         body_template: JSON.stringify(c.body_template || DEFAULT_BODY_TEMPLATE, null, 2),
@@ -80,6 +82,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
         provider: 'olympus_teleserve',
         endpoint: '',
         api_key: '',
+        partner_id: '',
         sender_id: '',
         headers_json: '{}',
         body_template: JSON.stringify(DEFAULT_BODY_TEMPLATE, null, 2),
@@ -95,6 +98,11 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
       let headers_json: any = {}, body_template: any = {};
       try { headers_json = JSON.parse(schoolCfg.headers_json || '{}'); } catch { throw new Error('Headers JSON invalid'); }
       try { body_template = JSON.parse(schoolCfg.body_template || '{}'); } catch { throw new Error('Body template JSON invalid'); }
+      if (!schoolCfg.partner_id.trim()) throw new Error('Partner ID is required for Olympus SMS');
+      body_template = {
+        ...body_template,
+        body: { ...(body_template.body || {}), partnerID: schoolCfg.partner_id.trim() },
+      };
       const payload: any = {
         school_id: selectedSchool,
         provider: schoolCfg.provider,
@@ -307,6 +315,10 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
                   <Input type="password" value={schoolCfg.api_key} onChange={e => setSchoolCfg(s => ({ ...s, api_key: e.target.value }))} placeholder="Provider API key" />
                 </div>
                 <div className="md:col-span-2">
+                  <Label>Partner ID</Label>
+                  <Input value={schoolCfg.partner_id} onChange={e => setSchoolCfg(s => ({ ...s, partner_id: e.target.value }))} placeholder="Olympus partnerID" />
+                </div>
+                <div className="md:col-span-2">
                   <Label>Headers JSON</Label>
                   <Textarea rows={3} className="font-mono text-xs" value={schoolCfg.headers_json} onChange={e => setSchoolCfg(s => ({ ...s, headers_json: e.target.value }))} />
                 </div>
@@ -314,7 +326,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
                   <Label>Body Template JSON</Label>
                   <Textarea rows={6} className="font-mono text-xs" value={schoolCfg.body_template} onChange={e => setSchoolCfg(s => ({ ...s, body_template: e.target.value }))} />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>.
+                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>, <code>{'{{partner_id}}'}</code>.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 md:col-span-2">
