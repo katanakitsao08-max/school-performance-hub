@@ -315,6 +315,10 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
                   <Input type="password" value={schoolCfg.api_key} onChange={e => setSchoolCfg(s => ({ ...s, api_key: e.target.value }))} placeholder="Provider API key" />
                 </div>
                 <div className="md:col-span-2">
+                  <Label>Partner ID</Label>
+                  <Input value={schoolCfg.partner_id} onChange={e => setSchoolCfg(s => ({ ...s, partner_id: e.target.value }))} placeholder="Olympus partnerID" />
+                </div>
+                <div className="md:col-span-2">
                   <Label>Headers JSON</Label>
                   <Textarea rows={3} className="font-mono text-xs" value={schoolCfg.headers_json} onChange={e => setSchoolCfg(s => ({ ...s, headers_json: e.target.value }))} />
                 </div>
@@ -322,7 +326,7 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
                   <Label>Body Template JSON</Label>
                   <Textarea rows={6} className="font-mono text-xs" value={schoolCfg.body_template} onChange={e => setSchoolCfg(s => ({ ...s, body_template: e.target.value }))} />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>.
+                    Placeholders: <code>{'{{phone}}'}</code>, <code>{'{{message}}'}</code>, <code>{'{{sender_id}}'}</code>, <code>{'{{api_key}}'}</code>, <code>{'{{partner_id}}'}</code>.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 md:col-span-2">
