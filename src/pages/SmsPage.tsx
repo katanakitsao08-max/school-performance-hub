@@ -42,6 +42,7 @@ export default function SmsPage() {
   const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedStream, setSelectedStream] = useState('');
   const [selectedTerm, setSelectedTerm] = useState(1);
+  const [selectedAssessment, setSelectedAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
   const [selectedYear] = useState(new Date().getFullYear());
   const [smsMode, setSmsMode] = useState<SmsMode>('hybrid');
   const [sending, setSending] = useState(false);
@@ -86,12 +87,13 @@ export default function SmsPage() {
   });
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear],
+    queryKey: ['scores', selectedGrade, selectedStream, selectedTerm, selectedYear, selectedAssessment],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
       const { data } = await supabase.from('scores').select('*')
-        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear);
+        .in('learner_id', ids).eq('term', selectedTerm).eq('year', selectedYear)
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
     enabled: learners.length > 0,
@@ -99,9 +101,20 @@ export default function SmsPage() {
 
   const subjectMap = useMemo(() => Object.fromEntries(subjects.map((s: any) => [s.id, s])), [subjects]);
 
+  // Dedupe scores: keep highest per (learner_id, learning_area_id) — guards against legacy duplicates
+  const dedupedScores = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of scores as any[]) {
+      const key = `${s.learner_id}::${s.learning_area_id}`;
+      const existing = map.get(key);
+      if (!existing || Number(s.score) > Number(existing.score)) map.set(key, s);
+    }
+    return Array.from(map.values());
+  }, [scores]);
+
   const smsData = useMemo(() => {
     const results = learners.map((l: any) => {
-      const ls = scores.filter((s: any) => s.learner_id === l.id);
+      const ls = dedupedScores.filter((s: any) => s.learner_id === l.id);
       const total = ls.reduce((sum: number, sc: any) => sum + Number(sc.score || 0), 0);
       const mean = ls.length > 0 ? total / ls.length : 0;
       const avgMax = subjects.length > 0 ? subjects.reduce((s: number, sub: any) => s + sub.max_score, 0) / subjects.length : 100;
@@ -109,15 +122,20 @@ export default function SmsPage() {
       return { ...l, scores: ls, total, mean, grade };
     }).sort((a, b) => b.total - a.total);
     return results.map((l, i) => ({ ...l, position: i + 1 }));
-  }, [learners, scores, subjects, selectedGrade]);
+  }, [learners, dedupedScores, subjects, selectedGrade]);
 
   const buildDetailedMessage = (l: any): string => {
+    // Final dedupe by subject name (in case two learning_area rows share a name)
+    const seen = new Set<string>();
     const subjectLines = (l.scores || []).map((s: any) => {
       const subj = subjectMap[s.learning_area_id];
       if (!subj) return null;
+      const key = abbreviate(subj.name);
+      if (seen.has(key)) return null;
+      seen.add(key);
       const score = Math.round(Number(s.score));
       const g = getGradeForLevel(score, subj.max_score, selectedGrade);
-      return `${abbreviate(subj.name)}-${score}(${g})`;
+      return `${key}-${score}(${g})`;
     }).filter(Boolean).join(', ');
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
     return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${schoolMeta?.school_name || 'School'}`;
@@ -163,7 +181,7 @@ export default function SmsPage() {
         const rows = learnersWithPhone.map(l => ({
           school_id: schoolId, learner_id: l.id,
           token: genToken(),
-          term: selectedTerm, year: selectedYear, assessment_type: 'end_term',
+          term: selectedTerm, year: selectedYear, assessment_type: selectedAssessment,
           created_by: user.id,
         }));
         const { data: inserted, error } = await supabase.from('parent_portal_links')
@@ -243,6 +261,14 @@ export default function SmsPage() {
               <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
                 <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={selectedAssessment} onValueChange={(v) => setSelectedAssessment(v as any)}>
+                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="opener">Opener</SelectItem>
+                  <SelectItem value="mid_term">Mid Term</SelectItem>
+                  <SelectItem value="end_term">End Term</SelectItem>
+                </SelectContent>
               </Select>
             </div>
 

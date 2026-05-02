@@ -101,12 +101,17 @@ Deno.serve(async (req) => {
       const chunk = messages.slice(i, i + BATCH);
       const settled = await Promise.all(chunk.map(async (m) => {
         const phone = formatPhone(m.phone);
+        // Olympus Teleserve v3 expects payload wrapped in { body: {...}, method, body_type }
         const payload = {
-          apikey: apiKey,
-          partnerID: partnerId,
-          shortcode: senderId,
-          mobile: phone,
-          message: m.message,
+          body: {
+            apikey: apiKey,
+            partnerID: partnerId,
+            shortcode: senderId,
+            mobile: phone,
+            message: m.message,
+          },
+          method: 'POST',
+          body_type: 'json',
         };
         try {
           const r = await fetch(endpoint, {
@@ -116,7 +121,9 @@ Deno.serve(async (req) => {
           });
           let data: any = null;
           try { data = await r.json(); } catch { data = await r.text(); }
-          const ok = r.ok;
+          // Olympus returns responses[].respose-code === '200' on real delivery acceptance
+          const respCode = data?.responses?.[0]?.['response-code'] ?? data?.responses?.[0]?.respose_code;
+          const ok = r.ok && (respCode === 200 || respCode === '200' || respCode === undefined ? r.ok : false);
           // Persist log
           await supabase.from('sms_logs').insert({
             school_id, recipient: phone, message: m.message, sender_id: senderId,
