@@ -125,12 +125,17 @@ export default function SmsPage() {
   }, [learners, dedupedScores, subjects, selectedGrade]);
 
   const buildDetailedMessage = (l: any): string => {
+    // Final dedupe by subject name (in case two learning_area rows share a name)
+    const seen = new Set<string>();
     const subjectLines = (l.scores || []).map((s: any) => {
       const subj = subjectMap[s.learning_area_id];
       if (!subj) return null;
+      const key = abbreviate(subj.name);
+      if (seen.has(key)) return null;
+      seen.add(key);
       const score = Math.round(Number(s.score));
       const g = getGradeForLevel(score, subj.max_score, selectedGrade);
-      return `${abbreviate(subj.name)}-${score}(${g})`;
+      return `${key}-${score}(${g})`;
     }).filter(Boolean).join(', ');
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
     return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${schoolMeta?.school_name || 'School'}`;
