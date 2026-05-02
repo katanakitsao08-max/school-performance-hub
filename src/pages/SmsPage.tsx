@@ -181,7 +181,7 @@ export default function SmsPage() {
         const rows = learnersWithPhone.map(l => ({
           school_id: schoolId, learner_id: l.id,
           token: genToken(),
-          term: selectedTerm, year: selectedYear, assessment_type: 'end_term',
+          term: selectedTerm, year: selectedYear, assessment_type: selectedAssessment,
           created_by: user.id,
         }));
         const { data: inserted, error } = await supabase.from('parent_portal_links')
