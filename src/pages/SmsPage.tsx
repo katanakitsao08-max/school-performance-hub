@@ -124,18 +124,6 @@ export default function SmsPage() {
     return results.map((l, i) => ({ ...l, position: i + 1 }));
   }, [learners, dedupedScores, subjects, selectedGrade]);
 
-  const smsData = useMemo(() => {
-    const results = learners.map((l: any) => {
-      const ls = scores.filter((s: any) => s.learner_id === l.id);
-      const total = ls.reduce((sum: number, sc: any) => sum + Number(sc.score || 0), 0);
-      const mean = ls.length > 0 ? total / ls.length : 0;
-      const avgMax = subjects.length > 0 ? subjects.reduce((s: number, sub: any) => s + sub.max_score, 0) / subjects.length : 100;
-      const grade = ls.length > 0 ? getGradeForLevel(mean, avgMax, selectedGrade || l.grade || '1') : '-';
-      return { ...l, scores: ls, total, mean, grade };
-    }).sort((a, b) => b.total - a.total);
-    return results.map((l, i) => ({ ...l, position: i + 1 }));
-  }, [learners, scores, subjects, selectedGrade]);
-
   const buildDetailedMessage = (l: any): string => {
     const subjectLines = (l.scores || []).map((s: any) => {
       const subj = subjectMap[s.learning_area_id];
