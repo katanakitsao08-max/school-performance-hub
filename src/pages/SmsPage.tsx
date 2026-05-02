@@ -262,6 +262,14 @@ export default function SmsPage() {
                 <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
               </Select>
+              <Select value={selectedAssessment} onValueChange={(v) => setSelectedAssessment(v as any)}>
+                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="opener">Opener</SelectItem>
+                  <SelectItem value="mid_term">Mid Term</SelectItem>
+                  <SelectItem value="end_term">End Term</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Card>
