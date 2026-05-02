@@ -130,7 +130,10 @@ Deno.serve(async (req) => {
       const settled = await Promise.all(chunk.map(async (m) => {
         const phone = formatPhone(m.phone);
         const ctx = { phone, message: m.message, sender_id: senderId, api_key: apiKey, partner_id: partnerId, partnerID: partnerId };
-        const configuredPayload = bodyTemplate && Object.keys(bodyTemplate).length ? templateValue(bodyTemplate, ctx) : null;
+        // Olympus v3 expects the JSON body directly, not the saved template wrapper metadata.
+        const configuredPayload = bodyTemplate?.body
+          ? templateValue(bodyTemplate.body, ctx)
+          : (bodyTemplate && Object.keys(bodyTemplate).length ? templateValue(bodyTemplate, ctx) : null);
         const payload = configuredPayload || { apikey: apiKey, partnerID: partnerId, shortcode: senderId, mobile: phone, message: m.message };
         try {
           const r = await fetch(endpoint, {
