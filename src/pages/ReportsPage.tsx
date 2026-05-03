@@ -639,8 +639,9 @@ export default function ReportsPage() {
       body,
       foot: foot.length ? foot : undefined,
       startY: y + 4,
-      styles: { fontSize: 7 },
-      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 2 },
+      headStyles: { fontSize: 10, fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: 10 },
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
@@ -659,7 +660,7 @@ export default function ReportsPage() {
       autoTable(doc, {
         head: [['Subject', 'Mean Score', 'Max Score', 'Grade']],
         body: analysis.subjectAnalyses.map(s => [s.name, s.mean, s.maxScore, s.grade]),
-        startY: ay, styles: { fontSize: 8 },
+        startY: ay, styles: { fontSize: 11, cellPadding: 2.5 },
         headStyles: { fillColor: [41, 128, 185] },
       });
       ay = (doc as any).lastAutoTable.finalY + 8;
@@ -676,7 +677,7 @@ export default function ReportsPage() {
       autoTable(doc, {
         head: [['Rank', 'Name', 'Total', 'Mean', 'Grade']],
         body: analysis.top5Overall.map(l => [l.rank, l.name, l.total, l.mean, l.grade]),
-        startY: ay, styles: { fontSize: 8 },
+        startY: ay, styles: { fontSize: 11, cellPadding: 2.5 },
         headStyles: { fillColor: [39, 174, 96] },
       });
 
@@ -698,7 +699,7 @@ export default function ReportsPage() {
         autoTable(doc, {
           head: [['#', 'Name', 'Score', 'Grade']],
           body: sub.top5.map((l, i) => [i + 1, l.name, l.score, l.grade]),
-          startY: ty, styles: { fontSize: 8 }, margin: { left: 14 },
+          startY: ty, styles: { fontSize: 11, cellPadding: 2.5 }, margin: { left: 14 },
         });
         ty = (doc as any).lastAutoTable.finalY + 6;
       });
