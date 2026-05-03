@@ -699,7 +699,7 @@ export default function ReportsPage() {
         autoTable(doc, {
           head: [['#', 'Name', 'Score', 'Grade']],
           body: sub.top5.map((l, i) => [i + 1, l.name, l.score, l.grade]),
-          startY: ty, styles: { fontSize: 8 }, margin: { left: 14 },
+          startY: ty, styles: { fontSize: 11, cellPadding: 2.5 }, margin: { left: 14 },
         });
         ty = (doc as any).lastAutoTable.finalY + 6;
       });
