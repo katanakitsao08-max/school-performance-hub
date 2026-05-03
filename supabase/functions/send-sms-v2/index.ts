@@ -90,10 +90,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Required Olympus fields
+    // Required Olympus fields (read from explicit columns; fall back to template/headers for legacy rows)
     const apiKey = (cfg as any).api_key || Deno.env.get('OTS_API_KEY') || '';
     const bodyTemplate = (cfg as any).body_template || {};
-    const partnerId = ((cfg as any).headers_json?.partnerID)
+    const partnerId = ((cfg as any).partner_id)
+      || ((cfg as any).headers_json?.partnerID)
       || ((cfg as any).headers_json?.partner_id)
       || bodyTemplate?.body?.partnerID
       || bodyTemplate?.body?.partner_id
@@ -129,12 +130,14 @@ Deno.serve(async (req) => {
       const chunk = messages.slice(i, i + BATCH);
       const settled = await Promise.all(chunk.map(async (m) => {
         const phone = formatPhone(m.phone);
-        const ctx = { phone, message: m.message, sender_id: senderId, api_key: apiKey, partner_id: partnerId, partnerID: partnerId };
-        // Olympus v3 expects the JSON body directly, not the saved template wrapper metadata.
-        const configuredPayload = bodyTemplate?.body
-          ? templateValue(bodyTemplate.body, ctx)
-          : (bodyTemplate && Object.keys(bodyTemplate).length ? templateValue(bodyTemplate, ctx) : null);
-        const payload = configuredPayload || { apikey: apiKey, partnerID: partnerId, shortcode: senderId, mobile: phone, message: m.message };
+        // Olympus Teleserve v3 strict payload — always use explicit fields to guarantee delivery.
+        const payload = {
+          apikey: apiKey,
+          partnerID: partnerId,
+          shortcode: senderId,
+          mobile: phone,
+          message: m.message,
+        };
         try {
           const r = await fetch(endpoint, {
             method: 'POST',

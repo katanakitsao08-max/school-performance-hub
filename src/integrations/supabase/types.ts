@@ -380,6 +380,7 @@ export type Database = {
           headers_json: Json
           id: string
           is_active: boolean
+          partner_id: string | null
           provider: string
           sender_id: string
           singleton: boolean
@@ -393,6 +394,7 @@ export type Database = {
           headers_json?: Json
           id?: string
           is_active?: boolean
+          partner_id?: string | null
           provider?: string
           sender_id?: string
           singleton?: boolean
@@ -406,6 +408,7 @@ export type Database = {
           headers_json?: Json
           id?: string
           is_active?: boolean
+          partner_id?: string | null
           provider?: string
           sender_id?: string
           singleton?: boolean
@@ -954,6 +957,7 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          partner_id: string | null
           provider: string
           school_id: string
           sender_id: string
@@ -968,6 +972,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          partner_id?: string | null
           provider?: string
           school_id: string
           sender_id?: string
@@ -982,6 +987,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          partner_id?: string | null
           provider?: string
           school_id?: string
           sender_id?: string
