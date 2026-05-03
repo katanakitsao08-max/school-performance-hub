@@ -677,7 +677,7 @@ export default function ReportsPage() {
       autoTable(doc, {
         head: [['Rank', 'Name', 'Total', 'Mean', 'Grade']],
         body: analysis.top5Overall.map(l => [l.rank, l.name, l.total, l.mean, l.grade]),
-        startY: ay, styles: { fontSize: 8 },
+        startY: ay, styles: { fontSize: 11, cellPadding: 2.5 },
         headStyles: { fillColor: [39, 174, 96] },
       });
 
