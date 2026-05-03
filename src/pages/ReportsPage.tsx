@@ -639,8 +639,9 @@ export default function ReportsPage() {
       body,
       foot: foot.length ? foot : undefined,
       startY: y + 4,
-      styles: { fontSize: 7 },
-      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 2 },
+      headStyles: { fontSize: 10, fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: 10 },
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
