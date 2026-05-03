@@ -69,9 +69,9 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
       const c: any = selectedSchoolCfg;
       setSchoolCfg({
         provider: c.provider || 'olympus_teleserve',
-        endpoint: c.endpoint || '',
+        endpoint: c.endpoint || 'https://sms.ots.co.ke/api/v3/sms/send',
         api_key: c.api_key || '',
-        partner_id: c.body_template?.body?.partnerID || c.headers_json?.partnerID || '',
+        partner_id: c.partner_id || c.body_template?.body?.partnerID || c.headers_json?.partnerID || '',
         sender_id: c.sender_id || '',
         headers_json: JSON.stringify(c.headers_json || {}, null, 2),
         body_template: JSON.stringify(c.body_template || DEFAULT_BODY_TEMPLATE, null, 2),
@@ -106,8 +106,9 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
       const payload: any = {
         school_id: selectedSchool,
         provider: schoolCfg.provider,
-        endpoint: schoolCfg.endpoint.trim(),
+        endpoint: (schoolCfg.endpoint.trim() || 'https://sms.ots.co.ke/api/v3/sms/send'),
         api_key: schoolCfg.api_key,
+        partner_id: schoolCfg.partner_id.trim(),
         sender_id: schoolCfg.sender_id.trim().slice(0, 11),
         headers_json,
         body_template,
