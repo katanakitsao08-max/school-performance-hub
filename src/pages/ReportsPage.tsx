@@ -660,7 +660,7 @@ export default function ReportsPage() {
       autoTable(doc, {
         head: [['Subject', 'Mean Score', 'Max Score', 'Grade']],
         body: analysis.subjectAnalyses.map(s => [s.name, s.mean, s.maxScore, s.grade]),
-        startY: ay, styles: { fontSize: 8 },
+        startY: ay, styles: { fontSize: 11, cellPadding: 2.5 },
         headStyles: { fillColor: [41, 128, 185] },
       });
       ay = (doc as any).lastAutoTable.finalY + 8;
