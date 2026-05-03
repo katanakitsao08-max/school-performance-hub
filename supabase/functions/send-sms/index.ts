@@ -5,19 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ✅ Format Kenyan numbers correctly
 function formatPhone(phone: string) {
-  phone = phone.trim();
-
-  if (phone.startsWith("0")) {
-    return "254" + phone.substring(1);
-  }
-
-  if (phone.startsWith("+")) {
-    return phone.replace("+", "");
-  }
-
-  return phone;
+  let p = (phone || "").toString().trim().replace(/\s+/g, "");
+  if (p.startsWith("+")) p = p.slice(1);
+  if (p.startsWith("0")) p = "254" + p.slice(1);
+  if (p.startsWith("7") || p.startsWith("1")) p = "254" + p;
+  return p;
 }
 
 serve(async (req) => {
@@ -26,71 +19,44 @@ serve(async (req) => {
   }
 
   try {
-    // ✅ OTS credentials (UPDATED)
-    const API_KEY = Deno.env.get("OTS_API_KEY");
-    const PARTNER_ID = Deno.env.get("OTS_PARTNER_ID");
-
-    if (!API_KEY || !PARTNER_ID) {
+    const API_TOKEN = Deno.env.get("OTS_API_KEY");
+    if (!API_TOKEN) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: "OTS credentials missing. Add OTS_API_KEY and OTS_PARTNER_ID as secrets.",
-        }),
+        JSON.stringify({ success: false, error: "OTS_API_KEY missing" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const { messages } = await req.json();
-
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ success: false, error: "Invalid request body" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const results = [];
-
     for (const msg of messages) {
       try {
-        // ✅ OTS payload format
         const payload = {
-          body: {
-            apikey: API_KEY,
-            mobile: formatPhone(msg.phone),
-            message: msg.message,
-            partnerID: PARTNER_ID,
-            shortcode: msg.sender_id || "PROCALL",
-          },
-          method: "POST",
-          body_type: "json",
+          recipient: formatPhone(msg.phone),
+          sender_id: msg.sender_id || "PROCALL",
+          type: "plain",
+          message: msg.message,
         };
-
         const response = await fetch("https://sms.ots.co.ke/api/v3/sms/send", {
           method: "POST",
           headers: {
+            "Authorization": `Bearer ${API_TOKEN.trim()}`,
             "Content-Type": "application/json",
+            "Accept": "application/json",
           },
           body: JSON.stringify(payload),
         });
-
-        const data = await response.json();
-
-        // ✅ Proper success check
-        const success = response.ok && data;
-
-        results.push({
-          phone: msg.phone,
-          formatted: formatPhone(msg.phone),
-          success,
-          response: data,
-        });
+        let data: any = null;
+        try { data = await response.json(); } catch { data = await response.text(); }
+        results.push({ phone: msg.phone, formatted: payload.recipient, success: response.ok, response: data });
       } catch (error) {
-        results.push({
-          phone: msg.phone,
-          success: false,
-          error: String(error),
-        });
+        results.push({ phone: msg.phone, success: false, error: String(error) });
       }
     }
 
@@ -99,8 +65,7 @@ serve(async (req) => {
     });
   } catch (error) {
     return new Response(JSON.stringify({ success: false, error: String(error) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
