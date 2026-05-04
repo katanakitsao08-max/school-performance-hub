@@ -142,33 +142,32 @@ function getSubjectCategory(subject: string): string {
   return 'default';
 }
 
-// Build EXACTLY 3 SLOs from a sub-strand's SLO list. If fewer exist, synthesise complementary ones.
+// Build EXACTLY 3 SLOs covering Knowledge, Application, Attitude (KICD/CBC format).
+// Tries to map any provided SLOs to the closest domain, otherwise synthesises.
 function buildThreeSLOs(subStrand: string, baseSlos: string[]): string[] {
-  const cleaned = baseSlos.map(s => s.replace(/^By the end.*?to:?\s*/i, '').trim()).filter(Boolean);
-  const result: string[] = [];
-  // Take up to 2 from dataset
-  for (let i = 0; i < Math.min(2, cleaned.length); i++) result.push(cleaned[i]);
-  // Synthesise the remainder
-  const fallbacks = [
-    `identify key concepts in ${subStrand}`,
-    `apply ${subStrand} in real-life situations`,
-    `appreciate the importance of ${subStrand} in daily life`,
-    `discuss the relevance of ${subStrand}`,
-    `demonstrate skills related to ${subStrand}`,
-  ];
-  let fi = 0;
-  while (result.length < 3) {
-    const candidate = fallbacks[fi++ % fallbacks.length];
-    if (!result.includes(candidate)) result.push(candidate);
-  }
-  return result.slice(0, 3);
+  const cleaned = baseSlos
+    .map(s => s.replace(/^By the end.*?to:?\s*/i, '').trim())
+    .filter(Boolean);
+
+  const ATTITUDE_HINT = /(appreciat|enjoy|value|respect|embrac|desir)/i;
+  const APPLICATION_HINT = /(apply|use|demonstrat|practis|practic|perform|carry out|draw|label|construct|create|measur|solv|investigat|conduct|role-play|model)/i;
+
+  let knowledge = cleaned.find(s => !ATTITUDE_HINT.test(s) && !APPLICATION_HINT.test(s));
+  let application = cleaned.find(s => APPLICATION_HINT.test(s) && s !== knowledge);
+  let attitude = cleaned.find(s => ATTITUDE_HINT.test(s) && s !== knowledge && s !== application);
+
+  if (!knowledge)   knowledge   = `identify and describe key concepts in ${subStrand}`;
+  if (!application) application = `apply skills learnt in ${subStrand} in real-life situations`;
+  if (!attitude)    attitude    = `appreciate the importance of ${subStrand} in daily life`;
+
+  return [knowledge, application, attitude];
 }
 
 function formatSLOBlock(threeSlos: string[]): string {
-  const letters = ['a)', 'b)', 'c)'];
+  const labels = ['a) (Knowledge)', 'b) (Application)', 'c) (Attitude)'];
   return [
-    'By the end of the lesson, the learner should be able to:',
-    ...threeSlos.map((s, i) => `${letters[i]} ${s}`),
+    'By the end of the sub strand, the learner should be able to:',
+    ...threeSlos.map((s, i) => `${labels[i]} ${s}`),
   ].join('\n');
 }
 
@@ -256,7 +255,7 @@ export function generateSchemeOfWork(
         strand: item.strand,
         subStrand: item.subStrand,
         slo: formatSLOBlock(threeSlos),
-        experiences: pickRandom(expBank, 2).map(e => fillTemplate(e, vars)).join('; '),
+        experiences: fillTemplate(pickRandom(expBank, 1)[0] || '', vars),
         inquiry: fillTemplate(pickRandom(inqBank, 1)[0] || '', vars),
         resources: pickRandom(resBank, 3).join(', '),
         assessment: pickRandom(ASSESSMENT_BANK, 2).join(', '),
