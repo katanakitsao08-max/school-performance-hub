@@ -164,10 +164,10 @@ function buildThreeSLOs(subStrand: string, baseSlos: string[]): string[] {
 }
 
 function formatSLOBlock(threeSlos: string[]): string {
-  const letters = ['a)', 'b)', 'c)'];
+  const labels = ['a) (Knowledge)', 'b) (Application)', 'c) (Attitude)'];
   return [
-    'By the end of the lesson, the learner should be able to:',
-    ...threeSlos.map((s, i) => `${letters[i]} ${s}`),
+    'By the end of the sub strand, the learner should be able to:',
+    ...threeSlos.map((s, i) => `${labels[i]} ${s}`),
   ].join('\n');
 }
 
