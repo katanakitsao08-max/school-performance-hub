@@ -1112,7 +1112,7 @@ export default function ReportsPage() {
               <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}
-                {mergedReportsOn && <SelectItem value="merged">Merged (Opener+Mid+End avg)</SelectItem>}
+                {mergedReportsOn && <SelectItem value="merged">Combined (Opener + Mid + End)</SelectItem>}
               </SelectContent>
             </Select>
           </div>
