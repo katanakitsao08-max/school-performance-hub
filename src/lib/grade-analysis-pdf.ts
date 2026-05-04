@@ -110,7 +110,7 @@ export async function generateGradeAnalysisPDF(
 
   autoTable(doc, {
     head: [headers],
-    body: body.length > 0 ? body : [['No data available', '', '', ...SUB_LEVELS.flatMap(() => ['', '']), '', '', '']],
+    body: body.length > 0 ? body : [['No data available', '', '', '', ...SUB_LEVELS.flatMap(() => ['', '']), '', '', '']],
     startY: y,
     margin: { left: margin, right: margin },
     styles: { fontSize: 7, halign: 'center', cellPadding: 1.2, lineColor: [200, 200, 200], lineWidth: 0.1 },
