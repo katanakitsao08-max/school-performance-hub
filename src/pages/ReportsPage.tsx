@@ -161,12 +161,11 @@ export default function ReportsPage() {
     enabled: !!user,
   });
 
-  const { data: allScores = [] } = useQuery({
+  const { data: scoresQueryResult = { merged: [], byAssessment: {} as Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> } } = useQuery({
     queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedAssessment, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      // Chunk learner IDs to keep .in() lists reasonable, then page each chunk past the 1000-row cap.
+      if (!ids.length) return { merged: [] as any[], byAssessment: {} as Record<string, Record<string, any>> };
       const CHUNK = 200;
       const all: any[] = [];
       for (let i = 0; i < ids.length; i += CHUNK) {
@@ -182,8 +181,19 @@ export default function ReportsPage() {
         const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      if (!isMerged) return all;
-      // Merge: average opener+mid+end per (learner, learning_area) — simple average of available
+      if (!isMerged) return { merged: all, byAssessment: {} };
+      // Build per-assessment breakdown: byAssessment[learnerId][learningAreaId] = { opener, mid_term, end_term }
+      const byAssessment: Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> = {};
+      for (const r of all) {
+        const lid = r.learner_id; const aid = r.learning_area_id;
+        if (!byAssessment[lid]) byAssessment[lid] = {};
+        if (!byAssessment[lid][aid]) byAssessment[lid][aid] = {};
+        const at = r.assessment_type as 'opener' | 'mid_term' | 'end_term';
+        if (at === 'opener' || at === 'mid_term' || at === 'end_term') {
+          byAssessment[lid][aid][at] = Number(r.score) || 0;
+        }
+      }
+      // Merge: average opener+mid+end per (learner, learning_area)
       const map = new Map<string, { sum: number; count: number; row: any }>();
       for (const r of all) {
         const k = `${r.learner_id}::${r.learning_area_id}`;
@@ -195,10 +205,12 @@ export default function ReportsPage() {
       map.forEach(({ sum, count, row }) => {
         merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
       });
-      return merged;
+      return { merged, byAssessment };
     },
     enabled: learners.length > 0 && !!user,
   });
+  const allScores = scoresQueryResult.merged;
+  const scoresByAssessment = scoresQueryResult.byAssessment;
 
   // Fetch teacher assignments for initials on reports
   const { data: teacherAssignmentsForReport = [] } = useQuery({
@@ -602,13 +614,36 @@ export default function ReportsPage() {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : gradeSubjects;
     
+    // When showing combined view, expand each subject into Opener/Mid/End/Avg sub-columns
+    const subjHeaders: string[] = [];
+    displaySubjects.forEach(s => {
+      if (isMerged) {
+        subjHeaders.push(`${s.name} Op`, `${s.name} Mid`, `${s.name} End`, `${s.name} Avg`);
+      } else {
+        subjHeaders.push(s.name);
+      }
+    });
     const headers = ['#', 'Name', ...(showGradeCol ? ['Grade'] : []),
-      ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
-    const body = reportData.map(l => [
-      l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
-      ...l.subjectData.map((s: any) => `${s.score} (${s.grade})`),
-      l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
-    ]);
+      ...subjHeaders, 'Total', 'Mean', 'Grade', 'Rank'];
+
+    const fmtN = (n?: number) => (n === undefined || n === null || isNaN(n) ? '-' : Number(n).toFixed(0));
+
+    const body = reportData.map(l => {
+      const subjCells: any[] = [];
+      l.subjectData.forEach((s: any) => {
+        if (isMerged) {
+          const br = scoresByAssessment[l.id]?.[s.id] || {};
+          subjCells.push(fmtN(br.opener), fmtN(br.mid_term), fmtN(br.end_term), `${s.score} (${s.grade})`);
+        } else {
+          subjCells.push(`${s.score} (${s.grade})`);
+        }
+      });
+      return [
+        l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
+        ...subjCells,
+        l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
+      ];
+    });
 
     // Footer row: Subject Mean per subject + class mean + class grade
     const foot: any[] = [];
@@ -621,12 +656,19 @@ export default function ReportsPage() {
       const gradeForClass = displaySubjects.length && reportData.length
         ? getGradeForLevel(classMean, avgMaxSubj, reportData[0].grade)
         : '-';
+      const meanCells: any[] = [];
+      displaySubjects.forEach(sub => {
+        const sm = subjectMeans.find(m => m.name === sub.name);
+        if (isMerged) {
+          // blank Op/Mid/End columns; show overall mean only in Avg column
+          meanCells.push('', '', '', sm ? sm.mean.toFixed(1) : '-');
+        } else {
+          meanCells.push(sm ? sm.mean.toFixed(1) : '-');
+        }
+      });
       foot.push([
         { content: 'SUBJECT MEAN', colSpan: showGradeCol ? 3 : 2, styles: { halign: 'right', fontStyle: 'bold' } },
-        ...displaySubjects.map(sub => {
-          const sm = subjectMeans.find(m => m.name === sub.name);
-          return sm ? sm.mean.toFixed(1) : '-';
-        }),
+        ...meanCells,
         reportData.length ? meanTotalRow.toFixed(1) : '-',
         classMean.toFixed(1),
         String(gradeForClass),
@@ -639,9 +681,9 @@ export default function ReportsPage() {
       body,
       foot: foot.length ? foot : undefined,
       startY: y + 4,
-      styles: { fontSize: 10, cellPadding: 2 },
-      headStyles: { fontSize: 10, fontStyle: 'bold' },
-      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: 10 },
+      styles: { fontSize: isMerged ? 7 : 10, cellPadding: isMerged ? 1.2 : 2 },
+      headStyles: { fontSize: isMerged ? 7 : 10, fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: isMerged ? 7 : 10 },
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
@@ -748,8 +790,10 @@ export default function ReportsPage() {
           ...s,
           teacherName: getTeacherName(s.id, ld.grade, ld.stream),
           strands: strandData.length > 0 ? strandData : undefined,
+          assessmentScores: isMerged ? scoresByAssessment[ld.id]?.[s.id] : undefined,
         };
       }),
+      showAssessmentBreakdown: isMerged,
       total: ld.total,
       maxTotal,
       mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
@@ -761,7 +805,7 @@ export default function ReportsPage() {
       totalPoints,
       selectedTerm,
       selectedYear,
-      assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
+      assessmentLabel: isMerged ? 'Combined (Opener + Mid-Term + End-Term)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
       classTeacherComment: comments[ld.id] || '',
       principalComment: principalComments[ld.id] || '',
       schoolSettings: schoolSettingsWithName,
@@ -806,8 +850,9 @@ export default function ReportsPage() {
             const ss = reportStrandScores.find((sc: any) => sc.strand_id === st.id && sc.learner_id === ld.id);
             return { strandName: st.name, score: ss?.score || 0, maxScore: ss?.max_score || 100, competencyLevel: ss?.competency_level || '-', teacherComment: ss?.teacher_comment || '' };
           }).filter(st => st.score > 0);
-          return { ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream), strands: strandData.length > 0 ? strandData : undefined };
+          return { ...s, teacherName: getTeacherName(s.id, ld.grade, ld.stream), strands: strandData.length > 0 ? strandData : undefined, assessmentScores: isMerged ? scoresByAssessment[ld.id]?.[s.id] : undefined };
         }),
+        showAssessmentBreakdown: isMerged,
         total: ld.total, maxTotal,
         mean: maxTotal > 0 ? (ld.total / maxTotal) * 100 : 0,
         overallGrade: ld.overallGrade,
@@ -816,7 +861,7 @@ export default function ReportsPage() {
         totalInClass: reportData.length,
         totalInStream: streamCounts[streamKey] || reportData.length,
         totalPoints, selectedTerm, selectedYear,
-        assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        assessmentLabel: isMerged ? 'Combined (Opener + Mid-Term + End-Term)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
         classTeacherComment: comments[ld.id] || '',
         principalComment: principalComments[ld.id] || '',
         schoolSettings: schoolSettingsWithName,
@@ -1067,7 +1112,7 @@ export default function ReportsPage() {
               <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}
-                {mergedReportsOn && <SelectItem value="merged">Merged (Opener+Mid+End avg)</SelectItem>}
+                {mergedReportsOn && <SelectItem value="merged">Combined (Opener + Mid + End)</SelectItem>}
               </SelectContent>
             </Select>
           </div>

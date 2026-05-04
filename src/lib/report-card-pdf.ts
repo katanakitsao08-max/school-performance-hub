@@ -30,7 +30,11 @@ export interface ReportCardData {
     teacherName: string;
     comment: string;
     strands?: StrandReportData[];
+    /** Optional per-assessment breakdown — when present, the report shows Opener / Mid / End as separate columns. */
+    assessmentScores?: { opener?: number; mid_term?: number; end_term?: number };
   }[];
+  /** When true, render Opener/Mid/End as separate columns (uses assessmentScores per subject). */
+  showAssessmentBreakdown?: boolean;
   total: number;
   maxTotal: number;
   mean: number;
@@ -227,19 +231,25 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
   y += isKJSEAOnePage ? 3.5 : 5;
 
   // Use compact short headers in one-page mode
+  const showBreakdown = !!data.showAssessmentBreakdown;
+  const breakdownHeaders = showBreakdown ? (isKJSEAOnePage ? ['Op', 'Mid', 'End'] : ['Opener', 'Mid-Term', 'End-Term']) : [];
   const subjectHeaders = isKJSEAOnePage
-    ? ['#', 'Subject', 'Mk', 'Out', '%', 'Gr', 'Pts', 'Avg', 'Tch']
-    : ['#', 'Learning Area', 'Score', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
+    ? ['#', 'Subject', ...breakdownHeaders, 'Avg', 'Out', '%', 'Gr', 'Pts', 'CAvg', 'Tch']
+    : ['#', 'Learning Area', ...breakdownHeaders, 'Avg', 'Out Of', '%', 'Grade', 'Points', 'Class Avg', 'Teacher', 'Remark'];
+  const fmt = (n?: number) => (n === undefined || n === null || isNaN(n) ? '-' : Number(n).toFixed(0));
   const subjectBody = data.subjectData.map((s, i) => {
     const pct = s.maxScore > 0 ? ((s.score / s.maxScore) * 100).toFixed(0) : '0';
     const classAvg = data.classAvgPerSubject[s.name] !== undefined ? data.classAvgPerSubject[s.name].toFixed(0) : '-';
     const points = s.grade !== '-' ? String(gradePoints(s.grade as AnyGrade, isKJSEA)) : '-';
     const teacherInit = s.teacherName ? s.teacherName.split(' ').map(n => n[0]).join('').toUpperCase() : (s.teacherInitials || '-');
+    const breakdownCols = showBreakdown
+      ? [fmt(s.assessmentScores?.opener), fmt(s.assessmentScores?.mid_term), fmt(s.assessmentScores?.end_term)]
+      : [];
     if (isKJSEAOnePage) {
-      return [`${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`, s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit];
+      return [`${i + 1}`, s.name, ...breakdownCols, `${s.score}`, `${s.maxScore}`, `${pct}%`, s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit];
     }
     return [
-      `${i + 1}`, s.name, `${s.score}`, `${s.maxScore}`, `${pct}%`,
+      `${i + 1}`, s.name, ...breakdownCols, `${s.score}`, `${s.maxScore}`, `${pct}%`,
       s.grade !== '-' ? s.grade : '-', points, classAvg, teacherInit,
       s.grade !== '-' ? getGradeLabel(s.grade as AnyGrade).split(' ')[0] : '-',
     ];
@@ -267,36 +277,17 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       cellPadding: tblPad + 0.3,
     },
     alternateRowStyles: { fillColor: [250, 252, 254] },
-    columnStyles: isKJSEAOnePage ? {
-      0: { cellWidth: 6, halign: 'center' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 11, halign: 'center' },
-      3: { cellWidth: 11, halign: 'center' },
-      4: { cellWidth: 11, halign: 'center' },
-      5: { cellWidth: 11, halign: 'center' },
-      6: { cellWidth: 11, halign: 'center' },
-      7: { cellWidth: 12, halign: 'center' },
-      8: { cellWidth: 12, halign: 'center' },
-    } : {
-      0: { cellWidth: 8, halign: 'center' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 14, halign: 'center' },
-      3: { cellWidth: 14, halign: 'center' },
-      4: { cellWidth: 13, halign: 'center' },
-      5: { cellWidth: 14, halign: 'center' },
-      6: { cellWidth: 14, halign: 'center' },
-      7: { cellWidth: 18, halign: 'center' },
-      8: { cellWidth: 16, halign: 'center' },
-    },
     margin: { left: mx, right: mx },
     tableWidth: cw,
     didParseCell: (hookData) => {
-      if (hookData.section === 'body' && hookData.column.index === 5) {
+      // Grade column index shifts when breakdown columns are present
+      const gradeColIdx = isKJSEAOnePage ? (showBreakdown ? 8 : 5) : (showBreakdown ? 8 : 5);
+      if (hookData.section === 'body' && hookData.column.index === gradeColIdx) {
         const g = hookData.cell.raw as string;
-        if (g.startsWith('EE')) hookData.cell.styles.textColor = [39, 174, 96];
-        else if (g.startsWith('ME')) hookData.cell.styles.textColor = [41, 128, 185];
-        else if (g.startsWith('AE')) hookData.cell.styles.textColor = [243, 156, 18];
-        else if (g.startsWith('BE')) hookData.cell.styles.textColor = [231, 76, 60];
+        if (g?.startsWith('EE')) hookData.cell.styles.textColor = [39, 174, 96];
+        else if (g?.startsWith('ME')) hookData.cell.styles.textColor = [41, 128, 185];
+        else if (g?.startsWith('AE')) hookData.cell.styles.textColor = [243, 156, 18];
+        else if (g?.startsWith('BE')) hookData.cell.styles.textColor = [231, 76, 60];
       }
     },
   });
