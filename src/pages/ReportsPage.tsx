@@ -161,12 +161,11 @@ export default function ReportsPage() {
     enabled: !!user,
   });
 
-  const { data: allScores = [] } = useQuery({
+  const { data: scoresQueryResult = { merged: [], byAssessment: {} as Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> } } = useQuery({
     queryKey: ['scores-report', selectedGrades, selectedStreams, selectedTerm, selectedAssessment, selectedYear, isSchoolWide],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
-      if (!ids.length) return [];
-      // Chunk learner IDs to keep .in() lists reasonable, then page each chunk past the 1000-row cap.
+      if (!ids.length) return { merged: [] as any[], byAssessment: {} as Record<string, Record<string, any>> };
       const CHUNK = 200;
       const all: any[] = [];
       for (let i = 0; i < ids.length; i += CHUNK) {
@@ -182,8 +181,19 @@ export default function ReportsPage() {
         const rows = await fetchAllPaged(() => q);
         all.push(...rows);
       }
-      if (!isMerged) return all;
-      // Merge: average opener+mid+end per (learner, learning_area) — simple average of available
+      if (!isMerged) return { merged: all, byAssessment: {} };
+      // Build per-assessment breakdown: byAssessment[learnerId][learningAreaId] = { opener, mid_term, end_term }
+      const byAssessment: Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> = {};
+      for (const r of all) {
+        const lid = r.learner_id; const aid = r.learning_area_id;
+        if (!byAssessment[lid]) byAssessment[lid] = {};
+        if (!byAssessment[lid][aid]) byAssessment[lid][aid] = {};
+        const at = r.assessment_type as 'opener' | 'mid_term' | 'end_term';
+        if (at === 'opener' || at === 'mid_term' || at === 'end_term') {
+          byAssessment[lid][aid][at] = Number(r.score) || 0;
+        }
+      }
+      // Merge: average opener+mid+end per (learner, learning_area)
       const map = new Map<string, { sum: number; count: number; row: any }>();
       for (const r of all) {
         const k = `${r.learner_id}::${r.learning_area_id}`;
@@ -195,10 +205,12 @@ export default function ReportsPage() {
       map.forEach(({ sum, count, row }) => {
         merged.push({ ...row, score: count ? sum / count : 0, assessment_type: 'end_term' });
       });
-      return merged;
+      return { merged, byAssessment };
     },
     enabled: learners.length > 0 && !!user,
   });
+  const allScores = scoresQueryResult.merged;
+  const scoresByAssessment = scoresQueryResult.byAssessment;
 
   // Fetch teacher assignments for initials on reports
   const { data: teacherAssignmentsForReport = [] } = useQuery({
