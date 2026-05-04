@@ -831,7 +831,7 @@ export default function ReportsPage() {
         totalInClass: reportData.length,
         totalInStream: streamCounts[streamKey] || reportData.length,
         totalPoints, selectedTerm, selectedYear,
-        assessmentLabel: isMerged ? 'Merged (Opener+Mid+End avg)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
+        assessmentLabel: isMerged ? 'Combined (Opener + Mid-Term + End-Term)' : ASSESSMENT_TYPE_LABELS[selectedAssessment],
         classTeacherComment: comments[ld.id] || '',
         principalComment: principalComments[ld.id] || '',
         schoolSettings: schoolSettingsWithName,
