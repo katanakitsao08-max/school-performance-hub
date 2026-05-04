@@ -255,7 +255,7 @@ export function generateSchemeOfWork(
         strand: item.strand,
         subStrand: item.subStrand,
         slo: formatSLOBlock(threeSlos),
-        experiences: pickRandom(expBank, 2).map(e => fillTemplate(e, vars)).join('; '),
+        experiences: fillTemplate(pickRandom(expBank, 1)[0] || '', vars),
         inquiry: fillTemplate(pickRandom(inqBank, 1)[0] || '', vars),
         resources: pickRandom(resBank, 3).join(', '),
         assessment: pickRandom(ASSESSMENT_BANK, 2).join(', '),
