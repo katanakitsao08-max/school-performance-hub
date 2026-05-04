@@ -614,13 +614,36 @@ export default function ReportsPage() {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : gradeSubjects;
     
+    // When showing combined view, expand each subject into Opener/Mid/End/Avg sub-columns
+    const subjHeaders: string[] = [];
+    displaySubjects.forEach(s => {
+      if (isMerged) {
+        subjHeaders.push(`${s.name} Op`, `${s.name} Mid`, `${s.name} End`, `${s.name} Avg`);
+      } else {
+        subjHeaders.push(s.name);
+      }
+    });
     const headers = ['#', 'Name', ...(showGradeCol ? ['Grade'] : []),
-      ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade', 'Rank'];
-    const body = reportData.map(l => [
-      l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
-      ...l.subjectData.map((s: any) => `${s.score} (${s.grade})`),
-      l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
-    ]);
+      ...subjHeaders, 'Total', 'Mean', 'Grade', 'Rank'];
+
+    const fmtN = (n?: number) => (n === undefined || n === null || isNaN(n) ? '-' : Number(n).toFixed(0));
+
+    const body = reportData.map(l => {
+      const subjCells: any[] = [];
+      l.subjectData.forEach((s: any) => {
+        if (isMerged) {
+          const br = scoresByAssessment[l.id]?.[s.id] || {};
+          subjCells.push(fmtN(br.opener), fmtN(br.mid_term), fmtN(br.end_term), `${s.score} (${s.grade})`);
+        } else {
+          subjCells.push(`${s.score} (${s.grade})`);
+        }
+      });
+      return [
+        l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
+        ...subjCells,
+        l.total, l.mean.toFixed(1), l.overallGrade, l.rank,
+      ];
+    });
 
     // Footer row: Subject Mean per subject + class mean + class grade
     const foot: any[] = [];
@@ -633,12 +656,19 @@ export default function ReportsPage() {
       const gradeForClass = displaySubjects.length && reportData.length
         ? getGradeForLevel(classMean, avgMaxSubj, reportData[0].grade)
         : '-';
+      const meanCells: any[] = [];
+      displaySubjects.forEach(sub => {
+        const sm = subjectMeans.find(m => m.name === sub.name);
+        if (isMerged) {
+          // blank Op/Mid/End columns; show overall mean only in Avg column
+          meanCells.push('', '', '', sm ? sm.mean.toFixed(1) : '-');
+        } else {
+          meanCells.push(sm ? sm.mean.toFixed(1) : '-');
+        }
+      });
       foot.push([
         { content: 'SUBJECT MEAN', colSpan: showGradeCol ? 3 : 2, styles: { halign: 'right', fontStyle: 'bold' } },
-        ...displaySubjects.map(sub => {
-          const sm = subjectMeans.find(m => m.name === sub.name);
-          return sm ? sm.mean.toFixed(1) : '-';
-        }),
+        ...meanCells,
         reportData.length ? meanTotalRow.toFixed(1) : '-',
         classMean.toFixed(1),
         String(gradeForClass),
@@ -651,9 +681,9 @@ export default function ReportsPage() {
       body,
       foot: foot.length ? foot : undefined,
       startY: y + 4,
-      styles: { fontSize: 10, cellPadding: 2 },
-      headStyles: { fontSize: 10, fontStyle: 'bold' },
-      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: 10 },
+      styles: { fontSize: isMerged ? 7 : 10, cellPadding: isMerged ? 1.2 : 2 },
+      headStyles: { fontSize: isMerged ? 7 : 10, fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: 'bold', fontSize: isMerged ? 7 : 10 },
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
