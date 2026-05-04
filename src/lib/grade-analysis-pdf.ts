@@ -86,11 +86,11 @@ export async function generateGradeAnalysisPDF(
 
   // ============= SUBJECT TABLE =============
   const subHeaders = SUB_LEVELS.flatMap(lv => [`${lv} M`, `${lv} F`]);
-  const headers = ['SUBJECT', 'M', 'F', ...subHeaders, 'T.PT', 'AV.PT', 'MEAN'];
+  const headers = ['SUBJECT', 'M', 'F', 'T', ...subHeaders, 'T.PT', 'AV.PT', 'MEAN'];
 
   const body = analysis.subjects.map(sa => [
     sa.subjectName,
-    sa.entryM, sa.entryF,
+    sa.entryM, sa.entryF, sa.entryM + sa.entryF,
     ...SUB_LEVELS.flatMap(lv => [sa.genderDistribution[lv].M, sa.genderDistribution[lv].F]),
     sa.totalPoints,
     sa.meanGradePoint,
@@ -100,7 +100,7 @@ export async function generateGradeAnalysisPDF(
   if (analysis.subjects.length > 0) {
     body.push([
       'OVERALL',
-      analysis.totalM, analysis.totalF,
+      analysis.totalM, analysis.totalF, analysis.totalM + analysis.totalF,
       ...SUB_LEVELS.flatMap(lv => [analysis.overallGenderDistribution[lv].M, analysis.overallGenderDistribution[lv].F]),
       analysis.overallTotalPoints,
       analysis.overallMean,
