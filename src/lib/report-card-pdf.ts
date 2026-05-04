@@ -30,7 +30,11 @@ export interface ReportCardData {
     teacherName: string;
     comment: string;
     strands?: StrandReportData[];
+    /** Optional per-assessment breakdown — when present, the report shows Opener / Mid / End as separate columns. */
+    assessmentScores?: { opener?: number; mid_term?: number; end_term?: number };
   }[];
+  /** When true, render Opener/Mid/End as separate columns (uses assessmentScores per subject). */
+  showAssessmentBreakdown?: boolean;
   total: number;
   maxTotal: number;
   mean: number;
