@@ -27,15 +27,29 @@ interface Msg { phone: string; message: string; learner_id?: string | null; }
 
 function providerAccepted(response: Response, data: any): boolean {
   if (!response.ok) return false;
+  if (typeof data === 'string') {
+    const t = data.toLowerCase();
+    if (t.includes('unauthenticated') || t.includes('unauthorized') || t.includes('invalid') || t.includes('error') || t.includes('fail')) return false;
+    return true;
+  }
   const item = data?.data ?? data?.responses?.[0] ?? data?.response?.[0] ?? data;
   const status = String(item?.status ?? data?.status ?? '').toLowerCase();
-  const description = String(item?.message ?? data?.message ?? '').toLowerCase();
+  const description = String(item?.message ?? data?.message ?? item?.description ?? '').toLowerCase();
   const messageId = item?.messageid ?? item?.message_id ?? item?.id ?? data?.messageid ?? data?.message_id;
-  if (description.includes('invalid') || description.includes('fail') || description.includes('error') || description.includes('unauthorized')) return false;
-  if (status && (status === 'success' || status === 'ok' || status === 'sent' || status === 'queued')) return true;
+
+  // Hard-fail on any explicit error indicators (status field OR message text)
+  if (status === 'error' || status === 'failed' || status === 'rejected') return false;
+  if (description.includes('unauthenticated') || description.includes('unauthorized') ||
+      description.includes('invalid') || description.includes('fail') ||
+      description.includes('error') || description.includes('insufficient') ||
+      description.includes('rejected') || description.includes('blocked')) return false;
+
+  // Explicit success
+  if (status === 'success' || status === 'ok' || status === 'sent' || status === 'queued' || status === 'submitted') return true;
   if (messageId) return true;
-  // Default: HTTP 2xx with no error indicator
-  return true;
+
+  // Ambiguous 2xx with no clear signal → treat as failure (safer)
+  return false;
 }
 
 Deno.serve(async (req) => {
@@ -151,6 +165,18 @@ Deno.serve(async (req) => {
         }
       }));
       for (const r of settled) { r.ok ? sent++ : failed++; results.push(r); }
+    }
+
+    // Refund credits for failed segments (provider didn't accept) so school isn't billed
+    const failedSegments = results.reduce((s: number, r: any, i: number) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
+    if (failedSegments > 0) {
+      const { data: cur } = await supabase.from('school_sms_credits')
+        .select('balance, used').eq('school_id', school_id).maybeSingle();
+      if (cur) {
+        await supabase.from('school_sms_credits')
+          .update({ balance: (cur.balance || 0) + failedSegments, used: Math.max(0, (cur.used || 0) - failedSegments) })
+          .eq('school_id', school_id);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, sent, failed, segments: totalSegments, results }), {
