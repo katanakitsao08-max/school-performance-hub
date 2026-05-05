@@ -10,22 +10,28 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const adminMenuSections = [
   {
-    title: "School Management",
+    title: "Academics",
     items: [
-      { title: "Users", icon: Users, to: "/users" },
       { title: "Learning Areas", icon: BookOpen, to: "/learning-areas" },
       { title: "Grades", icon: GraduationCap, to: "/grades" },
       { title: "Streams", icon: Columns, to: "/streams" },
       { title: "Teacher Assignments", icon: UserCog, to: "/teacher-assignments" },
+      { title: "Attendance", icon: CalendarCheck, to: "/attendance" },
     ],
   },
   {
-    title: "Analysis & Tracking",
+    title: "Insights",
     items: [
       { title: "Grade Analysis", icon: PieChart, to: "/grade-analysis" },
       { title: "Performance Tracking", icon: Activity, to: "/performance-tracking" },
       { title: "Analytics", icon: BarChart3, to: "/analytics" },
-      { title: "Attendance", icon: CalendarCheck, to: "/attendance" },
+    ],
+  },
+  {
+    title: "Communication",
+    items: [
+      { title: "SMS", icon: MessageSquare, to: "/sms" },
+      { title: "Parent Communication", icon: MessageSquare, to: "/parent-communication" },
     ],
   },
   {
@@ -43,9 +49,9 @@ const adminMenuSections = [
     ],
   },
   {
-    title: "Other",
+    title: "Administration",
     items: [
-      { title: "SMS", icon: MessageSquare, to: "/sms" },
+      { title: "Users", icon: Users, to: "/users" },
       { title: "Promotion", icon: ArrowUpCircle, to: "/promotion" },
       { title: "Settings", icon: Settings, to: "/settings" },
     ],
