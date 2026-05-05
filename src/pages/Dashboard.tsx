@@ -88,26 +88,31 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-5 animate-fade-in">
-        {/* Welcome */}
-        <div>
-          <h1 className="text-xl md:text-2xl font-display font-bold text-foreground">
-            Hi, {profile?.full_name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{currentDate} · Here's your overview</p>
+        {/* Welcome — modernized hero */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-[hsl(var(--primary-glow))] p-5 text-primary-foreground shadow-card">
+          <div className="absolute -top-8 -right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+          <div className="absolute -bottom-12 -left-6 h-32 w-32 rounded-full bg-accent/20 blur-2xl" />
+          <div className="relative">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/70">{currentDate}</p>
+            <h1 className="mt-1 text-xl md:text-2xl font-display font-bold tracking-tight">
+              Hi, {profile?.full_name?.split(' ')[0]} 👋
+            </h1>
+            <p className="text-xs md:text-sm text-primary-foreground/80 mt-1">Here's how your school is performing today</p>
+          </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           {stats.map((stat) => (
-            <Card key={stat.title} className="shadow-card border-border/50">
+            <Card key={stat.title} className="shadow-card border-border/50 hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
               <CardContent className="p-4">
-                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-2", stat.bg)}>
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3 ring-1 ring-inset ring-border/30", stat.bg)}>
                   <stat.icon className={cn("h-[18px] w-[18px]", stat.color)} />
                 </div>
-                <p className="text-2xl font-display font-bold text-foreground">
+                <p className="text-2xl font-display font-bold text-foreground tracking-tight">
                   {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{stat.title}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 uppercase tracking-wider font-medium">{stat.title}</p>
               </CardContent>
             </Card>
           ))}
