@@ -27,15 +27,29 @@ interface Msg { phone: string; message: string; learner_id?: string | null; }
 
 function providerAccepted(response: Response, data: any): boolean {
   if (!response.ok) return false;
+  if (typeof data === 'string') {
+    const t = data.toLowerCase();
+    if (t.includes('unauthenticated') || t.includes('unauthorized') || t.includes('invalid') || t.includes('error') || t.includes('fail')) return false;
+    return true;
+  }
   const item = data?.data ?? data?.responses?.[0] ?? data?.response?.[0] ?? data;
   const status = String(item?.status ?? data?.status ?? '').toLowerCase();
-  const description = String(item?.message ?? data?.message ?? '').toLowerCase();
+  const description = String(item?.message ?? data?.message ?? item?.description ?? '').toLowerCase();
   const messageId = item?.messageid ?? item?.message_id ?? item?.id ?? data?.messageid ?? data?.message_id;
-  if (description.includes('invalid') || description.includes('fail') || description.includes('error') || description.includes('unauthorized')) return false;
-  if (status && (status === 'success' || status === 'ok' || status === 'sent' || status === 'queued')) return true;
+
+  // Hard-fail on any explicit error indicators (status field OR message text)
+  if (status === 'error' || status === 'failed' || status === 'rejected') return false;
+  if (description.includes('unauthenticated') || description.includes('unauthorized') ||
+      description.includes('invalid') || description.includes('fail') ||
+      description.includes('error') || description.includes('insufficient') ||
+      description.includes('rejected') || description.includes('blocked')) return false;
+
+  // Explicit success
+  if (status === 'success' || status === 'ok' || status === 'sent' || status === 'queued' || status === 'submitted') return true;
   if (messageId) return true;
-  // Default: HTTP 2xx with no error indicator
-  return true;
+
+  // Ambiguous 2xx with no clear signal → treat as failure (safer)
+  return false;
 }
 
 Deno.serve(async (req) => {
