@@ -44,19 +44,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full bg-background">
         {!isMobile && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center justify-between border-b bg-card/80 backdrop-blur-sm px-4 no-print sticky top-0 z-30">
-            <div className="flex items-center gap-3">
-              {!isMobile && <SidebarTrigger className="mr-1" />}
-              <div>
-                <h2 className="text-sm font-display font-bold text-foreground">
-                  {isMobile ? 'CBC Smart School' : (profile?.full_name || 'Dashboard')}
+          <header className="h-14 flex items-center justify-between border-b border-border/60 bg-card/70 backdrop-blur-xl px-4 no-print sticky top-0 z-30 supports-[backdrop-filter]:bg-card/60">
+            <div className="flex items-center gap-3 min-w-0">
+              {!isMobile && <SidebarTrigger className="mr-1 hover:bg-accent/50 rounded-lg" />}
+              <div className="min-w-0">
+                <h2 className="text-sm font-display font-bold text-foreground truncate tracking-tight">
+                  {isMobile ? 'PerformTrack' : (profile?.full_name || 'Dashboard')}
                 </h2>
+                {!isMobile && (
+                  <p className="text-[10px] text-muted-foreground/70 uppercase tracking-[0.14em] leading-tight">
+                    Performance OS
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isMobile && (
-                <Badge variant="outline" className="capitalize text-xs font-medium">
-                  {role}
+              {!isMobile && role && (
+                <Badge variant="outline" className="capitalize text-[10px] font-semibold border-primary/20 bg-primary/5 text-primary tracking-wide">
+                  {role.replace('_', ' ')}
                 </Badge>
               )}
               <NotificationBell />
