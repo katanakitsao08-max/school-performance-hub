@@ -167,6 +167,16 @@ Deno.serve(async (req) => {
       for (const r of settled) { r.ok ? sent++ : failed++; results.push(r); }
     }
 
+    // Refund credits for failed segments so users aren't billed for undelivered SMS
+    const failedSegments = results.reduce((s: number, r: any, i: number) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
+    if (failedSegments > 0) {
+      await supabase.from('school_sms_credits')
+        .update({ balance: undefined })
+        .eq('school_id', school_id);
+      // Use raw RPC-style increment via update
+      await supabase.rpc('deduct_sms_credits', { _school_id: school_id, _amount: -failedSegments }).catch(() => {});
+    }
+
     return new Response(JSON.stringify({ success: true, sent, failed, segments: totalSegments, results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
