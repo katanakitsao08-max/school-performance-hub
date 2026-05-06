@@ -121,6 +121,7 @@ export default function LearnersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learners'] });
       queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
       toast({ title: editing ? 'Updated' : 'Created' });
       setOpen(false);
       setEditing(null);
