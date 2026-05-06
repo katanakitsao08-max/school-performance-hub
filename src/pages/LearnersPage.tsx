@@ -136,6 +136,8 @@ export default function LearnersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
       toast({ title: 'Deleted' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
