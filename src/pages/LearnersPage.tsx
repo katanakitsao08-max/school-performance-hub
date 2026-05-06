@@ -258,11 +258,11 @@ export default function LearnersPage() {
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Learner</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); if (!editing && !form.admission_number) { setForm(f => ({ ...f, admission_number: generateAdmNumber() })); } saveMutation.mutate(); }} className="space-y-4">
+                <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Admission No. <span className="text-xs text-muted-foreground">(auto-generated if empty)</span></Label>
-                      <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder={generateAdmNumber() || 'Auto-generated'} />
+                      <Label>Admission No. <span className="text-xs text-muted-foreground">(leave empty for auto)</span></Label>
+                      <Input value={form.admission_number} onChange={e => setForm(f => ({ ...f, admission_number: e.target.value }))} placeholder="Auto-generated on save" />
                   </div>
                   {showAssessment && (
                     <div className="space-y-2">
