@@ -166,6 +166,6 @@ export function useSmartDashboard() {
       };
     },
     enabled: !!user,
-    staleTime: 60000,
+    staleTime: 0,
   });
 }
