@@ -171,9 +171,42 @@ export default function BulkUploadDialog({
     setUploading(true);
 
     try {
-      // 1. Insert learners
-      const learnersToInsert = rows.map((r, i) => ({
-        admission_number: getNextAdmNumber(i),
+      // 1. Refetch ALL existing admission numbers fresh (avoid stale cache / cross-prefix collisions)
+      const prefix = generateAdmissionPrefix();
+      const { data: freshLearners, error: fetchErr } = await supabase
+        .from('learners')
+        .select('admission_number')
+        .eq('school_id', schoolId);
+      if (fetchErr) throw fetchErr;
+
+      // Track ALL admission numbers (any prefix) to avoid global unique-key collisions
+      const usedAll = new Set<string>((freshLearners || []).map(l => l.admission_number));
+      const usedNums = new Set<number>(
+        (freshLearners || [])
+          .map(l => {
+            const m = l.admission_number?.match(new RegExp(`^${prefix}-(\\d+)$`));
+            return m ? parseInt(m[1]) : 0;
+          })
+          .filter(n => n > 0)
+      );
+
+      const allocate = (): string => {
+        let n = 1;
+        while (true) {
+          if (!usedNums.has(n)) {
+            const candidate = `${prefix}-${String(n).padStart(4, '0')}`;
+            if (!usedAll.has(candidate)) {
+              usedNums.add(n);
+              usedAll.add(candidate);
+              return candidate;
+            }
+          }
+          n++;
+        }
+      };
+
+      const learnersToInsert = rows.map((r) => ({
+        admission_number: allocate(),
         full_name: r.full_name,
         grade,
         stream,
