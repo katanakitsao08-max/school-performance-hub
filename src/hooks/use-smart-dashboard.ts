@@ -34,28 +34,39 @@ export function useSmartDashboard() {
   return useQuery<SmartInsight>({
     queryKey: ['smart-dashboard', user?.id, schoolId],
     queryFn: async () => {
-      // Fetch all active learners
-      let lq = supabase.from('learners').select('id, full_name, grade, stream').eq('is_active', true);
-      if (schoolId) lq = lq.eq('school_id', schoolId);
-      const { data: learners = [] } = await lq;
+      // Exact learner count (not capped at 1000)
+      let countQ = supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      if (schoolId) countQ = countQ.eq('school_id', schoolId);
+      const { count: learnerCount } = await countQ;
 
-      // Fetch all scores
-      let sq = supabase.from('scores').select('learner_id, learning_area_id, score, term, year, assessment_type');
-      if (schoolId) sq = sq.eq('school_id', schoolId);
-      const { data: scores = [] } = await sq;
+      // Fetch all active learners (paged to bypass the 1000-row cap)
+      const learners = await fetchAllPaged<{ id: string; full_name: string; grade: string; stream: string }>(() => {
+        let lq = supabase.from('learners').select('id, full_name, grade, stream').eq('is_active', true);
+        if (schoolId) lq = lq.eq('school_id', schoolId);
+        return lq;
+      });
+
+      // Fetch all scores (paged)
+      const scores = await fetchAllPaged<any>(() => {
+        let sq = supabase.from('scores').select('learner_id, learning_area_id, score, term, year, assessment_type');
+        if (schoolId) sq = sq.eq('school_id', schoolId);
+        return sq;
+      });
 
       // Fetch learning areas
       let laq = supabase.from('learning_areas').select('id, name, grade');
       if (schoolId) laq = laq.eq('school_id', schoolId);
       const { data: learningAreas = [] } = await laq;
 
-      // Fetch today's attendance
+      // Fetch today's attendance (paged)
       const today = new Date().toISOString().split('T')[0];
-      let aq = supabase.from('attendance').select('status').eq('date', today);
-      if (schoolId) aq = aq.eq('school_id', schoolId);
-      const { data: attendance = [] } = await aq;
+      const attendance = await fetchAllPaged<{ status: string }>(() => {
+        let aq = supabase.from('attendance').select('status').eq('date', today);
+        if (schoolId) aq = aq.eq('school_id', schoolId);
+        return aq;
+      });
 
-      const totalStudents = learners.length;
+      const totalStudents = learnerCount ?? learners.length;
       const totalScores = scores.length;
       const totalSubjects = learningAreas.length;
 
