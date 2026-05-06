@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { fetchAllPaged } from '@/lib/fetch-all';
 
 export interface SmartInsight {
   mostImproved: { name: string; grade: string; delta: number }[];
