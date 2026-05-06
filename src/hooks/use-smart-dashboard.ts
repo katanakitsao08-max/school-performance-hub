@@ -16,6 +16,20 @@ export interface SmartInsight {
 
 export function useSmartDashboard() {
   const { user, role, schoolId } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Real-time refresh on learners changes for this school
+  useEffect(() => {
+    if (!schoolId) return;
+    const channel = supabase
+      .channel(`learners-dashboard-${schoolId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners', filter: `school_id=eq.${schoolId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [schoolId, queryClient]);
 
   return useQuery<SmartInsight>({
     queryKey: ['smart-dashboard', user?.id, schoolId],
