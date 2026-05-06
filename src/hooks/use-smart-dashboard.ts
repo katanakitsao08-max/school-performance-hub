@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 export interface SmartInsight {
   mostImproved: { name: string; grade: string; delta: number }[];
@@ -15,6 +16,20 @@ export interface SmartInsight {
 
 export function useSmartDashboard() {
   const { user, role, schoolId } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Real-time refresh on learners changes for this school
+  useEffect(() => {
+    if (!schoolId) return;
+    const channel = supabase
+      .channel(`learners-dashboard-${schoolId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners', filter: `school_id=eq.${schoolId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [schoolId, queryClient]);
 
   return useQuery<SmartInsight>({
     queryKey: ['smart-dashboard', user?.id, schoolId],
@@ -151,6 +166,6 @@ export function useSmartDashboard() {
       };
     },
     enabled: !!user,
-    staleTime: 60000,
+    staleTime: 0,
   });
 }

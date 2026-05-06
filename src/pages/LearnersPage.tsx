@@ -66,10 +66,14 @@ export default function LearnersPage() {
     if (!school?.school_name) return '';
     const words = school.school_name.trim().split(/\s+/);
     const prefix = words.length === 1 ? words[0].substring(0, 3).toUpperCase() : words.map(w => w[0]).join('').toUpperCase().substring(0, 4);
-    const existingNums = allLearnerAdms
-      .map(l => { const m = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
-      .filter(n => n > 0);
-    const next = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+    const used = new Set(
+      allLearnerAdms
+        .map(l => { const m = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+        .filter(n => n > 0)
+    );
+    // Find smallest missing positive integer (gap-fill); else max+1
+    let next = 1;
+    while (used.has(next)) next++;
     return `${prefix}-${String(next).padStart(4, '0')}`;
   };
 
@@ -117,6 +121,7 @@ export default function LearnersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learners'] });
       queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
       toast({ title: editing ? 'Updated' : 'Created' });
       setOpen(false);
       setEditing(null);
@@ -132,6 +137,8 @@ export default function LearnersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learners'] });
+      queryClient.invalidateQueries({ queryKey: ['learners-adm-count'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-dashboard'] });
       toast({ title: 'Deleted' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

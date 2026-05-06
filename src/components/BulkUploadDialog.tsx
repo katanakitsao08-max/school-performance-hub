@@ -70,15 +70,23 @@ export default function BulkUploadDialog({
 
   const getNextAdmNumber = (index: number) => {
     const prefix = generateAdmissionPrefix();
-    const existingNums = existingLearners
-      .map(l => {
-        const match = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`));
-        return match ? parseInt(match[1]) : 0;
-      })
-      .filter(n => n > 0);
-    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
-    const nextNum = maxNum + 1 + index;
-    return `${prefix}-${String(nextNum).padStart(4, '0')}`;
+    const used = new Set(
+      existingLearners
+        .map(l => {
+          const match = l.admission_number.match(new RegExp(`^${prefix}-(\\d+)$`));
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter(n => n > 0)
+    );
+    // Walk from 1 upwards, picking the (index+1)-th available slot (gap-fill)
+    let found = 0;
+    let n = 0;
+    let candidate = 0;
+    while (found <= index) {
+      candidate++;
+      if (!used.has(candidate)) found++;
+    }
+    return `${prefix}-${String(candidate).padStart(4, '0')}`;
   };
 
   const knownNonSubjectCols = new Set([
