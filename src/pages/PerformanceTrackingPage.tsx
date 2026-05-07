@@ -116,12 +116,16 @@ export default function PerformanceTrackingPage() {
 
   // Fetch ALL scores for the year (all terms, all assessment types)
   const { data: allScores = [] } = useQuery({
-    queryKey: ['tracking-scores', selectedGrade, selectedStream, selectedYear],
+    queryKey: ['tracking-scores', selectedGrade, selectedStream, selectedYear, isTeacher, Array.from(allowedSubjectIds || [])],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
-      const { data } = await supabase.from('scores').select('*')
+      let q = supabase.from('scores').select('*')
         .in('learner_id', ids).eq('year', selectedYear);
+      if (isTeacher && allowedSubjectIds && allowedSubjectIds.size > 0) {
+        q = q.in('learning_area_id', Array.from(allowedSubjectIds));
+      }
+      const { data } = await q;
       return data || [];
     },
     enabled: learners.length > 0,
