@@ -85,7 +85,11 @@ export default function PerformanceTrackingPage() {
   }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
 
   const [selectedStream, setSelectedStream] = useState('');
-  useMemo(() => { if (dbStreams.length > 0 && !selectedStream) setSelectedStream(dbStreams[0]); }, [dbStreams]);
+  useEffect(() => {
+    if (dbStreams.length > 0 && !dbStreams.includes(selectedStream)) {
+      setSelectedStream(dbStreams[0]);
+    }
+  }, [dbStreams, selectedStream]);
 
   const { data: learners = [] } = useQuery({
     queryKey: ['tracking-learners', selectedGrade, selectedStream],
