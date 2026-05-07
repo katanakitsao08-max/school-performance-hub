@@ -298,7 +298,7 @@ export default function BulkUploadDialog({
       queryClient.invalidateQueries({ queryKey: ['learners'] });
       queryClient.invalidateQueries({ queryKey: ['scores'] });
       queryClient.invalidateQueries({ queryKey: ['learners-count'] });
-      toast({ title: `✅ ${inserted?.length || 0} learners uploaded successfully!` });
+      toast({ title: `✅ ${inserted.length} learners uploaded${failed.length ? ` (${failed.length} skipped)` : ''}!` });
       setOpen(false);
       setRows([]);
       setSubjectColumns([]);
