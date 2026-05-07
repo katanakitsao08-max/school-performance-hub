@@ -54,6 +54,11 @@ export default function PerformanceTrackingPage() {
   }, [isTeacher, myAssignments]);
 
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
+  useEffect(() => {
+    if (dynamicGrades.length > 0 && !dynamicGrades.includes(selectedGrade)) {
+      setSelectedGrade(dynamicGrades[0]);
+    }
+  }, [dynamicGrades, selectedGrade]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
   const [trackingMode, setTrackingMode] = useState<'individual' | 'class' | 'grade'>('class');
