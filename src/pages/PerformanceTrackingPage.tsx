@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,11 @@ export default function PerformanceTrackingPage() {
   }, [isTeacher, myAssignments]);
 
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
+  useEffect(() => {
+    if (dynamicGrades.length > 0 && !dynamicGrades.includes(selectedGrade)) {
+      setSelectedGrade(dynamicGrades[0]);
+    }
+  }, [dynamicGrades, selectedGrade]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedLearnerId, setSelectedLearnerId] = useState<string | null>(null);
   const [trackingMode, setTrackingMode] = useState<'individual' | 'class' | 'grade'>('class');
@@ -85,7 +90,11 @@ export default function PerformanceTrackingPage() {
   }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
 
   const [selectedStream, setSelectedStream] = useState('');
-  useMemo(() => { if (dbStreams.length > 0 && !selectedStream) setSelectedStream(dbStreams[0]); }, [dbStreams]);
+  useEffect(() => {
+    if (dbStreams.length > 0 && !dbStreams.includes(selectedStream)) {
+      setSelectedStream(dbStreams[0]);
+    }
+  }, [dbStreams, selectedStream]);
 
   const { data: learners = [] } = useQuery({
     queryKey: ['tracking-learners', selectedGrade, selectedStream],

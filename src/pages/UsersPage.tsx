@@ -104,7 +104,8 @@ export default function UsersPage() {
     queryKey: ['streams', schoolId],
     queryFn: async () => {
       const { data } = await supabase.from('streams').select('name').eq('school_id', schoolId!).order('name');
-      return (data || []).map((s: any) => s.name as string);
+      const names = (data || []).map((s: any) => s.name as string);
+      return Array.from(new Set(names));
     },
     enabled: !!schoolId,
   });
