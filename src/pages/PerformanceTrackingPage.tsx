@@ -81,13 +81,8 @@ export default function PerformanceTrackingPage() {
     enabled: !!schoolId,
   });
 
-  const dbStreams = useMemo(() => {
-    if (!isTeacher) return allDbStreams;
-    const set = new Set<string>();
-    (myAssignments?.subjects || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
-    (myAssignments?.classes || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
-    return allDbStreams.filter(s => set.has(s));
-  }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
+  // Streams are unlocked for all roles — show every stream in the school
+  const dbStreams = allDbStreams;
 
   const [selectedStream, setSelectedStream] = useState('');
   useEffect(() => {
