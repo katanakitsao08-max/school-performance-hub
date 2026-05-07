@@ -172,13 +172,11 @@ export default function BulkUploadDialog({
     setUploading(true);
 
     try {
-      // 1. Refetch ALL existing admission numbers fresh (avoid stale cache / cross-prefix collisions)
+      // 1. Refetch ALL existing admission numbers fresh (paged to bypass 1000-row cap)
       const prefix = generateAdmissionPrefix();
-      const { data: freshLearners, error: fetchErr } = await supabase
-        .from('learners')
-        .select('admission_number')
-        .eq('school_id', schoolId);
-      if (fetchErr) throw fetchErr;
+      const freshLearners = await fetchAllPaged<{ admission_number: string }>(() =>
+        supabase.from('learners').select('admission_number').eq('school_id', schoolId)
+      );
 
       // Track ALL admission numbers (any prefix) to avoid global unique-key collisions
       const usedAll = new Set<string>((freshLearners || []).map(l => l.admission_number));
@@ -208,21 +206,45 @@ export default function BulkUploadDialog({
 
       const learnersToInsert = rows.map((r) => ({
         admission_number: allocate(),
+        assessment_number: null, // normalize: never insert empty string (unique index allows multiple NULLs)
         full_name: r.full_name,
         grade,
         stream,
         gender: r.gender || 'Male',
-        parent_name: r.parent_name || null,
-        parent_phone: r.parent_phone || null,
+        parent_name: r.parent_name?.trim() || null,
+        parent_phone: r.parent_phone?.trim() || null,
         school_id: schoolId,
         academic_year: new Date().getFullYear(),
       }));
 
-      const { data: inserted, error: lErr } = await supabase
-        .from('learners')
-        .insert(learnersToInsert)
-        .select('id, full_name');
-      if (lErr) throw lErr;
+      // Insert row-by-row with retry on unique conflict so a single duplicate doesn't fail entire batch
+      const inserted: { id: string; full_name: string }[] = [];
+      const failed: { name: string; error: string }[] = [];
+      for (const learner of learnersToInsert) {
+        let attempts = 0;
+        let success = false;
+        while (attempts < 5 && !success) {
+          const { data, error } = await supabase
+            .from('learners')
+            .insert(learner)
+            .select('id, full_name')
+            .single();
+          if (!error && data) {
+            inserted.push(data);
+            success = true;
+          } else if (error?.code === '23505' && error.message?.includes('admission')) {
+            // Collision — allocate next available and retry
+            learner.admission_number = allocate();
+            attempts++;
+          } else {
+            failed.push({ name: learner.full_name, error: error?.message || 'unknown' });
+            break;
+          }
+        }
+      }
+      if (failed.length > 0) {
+        console.warn('Bulk upload skipped rows:', failed);
+      }
 
       // 2. Match subjects to learning_areas
       if (subjectColumns.length > 0 && inserted) {
