@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { fetchAllPaged } from '@/lib/fetch-all';
 
 interface ParsedRow {
   full_name: string;
