@@ -421,6 +421,13 @@ export default function MarksEntryPage() {
             <Label className="text-xs">Year</Label>
             <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[90px] h-9" />
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Combined Subjects</Label>
+            <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
+              <Switch checked={mergeCombined} onCheckedChange={setMergeCombined} />
+              <span className="text-xs text-muted-foreground">Merge SS+RE & Sci+Agri</span>
+            </div>
+          </div>
         </div>
 
         {/* Assigned subjects indicator for teachers */}
