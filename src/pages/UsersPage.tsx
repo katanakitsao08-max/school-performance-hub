@@ -329,32 +329,10 @@ export default function UsersPage() {
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Assigned Streams</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {dbStreams.map(s => (
-                      <label key={s} className="flex items-center gap-1.5 text-sm">
-                        <Checkbox checked={form.assigned_streams.includes(s)} onCheckedChange={() => toggleStream(s)} />
-                        Stream {s}
-                      </label>
-                    ))}
-                  </div>
-                </div>
                 {form.role === 'teacher' && (
-                  <div className="space-y-2">
-                    <Label>Assigned Subjects</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Leave empty for class teacher (all subjects). Select specific subjects for subject teacher.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {allLearningAreas.map(a => (
-                        <label key={a} className="flex items-center gap-1.5 text-sm">
-                          <Checkbox checked={form.assigned_learning_areas.includes(a)} onCheckedChange={() => toggleLearningArea(a)} />
-                          {a}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground border rounded-md p-2 bg-muted/30">
+                    Stream and subject assignments are now managed in <strong>Teacher Assignments</strong> to avoid duplication.
+                  </p>
                 )}
                 <Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>
                   {editingUser ? 'Update User' : 'Create User'}
