@@ -161,6 +161,50 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
       });
       y += 2;
     };
+    // Textbook-aware renderer: ALL-CAPS line → big bold heading; capitalised short line → mini heading; ✓/- → bullets.
+    const writeRich = (txt: string) => {
+      (txt || '').split(/\n/).forEach((rawLine) => {
+        const line = rawLine.trimEnd();
+        if (!line.trim()) { y += 3; return; }
+        const trimmed = line.trim();
+        const isAllCaps = /^[A-Z0-9 ,'’\-&/()]{3,}$/.test(trimmed) && /[A-Z]/.test(trimmed);
+        const isTick = /^\s*✓\s+/.test(line);
+        const isDash = /^\s*-\s+/.test(line);
+        const isMiniHead = !isAllCaps && !isTick && !isDash &&
+          /^[A-Z]/.test(trimmed) && trimmed.length < 70 && !/[.!?]$/.test(trimmed) && !trimmed.includes('—');
+        if (isAllCaps) {
+          y += 2;
+          doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+          ensureSpace(8); doc.text(trimmed, margin, y); y += 7;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+          return;
+        }
+        if (isMiniHead) {
+          y += 1;
+          doc.setFontSize(11.5); doc.setFont('helvetica', 'bold');
+          ensureSpace(6); doc.text(trimmed, margin, y); y += 5.5;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+          return;
+        }
+        if (isTick || isDash) {
+          const bullet = isTick ? '•' : '–';
+          const content = line.replace(/^\s*[✓\-]\s+/, '');
+          doc.setFontSize(11);
+          const wrapped = doc.splitTextToSize(content, maxW - 6);
+          wrapped.forEach((ln: string, i: number) => {
+            ensureSpace(6);
+            if (i === 0) doc.text(bullet, margin + 2, y);
+            doc.text(ln, margin + 7, y);
+            y += 5.5;
+          });
+          return;
+        }
+        doc.setFontSize(11);
+        const wrapped = doc.splitTextToSize(line, maxW);
+        wrapped.forEach((ln: string) => { ensureSpace(6); doc.text(ln, margin, y); y += 5.5; });
+      });
+      y += 2;
+    };
     const writeList = (items: string[]) => {
       doc.setFontSize(11);
       items.forEach((it, i) => {
@@ -204,7 +248,7 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     writeTitle('Learning Objectives'); writeList(notes.objectives);
     if (notes.keyVocabulary?.length) { writeTitle('Key Vocabulary'); writeVocab(notes.keyVocabulary); }
     writeTitle('Introduction'); writeText(notes.introduction);
-    writeTitle('Main Content'); writeText(notes.mainContent);
+    writeTitle('Main Content'); writeRich(notes.mainContent);
     writeTitle('Worked Examples'); writeList(notes.workedExamples);
     writeTitle('Class Activities'); writeList(notes.classActivities);
     if (notes.revisionSummary?.length) { writeTitle('Revision Summary'); writeList(notes.revisionSummary); }
