@@ -248,7 +248,7 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     writeTitle('Learning Objectives'); writeList(notes.objectives);
     if (notes.keyVocabulary?.length) { writeTitle('Key Vocabulary'); writeVocab(notes.keyVocabulary); }
     writeTitle('Introduction'); writeText(notes.introduction);
-    writeTitle('Main Content'); writeText(notes.mainContent);
+    writeTitle('Main Content'); writeRich(notes.mainContent);
     writeTitle('Worked Examples'); writeList(notes.workedExamples);
     writeTitle('Class Activities'); writeList(notes.classActivities);
     if (notes.revisionSummary?.length) { writeTitle('Revision Summary'); writeList(notes.revisionSummary); }
