@@ -17,6 +17,8 @@ import StrandMarksEntry from '@/components/StrandMarksEntry';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { getGradeLevel } from '@/lib/grade-levels';
+import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
+import { Switch } from '@/components/ui/switch';
 
 interface AssignmentOption {
   grade: string;
@@ -149,23 +151,27 @@ export default function MarksEntryPage() {
     enabled: !!selectedGrade && !!schoolId,
   });
 
-  // Filter subjects based on assignments (for teachers)
+  // Filter subjects based on assignments (for teachers) and apply canonical CBC ordering
   const subjects = useMemo(() => {
-    if (isPrivileged) return allSubjects;
-
-    // Get subject IDs from teacher_assignments for this grade+stream
-    const assignedIds = new Set(
-      myAssignments
-        .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
-        .map(a => a.learning_area_id)
-    );
-
-    // If teacher is class teacher for this grade+stream, show all subjects (read-only for unassigned)
-    const isClassTeacherHere = myClassTeacher.some(ct => ct.grade === selectedGrade && ct.stream === selectedStream);
-    if (isClassTeacherHere) return allSubjects;
-
-    return allSubjects.filter(s => assignedIds.has(s.id));
+    let list = allSubjects as any[];
+    if (!isPrivileged) {
+      const assignedIds = new Set(
+        myAssignments
+          .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
+          .map(a => a.learning_area_id)
+      );
+      const isClassTeacherHere = myClassTeacher.some(ct => ct.grade === selectedGrade && ct.stream === selectedStream);
+      if (!isClassTeacherHere) list = list.filter(s => assignedIds.has(s.id));
+    }
+    return sortSubjectsByOrder(list, selectedGrade);
   }, [allSubjects, isPrivileged, myAssignments, myClassTeacher, selectedGrade, selectedStream]);
+
+  // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
+  const [mergeCombined, setMergeCombined] = useState(false);
+  const subjectColumns = useMemo(
+    () => buildSubjectColumns(subjects as any[], selectedGrade, mergeCombined),
+    [subjects, selectedGrade, mergeCombined]
+  );
 
   // Which subject IDs can this teacher actually edit?
   const editableSubjectIds = useMemo(() => {
@@ -415,6 +421,13 @@ export default function MarksEntryPage() {
             <Label className="text-xs">Year</Label>
             <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[90px] h-9" />
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Combined Subjects</Label>
+            <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
+              <Switch checked={mergeCombined} onCheckedChange={setMergeCombined} />
+              <span className="text-xs text-muted-foreground">Merge SS+RE & Sci+Agri</span>
+            </div>
+          </div>
         </div>
 
         {/* Assigned subjects indicator for teachers */}
@@ -499,12 +512,23 @@ export default function MarksEntryPage() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="sticky left-0 bg-muted/50 z-10 w-[40px] text-xs">#</TableHead>
                       <TableHead className="sticky left-[40px] bg-muted/50 z-10 min-w-[140px] text-xs">Learner</TableHead>
-                      {subjects.map(s => (
-                        <TableHead key={s.id} className="text-center min-w-[70px] text-xs">
-                          <div className="font-semibold truncate max-w-[80px]" title={s.name}>{s.name}</div>
-                          <div className="text-[9px] text-muted-foreground font-normal">/{s.max_score}</div>
-                        </TableHead>
-                      ))}
+                      {subjectColumns.map(col => {
+                        if (col.kind === 'single') {
+                          const s = col.subject;
+                          return (
+                            <TableHead key={s.id} className="text-center min-w-[70px] text-xs">
+                              <div className="font-semibold truncate max-w-[80px]" title={s.name}>{s.name}</div>
+                              <div className="text-[9px] text-muted-foreground font-normal">/{s.max_score}</div>
+                            </TableHead>
+                          );
+                        }
+                        return (
+                          <TableHead key={col.label} className="text-center min-w-[90px] text-xs bg-primary/5">
+                            <div className="font-semibold truncate max-w-[110px]" title={col.label}>{col.label}</div>
+                            <div className="text-[9px] text-muted-foreground font-normal">/{col.max_score} · merged</div>
+                          </TableHead>
+                        );
+                      })}
                       <TableHead className="text-center bg-muted font-bold text-xs">Tot</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Mean</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Grd</TableHead>
@@ -524,11 +548,15 @@ export default function MarksEntryPage() {
                           <TableCell className="sticky left-[40px] bg-card z-10 text-xs font-medium p-1 truncate max-w-[140px]" title={learner.full_name}>
                             {learner.full_name}
                           </TableCell>
-                          {subjects.map(sub => {
-                            const val = scores[learner.id]?.[sub.id] || '';
+                          {subjectColumns.map(col => {
+                            const primary = col.kind === 'single' ? col.subject : col.members[0];
+                            const val = scores[learner.id]?.[primary.id] || '';
                             const numVal = Number(val);
-                            const pct = val && !isNaN(numVal) ? (numVal / sub.max_score) * 100 : null;
-                            const canEdit = editableSubjectIds.has(sub.id);
+                            const max = col.kind === 'single' ? col.subject.max_score : col.max_score;
+                            const pct = val && !isNaN(numVal) ? (numVal / max) * 100 : null;
+                            const canEdit = col.kind === 'single'
+                              ? editableSubjectIds.has(col.subject.id)
+                              : col.members.some(m => editableSubjectIds.has(m.id));
                             let inputBorder = '';
                             if (pct !== null) {
                               if (pct >= 75) inputBorder = 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20';
@@ -536,15 +564,20 @@ export default function MarksEntryPage() {
                               else if (pct >= 25) inputBorder = 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/20';
                               else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
                             }
+                            const onChange = (v: string) => {
+                              if (col.kind === 'single') handleScoreChange(learner.id, col.subject.id, v);
+                              else col.members.forEach(m => handleScoreChange(learner.id, m.id, v));
+                            };
+                            const key = col.kind === 'single' ? col.subject.id : col.label;
                             return (
-                              <TableCell key={sub.id} className="p-0.5">
+                              <TableCell key={key} className="p-0.5">
                                 {canEdit ? (
                                   <Input
                                     type="number"
                                     min={0}
-                                    max={sub.max_score}
+                                    max={max}
                                     value={val}
-                                    onChange={e => handleScoreChange(learner.id, sub.id, e.target.value)}
+                                    onChange={e => onChange(e.target.value)}
                                     className={`w-[60px] text-center mx-auto h-8 text-xs ${inputBorder}`}
                                     inputMode="numeric"
                                   />
@@ -569,7 +602,7 @@ export default function MarksEntryPage() {
                     })}
                     {filteredLearners.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={subjectColumns.length + 6} className="text-center py-12 text-muted-foreground">
                           {learners.length === 0 ? 'No learners in this class. Select a different grade or stream.' : `No learners match "${learnerSearch}".`}
                         </TableCell>
                       </TableRow>

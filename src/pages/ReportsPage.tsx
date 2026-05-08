@@ -18,6 +18,7 @@ import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, g
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
+import { sortSubjectsByOrder } from '@/lib/subject-order';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -325,7 +326,8 @@ export default function ReportsPage() {
     const filteredLearners = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
     
     const mapped = filteredLearners.map(l => {
-      const learnerGradeSubjects = relevantSubjects.filter(s => s.grade === l.grade);
+      const raw = relevantSubjects.filter(s => s.grade === l.grade);
+      const learnerGradeSubjects = sortSubjectsByOrder(raw as any[], l.grade);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerGradeSubjects.map(sub => {
         const sc = learnerScores.find(s => s.learning_area_id === sub.id);
