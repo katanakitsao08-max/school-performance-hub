@@ -115,11 +115,12 @@ export default function PerformanceTrackingPage() {
       const { data } = await supabase.from('learning_areas').select('*')
         .eq('grade', selectedGrade).eq('is_active', true).eq('school_id', schoolId!)
         .order('name');
-      const list = data || [];
+      let list = data || [];
       if (isTeacher && allowedSubjectIds) {
-        return list.filter((s: any) => allowedSubjectIds.has(s.id));
+        list = list.filter((s: any) => allowedSubjectIds.has(s.id));
       }
-      return list;
+      const { sortSubjectsByOrder } = await import('@/lib/subject-order');
+      return sortSubjectsByOrder(list as any[], selectedGrade);
     },
     enabled: !!schoolId,
   });
