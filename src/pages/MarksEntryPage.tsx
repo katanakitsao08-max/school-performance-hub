@@ -595,7 +595,7 @@ export default function MarksEntryPage() {
                     })}
                     {filteredLearners.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={subjects.length + 6} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={subjectColumns.length + 6} className="text-center py-12 text-muted-foreground">
                           {learners.length === 0 ? 'No learners in this class. Select a different grade or stream.' : `No learners match "${learnerSearch}".`}
                         </TableCell>
                       </TableRow>
