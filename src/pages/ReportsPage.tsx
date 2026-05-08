@@ -327,10 +327,7 @@ export default function ReportsPage() {
     
     const mapped = filteredLearners.map(l => {
       const raw = relevantSubjects.filter(s => s.grade === l.grade);
-      // Apply CBC canonical ordering per learner's grade
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { sortSubjectsByOrder } = require('@/lib/subject-order');
-      const learnerGradeSubjects = sortSubjectsByOrder(raw, l.grade);
+      const learnerGradeSubjects = sortSubjectsByOrder(raw as any[], l.grade);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerGradeSubjects.map(sub => {
         const sc = learnerScores.find(s => s.learning_area_id === sub.id);
