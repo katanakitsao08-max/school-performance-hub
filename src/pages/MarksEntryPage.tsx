@@ -151,23 +151,27 @@ export default function MarksEntryPage() {
     enabled: !!selectedGrade && !!schoolId,
   });
 
-  // Filter subjects based on assignments (for teachers)
+  // Filter subjects based on assignments (for teachers) and apply canonical CBC ordering
   const subjects = useMemo(() => {
-    if (isPrivileged) return allSubjects;
-
-    // Get subject IDs from teacher_assignments for this grade+stream
-    const assignedIds = new Set(
-      myAssignments
-        .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
-        .map(a => a.learning_area_id)
-    );
-
-    // If teacher is class teacher for this grade+stream, show all subjects (read-only for unassigned)
-    const isClassTeacherHere = myClassTeacher.some(ct => ct.grade === selectedGrade && ct.stream === selectedStream);
-    if (isClassTeacherHere) return allSubjects;
-
-    return allSubjects.filter(s => assignedIds.has(s.id));
+    let list = allSubjects as any[];
+    if (!isPrivileged) {
+      const assignedIds = new Set(
+        myAssignments
+          .filter(a => a.grade === selectedGrade && a.stream === selectedStream)
+          .map(a => a.learning_area_id)
+      );
+      const isClassTeacherHere = myClassTeacher.some(ct => ct.grade === selectedGrade && ct.stream === selectedStream);
+      if (!isClassTeacherHere) list = list.filter(s => assignedIds.has(s.id));
+    }
+    return sortSubjectsByOrder(list, selectedGrade);
   }, [allSubjects, isPrivileged, myAssignments, myClassTeacher, selectedGrade, selectedStream]);
+
+  // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
+  const [mergeCombined, setMergeCombined] = useState(false);
+  const subjectColumns = useMemo(
+    () => buildSubjectColumns(subjects as any[], selectedGrade, mergeCombined),
+    [subjects, selectedGrade, mergeCombined]
+  );
 
   // Which subject IDs can this teacher actually edit?
   const editableSubjectIds = useMemo(() => {
