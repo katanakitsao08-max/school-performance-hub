@@ -514,9 +514,12 @@ export default function ReportsPage() {
   const lowest = reportData.length > 0 ? Math.min(...reportData.map(l => l.total)) : 0;
 
   const generateComment = (learner: any) => {
+    const avgMax = learner.subjectData.length
+      ? learner.subjectData.reduce((sum: number, sub: any) => sum + sub.maxScore, 0) / learner.subjectData.length
+      : 100;
     const comment = generateTeacherComment(
       learner.full_name, learner.mean,
-      gradeSubjects.length > 0 ? gradeSubjects.reduce((s, sub) => s + sub.max_score, 0) / gradeSubjects.length : 100,
+      avgMax,
       learner.subjectData.map((s: any) => ({ name: s.name, score: s.score, maxScore: s.maxScore }))
     );
     setComments(prev => ({ ...prev, [learner.id]: comment }));
@@ -683,7 +686,7 @@ export default function ReportsPage() {
     doc.text(`Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
-    const displaySubjects = isSchoolWide ? [] : gradeSubjects;
+    const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
     
     // When showing combined view, expand each subject into Opener/Mid/End/Avg sub-columns
     const subjHeaders: string[] = [];
@@ -758,7 +761,7 @@ export default function ReportsPage() {
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
-    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : reportDisplaySubjects, allScores);
     if (analysis.subjectAnalyses.length > 0) {
       doc.addPage('landscape');
       let ay = 12;
@@ -963,7 +966,7 @@ export default function ReportsPage() {
 
   const exportExcel = () => {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
-    const displaySubjects = isSchoolWide ? [] : gradeSubjects;
+    const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
     const headers = ['Rank', 'Name', ...(showGradeCol ? ['Class'] : []), ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade'];
     const data = reportData.map(l => [
       l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
@@ -976,7 +979,7 @@ export default function ReportsPage() {
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
 
     // --- Analysis Sheet (new, does not touch 'Report' sheet) ---
-    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : reportDisplaySubjects, allScores);
     if (analysis.subjectAnalyses.length > 0) {
       const aRows: any[][] = [
         ['PERFORMANCE ANALYSIS'],
