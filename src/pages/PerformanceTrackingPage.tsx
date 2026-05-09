@@ -13,6 +13,7 @@ import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, getGradeForLevel, getG
 import { TrendingUp, TrendingDown, Minus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { downloadClassPerformancePdf, downloadIndividualPerformancePdf } from '@/lib/performance-tracking-pdf';
+import { sortSubjectsByOrder } from '@/lib/subject-order';
 
 export default function PerformanceTrackingPage() {
   const { user, schoolId, role } = useAuth();
@@ -48,10 +49,14 @@ export default function PerformanceTrackingPage() {
     return filtered.length ? filtered : allGrades;
   }, [isTeacher, allGrades, myAssignments]);
 
-  const allowedSubjectIds = useMemo(() => {
-    if (!isTeacher) return null;
-    return new Set<string>((myAssignments?.subjects || []).map((a: any) => a.learning_area_id));
-  }, [isTeacher, myAssignments]);
+  const selectedStreamSubjectIds = useMemo(() => {
+    if (!isTeacher || !selectedGrade || !selectedStream) return null;
+    return new Set<string>(
+      (myAssignments?.subjects || [])
+        .filter((a: any) => a.grade === selectedGrade && a.stream === selectedStream)
+        .map((a: any) => a.learning_area_id)
+    );
+  }, [isTeacher, myAssignments, selectedGrade, selectedStream]);
 
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
   useEffect(() => {
@@ -110,36 +115,37 @@ export default function PerformanceTrackingPage() {
   });
 
   const { data: subjects = [] } = useQuery({
-    queryKey: ['tracking-subjects', selectedGrade, schoolId, isTeacher, Array.from(allowedSubjectIds || [])],
+    queryKey: ['tracking-subjects', selectedGrade, selectedStream, schoolId, isTeacher, Array.from(selectedStreamSubjectIds || [])],
     queryFn: async () => {
       const { data } = await supabase.from('learning_areas').select('*')
         .eq('grade', selectedGrade).eq('is_active', true).eq('school_id', schoolId!)
         .order('name');
       let list = data || [];
-      if (isTeacher && allowedSubjectIds) {
-        list = list.filter((s: any) => allowedSubjectIds.has(s.id));
+      if (isTeacher) {
+        const isClassTeacherHere = (myAssignments?.classes || []).some((a: any) => a.grade === selectedGrade && a.stream === selectedStream);
+        if (!isClassTeacherHere) list = list.filter((s: any) => selectedStreamSubjectIds?.has(s.id));
       }
-      const { sortSubjectsByOrder } = await import('@/lib/subject-order');
       return sortSubjectsByOrder(list as any[], selectedGrade);
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !!selectedGrade && !!selectedStream,
   });
 
   // Fetch ALL scores for the year (all terms, all assessment types)
   const { data: allScores = [] } = useQuery({
-    queryKey: ['tracking-scores', selectedGrade, selectedStream, selectedYear, isTeacher, Array.from(allowedSubjectIds || [])],
+    queryKey: ['tracking-scores', selectedGrade, selectedStream, selectedYear, subjects.map((s: any) => s.id)],
     queryFn: async () => {
       const ids = learners.map(l => l.id);
       if (!ids.length) return [];
       let q = supabase.from('scores').select('*')
         .in('learner_id', ids).eq('year', selectedYear);
-      if (isTeacher && allowedSubjectIds && allowedSubjectIds.size > 0) {
-        q = q.in('learning_area_id', Array.from(allowedSubjectIds));
+      const subjectIds = subjects.map((s: any) => s.id);
+      if (subjectIds.length > 0) {
+        q = q.in('learning_area_id', subjectIds);
       }
       const { data } = await q;
       return data || [];
     },
-    enabled: learners.length > 0,
+    enabled: learners.length > 0 && subjects.length > 0,
   });
 
   // Build performance matrix: for each term+assessment, compute mean per learner
