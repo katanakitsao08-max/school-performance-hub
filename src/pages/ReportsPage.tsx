@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School, Archive, Loader2, Sparkles, MessageCircle } from 'lucide-react';
@@ -18,7 +19,7 @@ import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, g
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
-import { sortSubjectsByOrder } from '@/lib/subject-order';
+import { buildSubjectColumns, sortSubjectsByOrder } from '@/lib/subject-order';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -32,8 +33,33 @@ export default function ReportsPage() {
   const { isOn: isFeatureOn } = useSchoolFeatureToggles();
   const mergedReportsOn = isFeatureOn('feature_merged_reports');
   const dynamicGrades = useSchoolGrades();
-  const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
-  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
+
+  const { data: myReportAssignments = { subjects: [], classes: [] } } = useQuery({
+    queryKey: ['my-report-teacher-assignments', user?.id, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      const { data: ct } = await supabase
+        .from('class_teachers')
+        .select('grade, stream')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      return { subjects: data || [], classes: ct || [] };
+    },
+    enabled: role === 'teacher' && !!user?.id && !!schoolId,
+  }) as any;
+
+  const teacherGrades = useMemo(() => {
+    const set = new Set<string>();
+    (profile?.assigned_grades || []).forEach(g => set.add(g));
+    (myReportAssignments?.subjects || []).forEach((a: any) => set.add(a.grade));
+    (myReportAssignments?.classes || []).forEach((a: any) => set.add(a.grade));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [profile?.assigned_grades, myReportAssignments]);
+  const availableGrades = role === 'teacher' ? (teacherGrades.length ? teacherGrades : dynamicGrades) : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
@@ -45,6 +71,7 @@ export default function ReportsPage() {
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
+  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(false);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
@@ -62,6 +89,12 @@ export default function ReportsPage() {
   const selectedStream = selectedStreams[0] || '';
   const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join('+');
 
+  useEffect(() => {
+    if (availableGrades.length > 0 && !selectedGrades.some(g => availableGrades.includes(g))) {
+      setSelectedGrades([availableGrades[0]]);
+    }
+  }, [availableGrades, selectedGrades]);
+
   const { data: dbStreamsRaw = [] } = useQuery({
     queryKey: ['streams-with-level', schoolId],
     queryFn: async () => {
@@ -73,11 +106,18 @@ export default function ReportsPage() {
 
   // When not school-wide: filter streams to only those matching the selected grade's level.
   const dbStreams = useMemo(() => {
+    if (role === 'teacher') {
+      const set = new Set<string>();
+      (myReportAssignments?.subjects || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+      (myReportAssignments?.classes || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+      const assigned = Array.from(set).sort();
+      if (assigned.length) return assigned;
+    }
     if (isSchoolWide) return dbStreamsRaw.map(s => s.name);
     if (!selectedGrade) return [] as string[];
     const lvl = getGradeLevel(selectedGrade);
     return dbStreamsRaw.filter(s => (s.level || 'primary') === lvl).map(s => s.name);
-  }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
+  }, [role, myReportAssignments, dbStreamsRaw, isSchoolWide, selectedGrade]);
 
   // Drop any selected streams that are no longer valid for the current grade level.
   useEffect(() => {
@@ -85,7 +125,8 @@ export default function ReportsPage() {
     const valid = new Set(dbStreams);
     setSelectedStreams(prev => {
       const filtered = prev.filter(s => valid.has(s));
-      return filtered.length === prev.length ? prev : filtered;
+      if (filtered.length > 0) return filtered.length === prev.length ? prev : filtered;
+      return dbStreams[0] ? [dbStreams[0]] : [];
     });
   }, [dbStreams, isSchoolWide]);
 
@@ -122,7 +163,7 @@ export default function ReportsPage() {
   const { data: learners = [] } = useQuery({
     queryKey: ['learners-report', selectedGrades, selectedStreams, isSchoolWide],
     queryFn: async () => {
-      let query = supabase.from('learners').select('*').eq('is_active', true).order('full_name');
+      let query = supabase.from('learners').select('*').eq('is_active', true).eq('school_id', schoolId!).order('full_name');
       if (isSchoolWide) {
         // All grades
       } else if (selectedGrades.length === 1) {
@@ -143,14 +184,14 @@ export default function ReportsPage() {
       const data = await fetchAllPaged(() => query);
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!schoolId,
   });
 
   // Fetch subjects for all selected grades
   const { data: subjects = [] } = useQuery({
     queryKey: ['learning-areas-report', selectedGrades, isSchoolWide],
     queryFn: async () => {
-      let query = supabase.from('learning_areas').select('*').order('name');
+      let query = supabase.from('learning_areas').select('*').eq('school_id', schoolId!).eq('is_active', true).order('name');
       if (!isSchoolWide && selectedGrades.length === 1) {
         query = query.eq('grade', selectedGrades[0]);
       } else if (!isSchoolWide) {
@@ -159,7 +200,7 @@ export default function ReportsPage() {
       const { data } = await query;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!schoolId,
   });
 
   const { data: scoresQueryResult = { merged: [], byAssessment: {} as Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> } } = useQuery({
@@ -315,9 +356,20 @@ export default function ReportsPage() {
   });
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
-    if (isSchoolWide || selectedGrades.length > 1) return subjects;
-    return subjects.filter(s => s.grade === selectedGrade);
+    const list = isSchoolWide || selectedGrades.length > 1
+      ? subjects
+      : subjects.filter(s => s.grade === selectedGrade);
+    return sortSubjectsByOrder(list as any[], selectedGrade);
   }, [subjects, selectedGrade, isSchoolWide, selectedGrades]);
+
+  const reportDisplaySubjects = useMemo(() => {
+    if (isSchoolWide || selectedGrades.length > 1) return [] as any[];
+    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects).map(col => (
+      col.kind === 'single'
+        ? col.subject
+        : { id: col.members.map(m => m.id).join('+'), name: col.label, max_score: col.max_score, grade: selectedGrade }
+    ));
+  }, [gradeSubjects, selectedGrade, mergeCombinedSubjects, isSchoolWide, selectedGrades]);
 
   const reportData = useMemo(() => {
     const relevantSubjects = isSchoolWide ? subjects : gradeSubjects;
@@ -327,28 +379,45 @@ export default function ReportsPage() {
     
     const mapped = filteredLearners.map(l => {
       const raw = relevantSubjects.filter(s => s.grade === l.grade);
-      const learnerGradeSubjects = sortSubjectsByOrder(raw as any[], l.grade);
+      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
-      const subjectData = learnerGradeSubjects.map(sub => {
-        const sc = learnerScores.find(s => s.learning_area_id === sub.id);
+      const subjectData = learnerSubjectColumns.map(col => {
+        if (col.kind === 'single') {
+          const sub = col.subject;
+          const sc = learnerScores.find(s => s.learning_area_id === sub.id);
+          return {
+            id: sub.id, name: sub.name, maxScore: sub.max_score,
+            score: sc ? Number(sc.score) || 0 : 0,
+            grade: sc ? getGradeForLevel(Number(sc.score) || 0, sub.max_score, l.grade) : '-' as any,
+            comment: sc?.teacher_comment || '',
+            teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
+          };
+        }
+        const memberScores = col.members
+          .map(sub => ({ sub, sc: learnerScores.find(s => s.learning_area_id === sub.id) }))
+          .filter(item => item.sc);
+        const score = memberScores.length
+          ? memberScores.reduce((sum, item) => sum + (Number(item.sc?.score) || 0), 0) / memberScores.length
+          : 0;
+        const first = col.members[0];
         return {
-          id: sub.id, name: sub.name, maxScore: sub.max_score,
-          score: sc?.score || 0,
-          grade: sc ? getGradeForLevel(sc.score, sub.max_score, l.grade) : '-' as any,
-          comment: sc?.teacher_comment || '',
-          teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
+          id: col.members.map(m => m.id).join('+'), name: col.label, maxScore: col.max_score,
+          score,
+          grade: memberScores.length ? getGradeForLevel(score, col.max_score, l.grade) : '-' as any,
+          comment: memberScores.map(item => item.sc?.teacher_comment).find(Boolean) || '',
+          teacherInitials: first ? getTeacherInitials(first.id, l.grade, l.stream) : '',
         };
       });
       const total = subjectData.reduce((s, d) => s + d.score, 0);
-      const maxTotal = learnerGradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
-      const mean = learnerGradeSubjects.length > 0 ? total / learnerGradeSubjects.length : 0;
-      const avgMax = learnerGradeSubjects.length > 0 ? maxTotal / learnerGradeSubjects.length : 100;
+      const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
+      const mean = subjectData.length > 0 ? total / subjectData.length : 0;
+      const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
       // Include learner if they have at least ONE non-zero score.
       // Excludes only learners with all-zero (or no) scores entered.
       const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
       return {
         ...l, subjectData, total, mean,
-        overallGrade: learnerGradeSubjects.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
+        overallGrade: subjectData.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
         hasAnyScore,
       };
     })
@@ -360,24 +429,24 @@ export default function ReportsPage() {
       return { ...l, rank };
     });
     return mapped;
-  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter]);
+  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter, mergeCombinedSubjects]);
 
   const subjectMeans = useMemo(() => {
-    return gradeSubjects.map(sub => {
-      const scores = allScores.filter(s => s.learning_area_id === sub.id);
-      const avg = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    return reportDisplaySubjects.map(sub => {
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const avg = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
       return { name: sub.name, mean: avg };
     });
-  }, [gradeSubjects, allScores]);
+  }, [reportDisplaySubjects, reportData]);
 
   const classAvgPerSubject = useMemo(() => {
     const map: Record<string, number> = {};
-    gradeSubjects.forEach(sub => {
-      const scores = allScores.filter(s => s.learning_area_id === sub.id);
-      map[sub.name] = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    reportDisplaySubjects.forEach(sub => {
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      map[sub.name] = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
     });
     return map;
-  }, [gradeSubjects, allScores]);
+  }, [reportDisplaySubjects, reportData]);
 
   // Grade distribution for report cards
   const gradeDistribution = useMemo(() => {
@@ -445,9 +514,12 @@ export default function ReportsPage() {
   const lowest = reportData.length > 0 ? Math.min(...reportData.map(l => l.total)) : 0;
 
   const generateComment = (learner: any) => {
+    const avgMax = learner.subjectData.length
+      ? learner.subjectData.reduce((sum: number, sub: any) => sum + sub.maxScore, 0) / learner.subjectData.length
+      : 100;
     const comment = generateTeacherComment(
       learner.full_name, learner.mean,
-      gradeSubjects.length > 0 ? gradeSubjects.reduce((s, sub) => s + sub.max_score, 0) / gradeSubjects.length : 100,
+      avgMax,
       learner.subjectData.map((s: any) => ({ name: s.name, score: s.score, maxScore: s.maxScore }))
     );
     setComments(prev => ({ ...prev, [learner.id]: comment }));
@@ -614,7 +686,7 @@ export default function ReportsPage() {
     doc.text(`Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
-    const displaySubjects = isSchoolWide ? [] : gradeSubjects;
+    const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
     
     // When showing combined view, expand each subject into Opener/Mid/End/Avg sub-columns
     const subjHeaders: string[] = [];
@@ -689,7 +761,7 @@ export default function ReportsPage() {
     });
 
     // --- Analysis Pages (appended, existing pages untouched) ---
-    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : reportDisplaySubjects, allScores);
     if (analysis.subjectAnalyses.length > 0) {
       doc.addPage('landscape');
       let ay = 12;
@@ -894,7 +966,7 @@ export default function ReportsPage() {
 
   const exportExcel = () => {
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
-    const displaySubjects = isSchoolWide ? [] : gradeSubjects;
+    const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
     const headers = ['Rank', 'Name', ...(showGradeCol ? ['Class'] : []), ...displaySubjects.map(s => s.name), 'Total', 'Mean', 'Grade'];
     const data = reportData.map(l => [
       l.rank, l.full_name, ...(showGradeCol ? [`${l.grade}${l.stream}`] : []),
@@ -907,7 +979,7 @@ export default function ReportsPage() {
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
 
     // --- Analysis Sheet (new, does not touch 'Report' sheet) ---
-    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : gradeSubjects, allScores);
+    const analysis = computeAnalysis(reportData, isSchoolWide ? [] : reportDisplaySubjects, allScores);
     if (analysis.subjectAnalyses.length > 0) {
       const aRows: any[][] = [
         ['PERFORMANCE ANALYSIS'],
@@ -1265,7 +1337,7 @@ export default function ReportsPage() {
                       <TableHead>#</TableHead>
                       <TableHead>Name</TableHead>
                       {(isSchoolWide || selectedGrades.length > 1) && <TableHead>Class</TableHead>}
-                      {!isSchoolWide && selectedGrades.length === 1 && gradeSubjects.map(s => (
+                      {!isSchoolWide && selectedGrades.length === 1 && reportDisplaySubjects.map(s => (
                         <TableHead key={s.id} className="text-center">{s.name}</TableHead>
                       ))}
                       <TableHead className="text-center">Total</TableHead>
@@ -1307,7 +1379,7 @@ export default function ReportsPage() {
                         <TableCell colSpan={(isSchoolWide || selectedGrades.length > 1) ? 3 : 2} className="text-right uppercase text-xs tracking-wide">
                           Subject Mean
                         </TableCell>
-                        {gradeSubjects.map(sub => {
+                        {reportDisplaySubjects.map(sub => {
                           const sm = subjectMeans.find(m => m.name === sub.name);
                           return (
                             <TableCell key={sub.id} className="text-center">
@@ -1318,9 +1390,9 @@ export default function ReportsPage() {
                         {(() => {
                           const totalSum = reportData.reduce((a, l) => a + l.total, 0);
                           const meanTotal = reportData.length ? totalSum / reportData.length : 0;
-                          const maxTotal = gradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
-                          const avgMax = gradeSubjects.length ? maxTotal / gradeSubjects.length : 100;
-                          const gradeForClass = gradeSubjects.length && reportData.length
+                          const maxTotal = reportDisplaySubjects.reduce((s, sub) => s + sub.max_score, 0);
+                          const avgMax = reportDisplaySubjects.length ? maxTotal / reportDisplaySubjects.length : 100;
+                          const gradeForClass = reportDisplaySubjects.length && reportData.length
                             ? getGradeForLevel(classMean, avgMax, reportData[0].grade)
                             : '-';
                           return (
