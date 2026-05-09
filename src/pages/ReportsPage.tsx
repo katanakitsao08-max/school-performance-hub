@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School, Archive, Loader2, Sparkles, MessageCircle } from 'lucide-react';
@@ -18,7 +19,7 @@ import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, g
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
-import { sortSubjectsByOrder } from '@/lib/subject-order';
+import { buildSubjectColumns, sortSubjectsByOrder } from '@/lib/subject-order';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -45,6 +46,7 @@ export default function ReportsPage() {
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
+  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(false);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
@@ -122,7 +124,7 @@ export default function ReportsPage() {
   const { data: learners = [] } = useQuery({
     queryKey: ['learners-report', selectedGrades, selectedStreams, isSchoolWide],
     queryFn: async () => {
-      let query = supabase.from('learners').select('*').eq('is_active', true).order('full_name');
+      let query = supabase.from('learners').select('*').eq('is_active', true).eq('school_id', schoolId!).order('full_name');
       if (isSchoolWide) {
         // All grades
       } else if (selectedGrades.length === 1) {
@@ -143,14 +145,14 @@ export default function ReportsPage() {
       const data = await fetchAllPaged(() => query);
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!schoolId,
   });
 
   // Fetch subjects for all selected grades
   const { data: subjects = [] } = useQuery({
     queryKey: ['learning-areas-report', selectedGrades, isSchoolWide],
     queryFn: async () => {
-      let query = supabase.from('learning_areas').select('*').order('name');
+      let query = supabase.from('learning_areas').select('*').eq('school_id', schoolId!).eq('is_active', true).order('name');
       if (!isSchoolWide && selectedGrades.length === 1) {
         query = query.eq('grade', selectedGrades[0]);
       } else if (!isSchoolWide) {
@@ -159,7 +161,7 @@ export default function ReportsPage() {
       const { data } = await query;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!schoolId,
   });
 
   const { data: scoresQueryResult = { merged: [], byAssessment: {} as Record<string, Record<string, { opener?: number; mid_term?: number; end_term?: number }>> } } = useQuery({
