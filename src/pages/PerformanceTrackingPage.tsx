@@ -49,15 +49,6 @@ export default function PerformanceTrackingPage() {
     return filtered.length ? filtered : allGrades;
   }, [isTeacher, allGrades, myAssignments]);
 
-  const selectedStreamSubjectIds = useMemo(() => {
-    if (!isTeacher || !selectedGrade || !selectedStream) return null;
-    return new Set<string>(
-      (myAssignments?.subjects || [])
-        .filter((a: any) => a.grade === selectedGrade && a.stream === selectedStream)
-        .map((a: any) => a.learning_area_id)
-    );
-  }, [isTeacher, myAssignments, selectedGrade, selectedStream]);
-
   const [selectedGrade, setSelectedGrade] = useState(dynamicGrades[0] || '1');
   useEffect(() => {
     if (dynamicGrades.length > 0 && !dynamicGrades.includes(selectedGrade)) {
@@ -101,6 +92,15 @@ export default function PerformanceTrackingPage() {
       setSelectedStream(dbStreams[0]);
     }
   }, [dbStreams, selectedStream]);
+
+  const selectedStreamSubjectIds = useMemo(() => {
+    if (!isTeacher || !selectedGrade || !selectedStream) return null;
+    return new Set<string>(
+      (myAssignments?.subjects || [])
+        .filter((a: any) => a.grade === selectedGrade && a.stream === selectedStream)
+        .map((a: any) => a.learning_area_id)
+    );
+  }, [isTeacher, myAssignments, selectedGrade, selectedStream]);
 
   const { data: learners = [] } = useQuery({
     queryKey: ['tracking-learners', selectedGrade, selectedStream],
