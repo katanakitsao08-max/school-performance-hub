@@ -33,8 +33,33 @@ export default function ReportsPage() {
   const { isOn: isFeatureOn } = useSchoolFeatureToggles();
   const mergedReportsOn = isFeatureOn('feature_merged_reports');
   const dynamicGrades = useSchoolGrades();
-  const teacherGrades = profile?.assigned_grades?.length ? profile.assigned_grades : dynamicGrades;
-  const availableGrades = role === 'teacher' ? teacherGrades : dynamicGrades;
+
+  const { data: myReportAssignments = { subjects: [], classes: [] } } = useQuery({
+    queryKey: ['my-report-teacher-assignments', user?.id, schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('teacher_assignments')
+        .select('grade, stream, learning_area_id')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      const { data: ct } = await supabase
+        .from('class_teachers')
+        .select('grade, stream')
+        .eq('teacher_id', user!.id)
+        .eq('school_id', schoolId!);
+      return { subjects: data || [], classes: ct || [] };
+    },
+    enabled: role === 'teacher' && !!user?.id && !!schoolId,
+  }) as any;
+
+  const teacherGrades = useMemo(() => {
+    const set = new Set<string>();
+    (profile?.assigned_grades || []).forEach(g => set.add(g));
+    (myReportAssignments?.subjects || []).forEach((a: any) => set.add(a.grade));
+    (myReportAssignments?.classes || []).forEach((a: any) => set.add(a.grade));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [profile?.assigned_grades, myReportAssignments]);
+  const availableGrades = role === 'teacher' ? (teacherGrades.length ? teacherGrades : dynamicGrades) : dynamicGrades;
   const [selectedGrades, setSelectedGrades] = useState<string[]>([availableGrades[0] || '1']);
   const [selectedStreams, setSelectedStreams] = useState<string[]>([]);
   const [selectedTerm, setSelectedTerm] = useState(1);
