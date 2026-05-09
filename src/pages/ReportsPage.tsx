@@ -100,11 +100,18 @@ export default function ReportsPage() {
 
   // When not school-wide: filter streams to only those matching the selected grade's level.
   const dbStreams = useMemo(() => {
+    if (role === 'teacher') {
+      const set = new Set<string>();
+      (myReportAssignments?.subjects || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+      (myReportAssignments?.classes || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
+      const assigned = Array.from(set).sort();
+      if (assigned.length) return assigned;
+    }
     if (isSchoolWide) return dbStreamsRaw.map(s => s.name);
     if (!selectedGrade) return [] as string[];
     const lvl = getGradeLevel(selectedGrade);
     return dbStreamsRaw.filter(s => (s.level || 'primary') === lvl).map(s => s.name);
-  }, [dbStreamsRaw, isSchoolWide, selectedGrade]);
+  }, [role, myReportAssignments, dbStreamsRaw, isSchoolWide, selectedGrade]);
 
   // Drop any selected streams that are no longer valid for the current grade level.
   useEffect(() => {
@@ -112,7 +119,8 @@ export default function ReportsPage() {
     const valid = new Set(dbStreams);
     setSelectedStreams(prev => {
       const filtered = prev.filter(s => valid.has(s));
-      return filtered.length === prev.length ? prev : filtered;
+      if (filtered.length > 0) return filtered.length === prev.length ? prev : filtered;
+      return dbStreams[0] ? [dbStreams[0]] : [];
     });
   }, [dbStreams, isSchoolWide]);
 
