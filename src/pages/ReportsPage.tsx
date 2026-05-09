@@ -89,6 +89,12 @@ export default function ReportsPage() {
   const selectedStream = selectedStreams[0] || '';
   const streamLabel = selectedStreams.length === 1 ? selectedStreams[0] : selectedStreams.join('+');
 
+  useEffect(() => {
+    if (availableGrades.length > 0 && !selectedGrades.some(g => availableGrades.includes(g))) {
+      setSelectedGrades([availableGrades[0]]);
+    }
+  }, [availableGrades, selectedGrades]);
+
   const { data: dbStreamsRaw = [] } = useQuery({
     queryKey: ['streams-with-level', schoolId],
     queryFn: async () => {
