@@ -1337,7 +1337,7 @@ export default function ReportsPage() {
                       <TableHead>#</TableHead>
                       <TableHead>Name</TableHead>
                       {(isSchoolWide || selectedGrades.length > 1) && <TableHead>Class</TableHead>}
-                      {!isSchoolWide && selectedGrades.length === 1 && gradeSubjects.map(s => (
+                      {!isSchoolWide && selectedGrades.length === 1 && reportDisplaySubjects.map(s => (
                         <TableHead key={s.id} className="text-center">{s.name}</TableHead>
                       ))}
                       <TableHead className="text-center">Total</TableHead>
@@ -1379,7 +1379,7 @@ export default function ReportsPage() {
                         <TableCell colSpan={(isSchoolWide || selectedGrades.length > 1) ? 3 : 2} className="text-right uppercase text-xs tracking-wide">
                           Subject Mean
                         </TableCell>
-                        {gradeSubjects.map(sub => {
+                        {reportDisplaySubjects.map(sub => {
                           const sm = subjectMeans.find(m => m.name === sub.name);
                           return (
                             <TableCell key={sub.id} className="text-center">
@@ -1390,9 +1390,9 @@ export default function ReportsPage() {
                         {(() => {
                           const totalSum = reportData.reduce((a, l) => a + l.total, 0);
                           const meanTotal = reportData.length ? totalSum / reportData.length : 0;
-                          const maxTotal = gradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
-                          const avgMax = gradeSubjects.length ? maxTotal / gradeSubjects.length : 100;
-                          const gradeForClass = gradeSubjects.length && reportData.length
+                          const maxTotal = reportDisplaySubjects.reduce((s, sub) => s + sub.max_score, 0);
+                          const avgMax = reportDisplaySubjects.length ? maxTotal / reportDisplaySubjects.length : 100;
+                          const gradeForClass = reportDisplaySubjects.length && reportData.length
                             ? getGradeForLevel(classMean, avgMax, reportData[0].grade)
                             : '-';
                           return (
