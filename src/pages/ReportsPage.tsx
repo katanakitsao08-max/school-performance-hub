@@ -429,24 +429,24 @@ export default function ReportsPage() {
       return { ...l, rank };
     });
     return mapped;
-  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter]);
+  }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter, mergeCombinedSubjects]);
 
   const subjectMeans = useMemo(() => {
-    return gradeSubjects.map(sub => {
-      const scores = allScores.filter(s => s.learning_area_id === sub.id);
-      const avg = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    return reportDisplaySubjects.map(sub => {
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const avg = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
       return { name: sub.name, mean: avg };
     });
-  }, [gradeSubjects, allScores]);
+  }, [reportDisplaySubjects, reportData]);
 
   const classAvgPerSubject = useMemo(() => {
     const map: Record<string, number> = {};
-    gradeSubjects.forEach(sub => {
-      const scores = allScores.filter(s => s.learning_area_id === sub.id);
-      map[sub.name] = scores.length > 0 ? scores.reduce((s, sc) => s + sc.score, 0) / scores.length : 0;
+    reportDisplaySubjects.forEach(sub => {
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      map[sub.name] = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
     });
     return map;
-  }, [gradeSubjects, allScores]);
+  }, [reportDisplaySubjects, reportData]);
 
   // Grade distribution for report cards
   const gradeDistribution = useMemo(() => {
