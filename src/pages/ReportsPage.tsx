@@ -356,9 +356,20 @@ export default function ReportsPage() {
   });
   // For class/individual view, get subjects for the single selected grade
   const gradeSubjects = useMemo(() => {
-    if (isSchoolWide || selectedGrades.length > 1) return subjects;
-    return subjects.filter(s => s.grade === selectedGrade);
+    const list = isSchoolWide || selectedGrades.length > 1
+      ? subjects
+      : subjects.filter(s => s.grade === selectedGrade);
+    return sortSubjectsByOrder(list as any[], selectedGrade);
   }, [subjects, selectedGrade, isSchoolWide, selectedGrades]);
+
+  const reportDisplaySubjects = useMemo(() => {
+    if (isSchoolWide || selectedGrades.length > 1) return [] as any[];
+    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects).map(col => (
+      col.kind === 'single'
+        ? col.subject
+        : { id: col.members.map(m => m.id).join('+'), name: col.label, max_score: col.max_score, grade: selectedGrade }
+    ));
+  }, [gradeSubjects, selectedGrade, mergeCombinedSubjects, isSchoolWide, selectedGrades]);
 
   const reportData = useMemo(() => {
     const relevantSubjects = isSchoolWide ? subjects : gradeSubjects;
@@ -368,28 +379,45 @@ export default function ReportsPage() {
     
     const mapped = filteredLearners.map(l => {
       const raw = relevantSubjects.filter(s => s.grade === l.grade);
-      const learnerGradeSubjects = sortSubjectsByOrder(raw as any[], l.grade);
+      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
-      const subjectData = learnerGradeSubjects.map(sub => {
-        const sc = learnerScores.find(s => s.learning_area_id === sub.id);
+      const subjectData = learnerSubjectColumns.map(col => {
+        if (col.kind === 'single') {
+          const sub = col.subject;
+          const sc = learnerScores.find(s => s.learning_area_id === sub.id);
+          return {
+            id: sub.id, name: sub.name, maxScore: sub.max_score,
+            score: sc ? Number(sc.score) || 0 : 0,
+            grade: sc ? getGradeForLevel(Number(sc.score) || 0, sub.max_score, l.grade) : '-' as any,
+            comment: sc?.teacher_comment || '',
+            teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
+          };
+        }
+        const memberScores = col.members
+          .map(sub => ({ sub, sc: learnerScores.find(s => s.learning_area_id === sub.id) }))
+          .filter(item => item.sc);
+        const score = memberScores.length
+          ? memberScores.reduce((sum, item) => sum + (Number(item.sc?.score) || 0), 0) / memberScores.length
+          : 0;
+        const first = col.members[0];
         return {
-          id: sub.id, name: sub.name, maxScore: sub.max_score,
-          score: sc?.score || 0,
-          grade: sc ? getGradeForLevel(sc.score, sub.max_score, l.grade) : '-' as any,
-          comment: sc?.teacher_comment || '',
-          teacherInitials: getTeacherInitials(sub.id, l.grade, l.stream),
+          id: col.members.map(m => m.id).join('+'), name: col.label, maxScore: col.max_score,
+          score,
+          grade: memberScores.length ? getGradeForLevel(score, col.max_score, l.grade) : '-' as any,
+          comment: memberScores.map(item => item.sc?.teacher_comment).find(Boolean) || '',
+          teacherInitials: first ? getTeacherInitials(first.id, l.grade, l.stream) : '',
         };
       });
       const total = subjectData.reduce((s, d) => s + d.score, 0);
-      const maxTotal = learnerGradeSubjects.reduce((s, sub) => s + sub.max_score, 0);
-      const mean = learnerGradeSubjects.length > 0 ? total / learnerGradeSubjects.length : 0;
-      const avgMax = learnerGradeSubjects.length > 0 ? maxTotal / learnerGradeSubjects.length : 100;
+      const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
+      const mean = subjectData.length > 0 ? total / subjectData.length : 0;
+      const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
       // Include learner if they have at least ONE non-zero score.
       // Excludes only learners with all-zero (or no) scores entered.
       const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
       return {
         ...l, subjectData, total, mean,
-        overallGrade: learnerGradeSubjects.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
+        overallGrade: subjectData.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
         hasAnyScore,
       };
     })
