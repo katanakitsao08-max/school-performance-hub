@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
+import { getMergePref, setMergePref } from '@/lib/merge-state';
 
 interface AssignmentOption {
   grade: string;
