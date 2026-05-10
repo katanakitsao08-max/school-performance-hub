@@ -73,6 +73,13 @@ export default function ReportsPage() {
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
   const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(false);
+  // Auto-pick merge preference saved by Marks Entry for the current selection.
+  useEffect(() => {
+    const grade = selectedGrades[0];
+    if (!schoolId || !grade) return;
+    const at = isMerged ? 'end_term' : selectedAssessment;
+    setMergeCombinedSubjects(getMergePref(schoolId, grade, selectedTerm, selectedYear, at));
+  }, [schoolId, selectedGrades, selectedTerm, selectedYear, selectedAssessment, isMerged]);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
