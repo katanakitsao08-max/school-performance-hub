@@ -95,9 +95,9 @@ export default function Login() {
 
           <Card className="border-0 shadow-card-hover bg-card">
             <CardContent className="pt-8 pb-8 px-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-display font-bold text-foreground">Welcome back</h2>
-                <p className="text-sm text-muted-foreground mt-1">Sign in to your account</p>
+              <div className="mb-6 text-center">
+                <h2 className="text-3xl font-display font-extrabold tracking-tight text-foreground">PerformTrack</h2>
+                <p className="text-sm text-muted-foreground mt-2">Sign in to your account</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
