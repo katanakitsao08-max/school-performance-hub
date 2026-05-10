@@ -298,7 +298,7 @@ export default function ParentReportsTab({ child }: Props) {
         totalPoints,
         selectedTerm: Number(selectedTerm),
         selectedYear: Number(selectedYear),
-        assessmentLabel: 'End-Term',
+        assessmentLabel,
         classTeacherComment: generateTeacherComment(child.full_name, mean, 100, subjectData.map(s => ({ name: s.name, score: s.score, maxScore: s.maxScore }))),
         principalComment: '',
         schoolSettings: {
