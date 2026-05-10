@@ -17,6 +17,8 @@ export default function ParentReportsTab({ child }: Props) {
   const currentYear = new Date().getFullYear();
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [selectedAssessment, setSelectedAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
+  const assessmentLabel = selectedAssessment === 'opener' ? 'Opener' : selectedAssessment === 'mid_term' ? 'Mid-Term' : 'End-Term';
   const [generating, setGenerating] = useState(false);
 
   // Get school_id from parent_learners
