@@ -331,13 +331,21 @@ export default function ParentReportsTab({ child }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Select value={selectedTerm} onValueChange={setSelectedTerm}>
               <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">Term 1</SelectItem>
                 <SelectItem value="2">Term 2</SelectItem>
                 <SelectItem value="3">Term 3</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedAssessment} onValueChange={(v) => setSelectedAssessment(v as any)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="opener">Opener</SelectItem>
+                <SelectItem value="mid_term">Mid-Term</SelectItem>
+                <SelectItem value="end_term">End-Term</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -353,7 +361,7 @@ export default function ParentReportsTab({ child }: Props) {
           {hasScores ? (
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground">
-                {scores.length} subject(s) found for Term {selectedTerm}, {selectedYear}
+                {scores.length} subject(s) found for Term {selectedTerm}, {assessmentLabel}, {selectedYear}
               </div>
               <Button onClick={handleDownload} disabled={generating} className="w-full gap-2">
                 <Download className="h-4 w-4" />
@@ -362,7 +370,7 @@ export default function ParentReportsTab({ child }: Props) {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No end-term scores found for Term {selectedTerm}, {selectedYear}.
+              No {assessmentLabel} scores found for Term {selectedTerm}, {selectedYear}.
             </p>
           )}
         </CardContent>
