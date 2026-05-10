@@ -3,10 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { getGradeForLevel } from '@/lib/cbc-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, BookOpen, TrendingUp } from 'lucide-react';
+import { GraduationCap, BookOpen } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface Props {
   child: { id: string; full_name: string; grade: string; stream: string; gender: string };
@@ -20,13 +21,22 @@ const gradeColor = (grade: string) => {
 };
 
 export default function ParentPerformanceTab({ child }: Props) {
+  const currentYear = new Date().getFullYear();
+  const [term, setTerm] = useState<'all' | '1' | '2' | '3'>('all');
+  const [assessment, setAssessment] = useState<'all' | 'opener' | 'mid_term' | 'end_term'>('all');
+  const [year, setYear] = useState<string>(String(currentYear));
+
   const { data: scores = [] } = useQuery({
-    queryKey: ['parent-scores', child.id],
+    queryKey: ['parent-scores', child.id, term, assessment, year],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('scores')
         .select('*, learning_areas!scores_learning_area_id_fkey(name, max_score)')
-        .eq('learner_id', child.id);
+        .eq('learner_id', child.id)
+        .eq('year', Number(year));
+      if (term !== 'all') q = q.eq('term', Number(term));
+      if (assessment !== 'all') q = q.eq('assessment_type', assessment);
+      const { data } = await q;
       return data || [];
     },
   });
@@ -66,6 +76,40 @@ export default function ParentPerformanceTab({ child }: Props) {
               <p className="text-xs text-muted-foreground">Grade {child.grade} · {child.stream} · {child.gender}</p>
             </div>
             <Badge className={cn("text-xs", gradeColor(overallGrade))}>{overallGrade}</Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <Card className="shadow-card">
+        <CardContent className="p-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Select value={term} onValueChange={(v) => setTerm(v as any)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Terms</SelectItem>
+                <SelectItem value="1">Term 1</SelectItem>
+                <SelectItem value="2">Term 2</SelectItem>
+                <SelectItem value="3">Term 3</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={assessment} onValueChange={(v) => setAssessment(v as any)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Assessments</SelectItem>
+                <SelectItem value="opener">Opener</SelectItem>
+                <SelectItem value="mid_term">Mid-Term</SelectItem>
+                <SelectItem value="end_term">End-Term</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[currentYear, currentYear - 1, currentYear - 2].map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
