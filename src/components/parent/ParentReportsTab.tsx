@@ -37,7 +37,7 @@ export default function ParentReportsTab({ child }: Props) {
   const schoolId = parentLink?.school_id;
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['parent-report-scores', child.id, selectedTerm, selectedYear],
+    queryKey: ['parent-report-scores', child.id, selectedTerm, selectedYear, selectedAssessment],
     queryFn: async () => {
       const { data } = await supabase
         .from('scores')
@@ -45,7 +45,7 @@ export default function ParentReportsTab({ child }: Props) {
         .eq('learner_id', child.id)
         .eq('term', Number(selectedTerm))
         .eq('year', Number(selectedYear))
-        .eq('assessment_type', 'end_term');
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
   });
