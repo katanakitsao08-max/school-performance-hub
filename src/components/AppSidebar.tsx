@@ -117,6 +117,7 @@ const teacherSections: NavSection[] = [
     items: [
       { title: "Reports", url: "/reports", icon: FileText },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
+      { title: "Subject Analysis", url: "/grade-analysis", icon: PieChart },
     ],
   },
 ];

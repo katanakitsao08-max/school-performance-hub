@@ -17,6 +17,8 @@ export default function ParentReportsTab({ child }: Props) {
   const currentYear = new Date().getFullYear();
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
+  const [selectedAssessment, setSelectedAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
+  const assessmentLabel = selectedAssessment === 'opener' ? 'Opener' : selectedAssessment === 'mid_term' ? 'Mid-Term' : 'End-Term';
   const [generating, setGenerating] = useState(false);
 
   // Get school_id from parent_learners
@@ -35,7 +37,7 @@ export default function ParentReportsTab({ child }: Props) {
   const schoolId = parentLink?.school_id;
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['parent-report-scores', child.id, selectedTerm, selectedYear],
+    queryKey: ['parent-report-scores', child.id, selectedTerm, selectedYear, selectedAssessment],
     queryFn: async () => {
       const { data } = await supabase
         .from('scores')
@@ -43,7 +45,7 @@ export default function ParentReportsTab({ child }: Props) {
         .eq('learner_id', child.id)
         .eq('term', Number(selectedTerm))
         .eq('year', Number(selectedYear))
-        .eq('assessment_type', 'end_term');
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
   });
@@ -111,7 +113,7 @@ export default function ParentReportsTab({ child }: Props) {
 
   // Fetch all scores for the grade (for rankings & class averages)
   const { data: allGradeScores = [] } = useQuery({
-    queryKey: ['parent-grade-scores', child.grade, selectedTerm, selectedYear, schoolId],
+    queryKey: ['parent-grade-scores', child.grade, selectedTerm, selectedYear, selectedAssessment, schoolId],
     queryFn: async () => {
       const ids = gradeLearners.map(l => l.id);
       if (!ids.length) return [];
@@ -121,7 +123,7 @@ export default function ParentReportsTab({ child }: Props) {
         .in('learner_id', ids)
         .eq('term', Number(selectedTerm))
         .eq('year', Number(selectedYear))
-        .eq('assessment_type', 'end_term');
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
     enabled: gradeLearners.length > 0,
@@ -296,7 +298,7 @@ export default function ParentReportsTab({ child }: Props) {
         totalPoints,
         selectedTerm: Number(selectedTerm),
         selectedYear: Number(selectedYear),
-        assessmentLabel: 'End-Term',
+        assessmentLabel,
         classTeacherComment: generateTeacherComment(child.full_name, mean, 100, subjectData.map(s => ({ name: s.name, score: s.score, maxScore: s.maxScore }))),
         principalComment: '',
         schoolSettings: {
@@ -329,13 +331,21 @@ export default function ParentReportsTab({ child }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Select value={selectedTerm} onValueChange={setSelectedTerm}>
               <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">Term 1</SelectItem>
                 <SelectItem value="2">Term 2</SelectItem>
                 <SelectItem value="3">Term 3</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedAssessment} onValueChange={(v) => setSelectedAssessment(v as any)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="opener">Opener</SelectItem>
+                <SelectItem value="mid_term">Mid-Term</SelectItem>
+                <SelectItem value="end_term">End-Term</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -351,7 +361,7 @@ export default function ParentReportsTab({ child }: Props) {
           {hasScores ? (
             <div className="space-y-2">
               <div className="text-xs text-muted-foreground">
-                {scores.length} subject(s) found for Term {selectedTerm}, {selectedYear}
+                {scores.length} subject(s) found for Term {selectedTerm}, {assessmentLabel}, {selectedYear}
               </div>
               <Button onClick={handleDownload} disabled={generating} className="w-full gap-2">
                 <Download className="h-4 w-4" />
@@ -360,7 +370,7 @@ export default function ParentReportsTab({ child }: Props) {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No end-term scores found for Term {selectedTerm}, {selectedYear}.
+              No {assessmentLabel} scores found for Term {selectedTerm}, {selectedYear}.
             </p>
           )}
         </CardContent>

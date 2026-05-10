@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
+import { getMergePref, setMergePref } from '@/lib/merge-state';
 
 interface AssignmentOption {
   grade: string;
@@ -167,7 +168,15 @@ export default function MarksEntryPage() {
   }, [allSubjects, isPrivileged, myAssignments, myClassTeacher, selectedGrade, selectedStream]);
 
   // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
+  // Persisted per (school, grade, term, year, assessment) so reports auto-apply it.
   const [mergeCombined, setMergeCombined] = useState(false);
+  useEffect(() => {
+    setMergeCombined(getMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment));
+  }, [schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
+  const handleMergeChange = (v: boolean) => {
+    setMergeCombined(v);
+    if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, v);
+  };
   const subjectColumns = useMemo(
     () => buildSubjectColumns(subjects as any[], selectedGrade, mergeCombined),
     [subjects, selectedGrade, mergeCombined]
@@ -424,7 +433,7 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Combined Subjects</Label>
             <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
-              <Switch checked={mergeCombined} onCheckedChange={setMergeCombined} />
+              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} />
               <span className="text-xs text-muted-foreground">Merge SS+RE & Sci+Agri</span>
             </div>
           </div>
