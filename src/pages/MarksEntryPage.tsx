@@ -433,7 +433,7 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Combined Subjects</Label>
             <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
-              <Switch checked={mergeCombined} onCheckedChange={setMergeCombined} />
+              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} />
               <span className="text-xs text-muted-foreground">Merge SS+RE & Sci+Agri</span>
             </div>
           </div>
