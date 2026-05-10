@@ -113,7 +113,7 @@ export default function ParentReportsTab({ child }: Props) {
 
   // Fetch all scores for the grade (for rankings & class averages)
   const { data: allGradeScores = [] } = useQuery({
-    queryKey: ['parent-grade-scores', child.grade, selectedTerm, selectedYear, schoolId],
+    queryKey: ['parent-grade-scores', child.grade, selectedTerm, selectedYear, selectedAssessment, schoolId],
     queryFn: async () => {
       const ids = gradeLearners.map(l => l.id);
       if (!ids.length) return [];
@@ -123,7 +123,7 @@ export default function ParentReportsTab({ child }: Props) {
         .in('learner_id', ids)
         .eq('term', Number(selectedTerm))
         .eq('year', Number(selectedYear))
-        .eq('assessment_type', 'end_term');
+        .eq('assessment_type', selectedAssessment);
       return data || [];
     },
     enabled: gradeLearners.length > 0,
