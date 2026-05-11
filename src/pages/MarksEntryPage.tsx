@@ -20,6 +20,7 @@ import { getGradeLevel } from '@/lib/grade-levels';
 import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
+import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
 
 interface AssignmentOption {
   grade: string;
