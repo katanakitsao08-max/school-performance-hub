@@ -197,7 +197,7 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     }
   };
 
-  const discard = () => { setNotes(null); setStatus('idle'); };
+  const discard = () => { setNotes(null); setBulkSections(null); setStatus('idle'); };
   const approve = () => { setStatus('approved'); toast.success('Notes approved & ready to use'); };
 
   const downloadPdf = () => {
