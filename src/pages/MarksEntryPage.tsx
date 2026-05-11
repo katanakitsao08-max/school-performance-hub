@@ -20,6 +20,7 @@ import { getGradeLevel } from '@/lib/grade-levels';
 import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
+import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
 
 interface AssignmentOption {
   grade: string;
@@ -350,20 +351,34 @@ export default function MarksEntryPage() {
                 : 'CBC Assessment — KNEC-style score entry'}
             </p>
           </div>
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !hasUnsavedChanges}
-            size="sm"
-            className="gap-1.5"
-          >
-            {saveMutation.isPending ? (
-              <>Saving...</>
-            ) : hasUnsavedChanges ? (
-              <><Save className="h-4 w-4" /> Save Scores</>
-            ) : (
-              <><CheckCircle2 className="h-4 w-4" /> Saved</>
+          <div className="flex gap-2">
+            {selectedGrade && selectedStream && (
+              <BulkScoresUploadDialog
+                schoolId={schoolId!}
+                grade={selectedGrade}
+                stream={selectedStream}
+                term={selectedTerm}
+                year={selectedYear}
+                assessment={selectedAssessment}
+                subjects={subjects.filter(s => editableSubjectIds.has(s.id)).map(s => ({ id: s.id, name: s.name, max_score: s.max_score }))}
+                learners={learners as any[]}
+              />
             )}
-          </Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !hasUnsavedChanges}
+              size="sm"
+              className="gap-1.5"
+            >
+              {saveMutation.isPending ? (
+                <>Saving...</>
+              ) : hasUnsavedChanges ? (
+                <><Save className="h-4 w-4" /> Save Scores</>
+              ) : (
+                <><CheckCircle2 className="h-4 w-4" /> Saved</>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Teacher assignment chips (mobile-friendly quick select) */}

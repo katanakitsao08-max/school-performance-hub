@@ -41,6 +41,9 @@ interface LessonNotes {
 }
 
 type Status = 'idle' | 'generating' | 'preview' | 'editing' | 'approved';
+type Scope = 'topic' | 'term' | 'year';
+
+interface BulkSection { strand: string; subStrand: string; title: string; mainContent: string }
 
 export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   const [grade, setGrade] = useState('');
@@ -52,6 +55,9 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   const [notes, setNotes] = useState<LessonNotes | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [groundedInKicd, setGroundedInKicd] = useState(false);
+  const [scope, setScope] = useState<Scope>('topic');
+  const [bulkSections, setBulkSections] = useState<BulkSection[] | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [design, setDesign] = useState<DbCurriculumDesign | null>(null);
   const [loadingDesign, setLoadingDesign] = useState(false);
@@ -89,12 +95,13 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   }, [selectedSub]);
 
   const generate = async () => {
+    if (scope !== 'topic') return generateBulk();
     const finalTopic = topic.trim() || selectedSub?.label || '';
     if (!grade || !subject.trim() || !finalTopic) {
       toast.error('Please fill Grade, Subject and Topic (or pick a sub-strand)');
       return;
     }
-    setStatus('generating');
+    setStatus('generating'); setBulkSections(null);
     try {
       const kicd = selectedSub ? {
         designTitle: design?.title ?? null,
@@ -125,11 +132,76 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     }
   };
 
-  const discard = () => { setNotes(null); setStatus('idle'); };
+  // Bulk: load every sub-strand for the chosen scope (term or whole year) and
+  // generate ONLY the textbook main content for each, then concat into one doc.
+  const generateBulk = async () => {
+    if (!grade || !subject.trim()) { toast.error('Pick a Grade and Subject first'); return; }
+    setStatus('generating'); setNotes(null); setBulkSections(null);
+    try {
+      const termsToFetch = scope === 'year' ? ['Term 1', 'Term 2', 'Term 3'] : [term];
+      const designs: DbCurriculumDesign[] = [];
+      for (const t of termsToFetch) {
+        const d = await findActiveCurriculumDesign(grade, subject.trim(), t);
+        if (d) designs.push(d);
+      }
+      const tasks: { strand: string; ss: DbSubStrand }[] = [];
+      designs.forEach(d => d.strands.forEach(s => s.subStrands.forEach(ss => tasks.push({ strand: s.name, ss }))));
+
+      if (tasks.length === 0) {
+        toast.error('No KICD sub-strands found. Load a curriculum design first or pick "Single Topic" mode.');
+        setStatus('idle'); return;
+      }
+
+      setBulkProgress({ done: 0, total: tasks.length });
+      const sections: BulkSection[] = [];
+      // Sequential to avoid rate-limit + show progress
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        const kicd = {
+          designTitle: null,
+          strand: t.strand,
+          subStrand: t.ss.name,
+          slos: t.ss.slos,
+          activities: t.ss.activities,
+          assessmentMethods: t.ss.assessmentMethods,
+          inquiryQuestions: t.ss.inquiryQuestions,
+          resources: t.ss.resources,
+          competencies: t.ss.competencies,
+          values: t.ss.values,
+          pcis: t.ss.pcis,
+        };
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-lesson-notes', {
+            body: { grade, subject: subject.trim(), topic: t.ss.name, difficulty, kicd, mainContentOnly: true },
+          });
+          if (error) throw error;
+          const n = data?.notes;
+          if (n?.mainContent) {
+            sections.push({ strand: t.strand, subStrand: t.ss.name, title: n.title || t.ss.name, mainContent: n.mainContent });
+          }
+        } catch (e) {
+          console.error('Sub-strand failed:', t.ss.name, e);
+        }
+        setBulkProgress({ done: i + 1, total: tasks.length });
+      }
+      if (sections.length === 0) { toast.error('Could not generate any sections'); setStatus('idle'); return; }
+      setBulkSections(sections);
+      setGroundedInKicd(true);
+      setStatus('preview');
+      toast.success(`Generated ${sections.length} section${sections.length === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      setStatus('idle');
+      toast.error(e?.message || 'Bulk generation failed');
+    } finally {
+      setBulkProgress(null);
+    }
+  };
+
+  const discard = () => { setNotes(null); setBulkSections(null); setStatus('idle'); };
   const approve = () => { setStatus('approved'); toast.success('Notes approved & ready to use'); };
 
   const downloadPdf = () => {
-    if (!notes) return;
+    if (!notes && !bulkSections) return;
     const doc = new jsPDF();
     const margin = 15;
     let y = margin;
@@ -161,7 +233,6 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
       });
       y += 2;
     };
-    // Textbook-aware renderer: ALL-CAPS line → big bold heading; capitalised short line → mini heading; ✓/- → bullets.
     const writeRich = (txt: string) => {
       (txt || '').split(/\n/).forEach((rawLine) => {
         const line = rawLine.trimEnd();
@@ -242,6 +313,30 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     };
 
     writeHeader();
+
+    // Bulk (Term / Whole Year) — main content only, no objectives/intro
+    if (bulkSections) {
+      const headTitle = scope === 'year'
+        ? `${grade} • ${subject} — REVISION NOTES (Whole Year)`
+        : `${grade} • ${subject} — REVISION NOTES (${term})`;
+      writeTitle(headTitle, 16);
+      writeText(`${bulkSections.length} sections${groundedInKicd ? ' • KICD-grounded' : ''}`);
+      let lastStrand = '';
+      bulkSections.forEach((sec) => {
+        if (sec.strand !== lastStrand) {
+          y += 2;
+          writeTitle(sec.strand.toUpperCase(), 15);
+          lastStrand = sec.strand;
+        }
+        writeTitle(sec.title || sec.subStrand, 13);
+        writeRich(sec.mainContent);
+      });
+      const safe = `${grade}_${subject}_${scope === 'year' ? 'WholeYear' : term}`.replace(/[^a-z0-9]+/gi, '_');
+      doc.save(`Notes_${safe}.pdf`);
+      return;
+    }
+
+    if (!notes) return;
     writeTitle(notes.title, 16);
     writeText(`${grade} • ${subject} • ${difficulty.toUpperCase()}${groundedInKicd ? ' • KICD-grounded' : ''}`);
 

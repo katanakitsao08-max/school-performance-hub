@@ -20,6 +20,7 @@ interface NotesRequest {
   topic: string;
   difficulty: 'basic' | 'standard' | 'advanced';
   kicd?: KicdContext | null;
+  mainContentOnly?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json()) as Partial<NotesRequest>;
-    const { grade, subject, topic, difficulty, kicd } = body;
+    const { grade, subject, topic, difficulty, kicd, mainContentOnly } = body;
     if (!grade || !subject || !topic || !difficulty) {
       return new Response(JSON.stringify({ error: 'Missing required fields: grade, subject, topic, difficulty' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -156,12 +157,28 @@ CRITICAL:
 - The "mainContent" MUST visibly look like a textbook page with multiple ALL-CAPS sections, mini-headings, dash-definitions and ✓ bullet lists. A flat prose paragraph is REJECTED.
 - Do NOT include disclaimers, AI mentions, or apologies. JSON only.`;
 
+    const mainOnlyUser = `Generate ONLY a textbook-style "mainContent" page (no objectives, no introduction, no questions, no activities) for:
+- Class: ${grade}
+- Subject: ${subject}
+- Topic / Sub-Strand: ${topic}
+- Difficulty: ${difficulty}
+
+${kicdBlock}
+
+Return JSON:
+{
+  "title": string,            // friendly heading e.g. "${topic.toUpperCase()}"
+  "mainContent": string       // FULL textbook page, 600-1200 words, multiple ALL-CAPS sub-headings, mini-headings, dash-definitions, ✓ bullet lists. Use \\n and \\n\\n for layout.
+}
+
+CRITICAL: Output JSON only. mainContent must visibly look like a textbook page.`;
+
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        messages: [{ role: 'system', content: system }, { role: 'user', content: mainContentOnly ? mainOnlyUser : user }],
         response_format: { type: 'json_object' },
       }),
     });
