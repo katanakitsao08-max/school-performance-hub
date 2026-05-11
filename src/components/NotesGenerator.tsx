@@ -41,6 +41,9 @@ interface LessonNotes {
 }
 
 type Status = 'idle' | 'generating' | 'preview' | 'editing' | 'approved';
+type Scope = 'topic' | 'term' | 'year';
+
+interface BulkSection { strand: string; subStrand: string; title: string; mainContent: string }
 
 export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   const [grade, setGrade] = useState('');
@@ -52,6 +55,9 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   const [notes, setNotes] = useState<LessonNotes | null>(null);
   const [status, setStatus] = useState<Status>('idle');
   const [groundedInKicd, setGroundedInKicd] = useState(false);
+  const [scope, setScope] = useState<Scope>('topic');
+  const [bulkSections, setBulkSections] = useState<BulkSection[] | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [design, setDesign] = useState<DbCurriculumDesign | null>(null);
   const [loadingDesign, setLoadingDesign] = useState(false);
