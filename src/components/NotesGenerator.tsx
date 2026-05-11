@@ -201,7 +201,7 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   const approve = () => { setStatus('approved'); toast.success('Notes approved & ready to use'); };
 
   const downloadPdf = () => {
-    if (!notes) return;
+    if (!notes && !bulkSections) return;
     const doc = new jsPDF();
     const margin = 15;
     let y = margin;
@@ -233,7 +233,6 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
       });
       y += 2;
     };
-    // Textbook-aware renderer: ALL-CAPS line → big bold heading; capitalised short line → mini heading; ✓/- → bullets.
     const writeRich = (txt: string) => {
       (txt || '').split(/\n/).forEach((rawLine) => {
         const line = rawLine.trimEnd();
@@ -314,6 +313,30 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     };
 
     writeHeader();
+
+    // Bulk (Term / Whole Year) — main content only, no objectives/intro
+    if (bulkSections) {
+      const headTitle = scope === 'year'
+        ? `${grade} • ${subject} — REVISION NOTES (Whole Year)`
+        : `${grade} • ${subject} — REVISION NOTES (${term})`;
+      writeTitle(headTitle, 16);
+      writeText(`${bulkSections.length} sections${groundedInKicd ? ' • KICD-grounded' : ''}`);
+      let lastStrand = '';
+      bulkSections.forEach((sec) => {
+        if (sec.strand !== lastStrand) {
+          y += 2;
+          writeTitle(sec.strand.toUpperCase(), 15);
+          lastStrand = sec.strand;
+        }
+        writeTitle(sec.title || sec.subStrand, 13);
+        writeRich(sec.mainContent);
+      });
+      const safe = `${grade}_${subject}_${scope === 'year' ? 'WholeYear' : term}`.replace(/[^a-z0-9]+/gi, '_');
+      doc.save(`Notes_${safe}.pdf`);
+      return;
+    }
+
+    if (!notes) return;
     writeTitle(notes.title, 16);
     writeText(`${grade} • ${subject} • ${difficulty.toUpperCase()}${groundedInKicd ? ' • KICD-grounded' : ''}`);
 
