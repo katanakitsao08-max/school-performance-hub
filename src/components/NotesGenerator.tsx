@@ -95,12 +95,13 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
   }, [selectedSub]);
 
   const generate = async () => {
+    if (scope !== 'topic') return generateBulk();
     const finalTopic = topic.trim() || selectedSub?.label || '';
     if (!grade || !subject.trim() || !finalTopic) {
       toast.error('Please fill Grade, Subject and Topic (or pick a sub-strand)');
       return;
     }
-    setStatus('generating');
+    setStatus('generating'); setBulkSections(null);
     try {
       const kicd = selectedSub ? {
         designTitle: design?.title ?? null,
@@ -128,6 +129,71 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     } catch (e: any) {
       setStatus('idle');
       toast.error(e?.message || 'Failed to generate notes');
+    }
+  };
+
+  // Bulk: load every sub-strand for the chosen scope (term or whole year) and
+  // generate ONLY the textbook main content for each, then concat into one doc.
+  const generateBulk = async () => {
+    if (!grade || !subject.trim()) { toast.error('Pick a Grade and Subject first'); return; }
+    setStatus('generating'); setNotes(null); setBulkSections(null);
+    try {
+      const termsToFetch = scope === 'year' ? ['Term 1', 'Term 2', 'Term 3'] : [term];
+      const designs: DbCurriculumDesign[] = [];
+      for (const t of termsToFetch) {
+        const d = await findActiveCurriculumDesign(grade, subject.trim(), t);
+        if (d) designs.push(d);
+      }
+      const tasks: { strand: string; ss: DbSubStrand }[] = [];
+      designs.forEach(d => d.strands.forEach(s => s.subStrands.forEach(ss => tasks.push({ strand: s.name, ss }))));
+
+      if (tasks.length === 0) {
+        toast.error('No KICD sub-strands found. Load a curriculum design first or pick "Single Topic" mode.');
+        setStatus('idle'); return;
+      }
+
+      setBulkProgress({ done: 0, total: tasks.length });
+      const sections: BulkSection[] = [];
+      // Sequential to avoid rate-limit + show progress
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        const kicd = {
+          designTitle: null,
+          strand: t.strand,
+          subStrand: t.ss.name,
+          slos: t.ss.slos,
+          activities: t.ss.activities,
+          assessmentMethods: t.ss.assessmentMethods,
+          inquiryQuestions: t.ss.inquiryQuestions,
+          resources: t.ss.resources,
+          competencies: t.ss.competencies,
+          values: t.ss.values,
+          pcis: t.ss.pcis,
+        };
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-lesson-notes', {
+            body: { grade, subject: subject.trim(), topic: t.ss.name, difficulty, kicd, mainContentOnly: true },
+          });
+          if (error) throw error;
+          const n = data?.notes;
+          if (n?.mainContent) {
+            sections.push({ strand: t.strand, subStrand: t.ss.name, title: n.title || t.ss.name, mainContent: n.mainContent });
+          }
+        } catch (e) {
+          console.error('Sub-strand failed:', t.ss.name, e);
+        }
+        setBulkProgress({ done: i + 1, total: tasks.length });
+      }
+      if (sections.length === 0) { toast.error('Could not generate any sections'); setStatus('idle'); return; }
+      setBulkSections(sections);
+      setGroundedInKicd(true);
+      setStatus('preview');
+      toast.success(`Generated ${sections.length} section${sections.length === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      setStatus('idle');
+      toast.error(e?.message || 'Bulk generation failed');
+    } finally {
+      setBulkProgress(null);
     }
   };
 
