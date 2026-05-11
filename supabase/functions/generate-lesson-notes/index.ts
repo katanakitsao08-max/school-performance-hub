@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json()) as Partial<NotesRequest>;
-    const { grade, subject, topic, difficulty, kicd } = body;
+    const { grade, subject, topic, difficulty, kicd, mainContentOnly } = body;
     if (!grade || !subject || !topic || !difficulty) {
       return new Response(JSON.stringify({ error: 'Missing required fields: grade, subject, topic, difficulty' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
