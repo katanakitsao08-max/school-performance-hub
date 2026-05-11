@@ -20,6 +20,7 @@ interface NotesRequest {
   topic: string;
   difficulty: 'basic' | 'standard' | 'advanced';
   kicd?: KicdContext | null;
+  mainContentOnly?: boolean;
 }
 
 Deno.serve(async (req) => {
