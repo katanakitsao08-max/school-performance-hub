@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import RevenueSubscriptionSection from '@/components/superadmin/RevenueSubscriptionSection';
 import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTogglesSection';
 import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
+import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -143,6 +144,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: SMS management (additive) */}
         <SuperAdminSmsSection schools={schools} />
+
+        {/* New: WhatsApp Subscription Reminders (click-to-send) */}
+        <SubscriptionRemindersSection schools={schools} />
       </div>
     </DashboardLayout>
   );
