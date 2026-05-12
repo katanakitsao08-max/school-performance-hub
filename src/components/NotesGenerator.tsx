@@ -376,6 +376,23 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Inputs */}
+        <div>
+          <Label>Scope</Label>
+          <Select value={scope} onValueChange={(v) => setScope(v as Scope)}>
+            <SelectTrigger className="md:w-[280px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="topic">Single Topic / Sub-Strand</SelectItem>
+              <SelectItem value="term">Whole Term (all sub-strands)</SelectItem>
+              <SelectItem value="year">Whole Year (all 3 terms)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {scope === 'topic'
+              ? 'Generate full lesson notes for one sub-strand.'
+              : 'Bulk-generate textbook-style revision notes (main content only) for every sub-strand in the selected scope.'}
+          </p>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-4">
           <div>
             <Label>Class</Label>
