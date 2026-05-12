@@ -454,8 +454,10 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
         <div className="flex flex-wrap gap-2">
           <Button onClick={generate} disabled={status === 'generating'}>
             {status === 'generating'
-              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…</>
-              : <><Sparkles className="h-4 w-4 mr-2" /> Generate Notes</>}
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating{bulkProgress ? ` ${bulkProgress.done}/${bulkProgress.total}` : '…'}</>
+              : <><Sparkles className="h-4 w-4 mr-2" />
+                  {scope === 'topic' ? 'Generate Notes' : scope === 'term' ? 'Generate Term Notes' : 'Generate Whole-Year Notes'}
+                </>}
           </Button>
           {notes && status !== 'editing' && (
             <Button variant="outline" onClick={() => setStatus('editing')}>
@@ -472,17 +474,49 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
               <Check className="h-4 w-4 mr-2" /> Approve & Publish
             </Button>
           )}
-          {notes && status === 'approved' && (
+          {((notes && status === 'approved') || bulkSections) && (
             <Button variant="default" onClick={downloadPdf}>
               <Check className="h-4 w-4 mr-2" /> Download PDF
             </Button>
           )}
-          {notes && (
+          {(notes || bulkSections) && (
             <Button variant="ghost" onClick={discard}>
               <X className="h-4 w-4 mr-2" /> Discard
             </Button>
           )}
         </div>
+
+        {bulkProgress && (
+          <div className="text-xs text-muted-foreground">
+            Generating sub-strand {bulkProgress.done} of {bulkProgress.total}…
+          </div>
+        )}
+
+        {bulkSections && status !== 'generating' && (
+          <div className="border rounded-lg p-4 space-y-3 bg-card max-h-[480px] overflow-y-auto">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge className="bg-primary"><BookOpen className="h-3 w-3 mr-1" /> {bulkSections.length} sections</Badge>
+              {groundedInKicd && <Badge variant="outline"><ShieldCheck className="h-3 w-3 mr-1" /> KICD-grounded</Badge>}
+              <span className="text-xs text-muted-foreground">
+                {scope === 'year' ? 'Whole Year' : term} · {grade} · {subject}
+              </span>
+            </div>
+            {(() => {
+              let lastStrand = '';
+              return bulkSections.map((sec, i) => {
+                const showStrand = sec.strand !== lastStrand;
+                lastStrand = sec.strand;
+                return (
+                  <div key={i} className="space-y-1">
+                    {showStrand && <h3 className="font-bold text-sm uppercase mt-2">{sec.strand}</h3>}
+                    <h4 className="font-semibold text-sm">{sec.title || sec.subStrand}</h4>
+                    <p className="text-xs text-muted-foreground whitespace-pre-line">{sec.mainContent}</p>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        )}
 
         {/* Output */}
         {notes && (
