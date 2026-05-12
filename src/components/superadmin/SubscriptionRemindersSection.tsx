@@ -76,8 +76,8 @@ export default function SubscriptionRemindersSection({ schools }: { schools: Sch
   const adminBySchool = useMemo(() => {
     const map: Record<string, { name: string; phone: string }> = {};
     (admins as any[]).forEach(p => {
-      if (!map[p.school_id] && p.phone) {
-        map[p.school_id] = { name: p.full_name || 'Admin', phone: p.phone };
+      if (!map[p.school_id] && p.whatsapp_number) {
+        map[p.school_id] = { name: p.full_name || 'Admin', phone: p.whatsapp_number };
       }
     });
     return map;
