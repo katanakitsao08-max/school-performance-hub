@@ -144,6 +144,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: SMS management (additive) */}
         <SuperAdminSmsSection schools={schools} />
+
+        {/* New: WhatsApp Subscription Reminders (click-to-send) */}
+        <SubscriptionRemindersSection schools={schools} />
       </div>
     </DashboardLayout>
   );
