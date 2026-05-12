@@ -65,7 +65,7 @@ export default function SubscriptionRemindersSection({ schools }: { schools: Sch
       if (!userIds.length) return [];
       const { data: profs } = await supabase
         .from('profiles')
-        .select('user_id, full_name, phone, school_id')
+        .select('user_id, full_name, whatsapp_number, school_id')
         .in('user_id', userIds)
         .in('school_id', schoolIds);
       return profs || [];
