@@ -8,14 +8,14 @@ const defaultTabs = [
   { label: "Classes", icon: GraduationCap, to: "/learners" },
   { label: "Marks", icon: ClipboardList, to: "/marks-entry" },
   { label: "Reports", icon: FileText, to: "/reports" },
-  { label: "More", icon: MoreHorizontal, to: "/more" },
+  { label: "Menu", icon: MoreHorizontal, to: "/more" },
 ];
 
 const parentTabs = [
   { label: "Home", icon: LayoutDashboard, to: "/parent" },
   { label: "Fees", icon: Wallet, to: "/parent?tab=fees" },
   { label: "Reports", icon: FileText, to: "/parent?tab=reports" },
-  { label: "More", icon: MoreHorizontal, to: "/more" },
+  { label: "Menu", icon: MoreHorizontal, to: "/more" },
 ];
 
 export function BottomNav() {
