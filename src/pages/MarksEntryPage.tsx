@@ -21,6 +21,8 @@ import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
 import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
+import { addToOfflineQueue, isOnline } from '@/lib/offline-queue';
+import { useOfflineSync } from '@/hooks/use-offline-sync';
 
 interface AssignmentOption {
   grade: string;
@@ -218,12 +220,23 @@ export default function MarksEntryPage() {
     setHasUnsavedChanges(false);
   }, [existingScores]);
 
+  // Auto-save infrastructure
+  useOfflineSync(); // ensures online-recovery sync runs
+  const [dirtyCells, setDirtyCells] = useState<Set<string>>(new Set()); // "learnerId|subjectId"
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastAutoSaved, setLastAutoSaved] = useState<Date | null>(null);
+
   const handleScoreChange = useCallback((learnerId: string, subjectId: string, value: string) => {
     setScores(prev => ({
       ...prev,
       [learnerId]: { ...(prev[learnerId] || {}), [subjectId]: value },
     }));
     setHasUnsavedChanges(true);
+    setDirtyCells(prev => {
+      const next = new Set(prev);
+      next.add(`${learnerId}|${subjectId}`);
+      return next;
+    });
   }, []);
 
   // Save - only save editable subjects
@@ -259,12 +272,23 @@ export default function MarksEntryPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // Calculations
+  // Calculations — exclude blank/zero scores so they don't dilute the mean
+  const getEnteredSubjects = (learnerId: string) => {
+    const s = scores[learnerId] || {};
+    return subjects.filter(sub => {
+      const v = s[sub.id];
+      return v !== undefined && v !== '' && Number(v) > 0;
+    });
+  };
   const getTotal = (learnerId: string) => {
     const s = scores[learnerId] || {};
-    return subjects.reduce((sum, sub) => sum + (Number(s[sub.id]) || 0), 0);
+    return getEnteredSubjects(learnerId).reduce((sum, sub) => sum + (Number(s[sub.id]) || 0), 0);
   };
-  const getMean = (learnerId: string) => subjects.length === 0 ? 0 : getTotal(learnerId) / subjects.length;
+  const getMean = (learnerId: string) => {
+    const entered = getEnteredSubjects(learnerId);
+    if (entered.length === 0) return 0;
+    return getTotal(learnerId) / entered.length;
+  };
   const getTotalMaxScore = () => subjects.reduce((sum, s) => sum + s.max_score, 0);
 
   const rankings = useMemo(() => {
@@ -289,20 +313,90 @@ export default function MarksEntryPage() {
     );
   }, [learners, learnerSearch]);
 
-  // Class summary
+  // Class summary — only includes learners that have at least one non-zero score
   const classSummary = useMemo(() => {
     if (learners.length === 0 || subjects.length === 0) return null;
     const maxPerSubject = getTotalMaxScore() / subjects.length;
-    const grades = learners.map(l => getGradeForLevel(getMean(l.id), maxPerSubject, selectedGrade));
+    const scoringLearners = learners.filter(l => getMean(l.id) > 0);
+    const grades = scoringLearners.map(l => getGradeForLevel(getMean(l.id), maxPerSubject, selectedGrade));
     const isKJSEA = isKJSEAGradeLevel(selectedGrade);
+    const meanVal = scoringLearners.length > 0
+      ? scoringLearners.reduce((sum, l) => sum + getMean(l.id), 0) / scoringLearners.length
+      : 0;
     return {
       ee: grades.filter(g => isKJSEA ? (g === 'EE1' || g === 'EE2') : g === 'EE').length,
       me: grades.filter(g => isKJSEA ? (g === 'ME1' || g === 'ME2') : g === 'ME').length,
       ae: grades.filter(g => isKJSEA ? (g === 'AE1' || g === 'AE2') : g === 'AE').length,
       be: grades.filter(g => isKJSEA ? (g === 'BE1' || g === 'BE2') : g === 'BE').length,
-      classMean: (learners.reduce((sum, l) => sum + getMean(l.id), 0) / learners.length).toFixed(1),
+      classMean: meanVal.toFixed(1),
     };
   }, [learners, scores, subjects]);
+
+  // Auto-save: debounced flush of dirty cells (works online & queues offline)
+  useEffect(() => {
+    if (dirtyCells.size === 0) return;
+    const timer = setTimeout(async () => {
+      const cells = Array.from(dirtyCells);
+      setDirtyCells(new Set());
+      setAutoSaving(true);
+      try {
+        const upserts: any[] = [];
+        const deletes: { learner_id: string; learning_area_id: string }[] = [];
+        for (const key of cells) {
+          const [learnerId, subjectId] = key.split('|');
+          if (!editableSubjectIds.has(subjectId)) continue;
+          const raw = scores[learnerId]?.[subjectId];
+          if (raw === undefined || raw === '' || isNaN(Number(raw))) {
+            deletes.push({ learner_id: learnerId, learning_area_id: subjectId });
+          } else {
+            upserts.push({
+              learner_id: learnerId,
+              learning_area_id: subjectId,
+              term: selectedTerm,
+              year: selectedYear,
+              score: Number(raw),
+              school_id: schoolId,
+              assessment_type: selectedAssessment,
+            });
+          }
+        }
+        const online = isOnline();
+        if (upserts.length) {
+          if (online) {
+            const { error } = await supabase.from('scores').upsert(upserts, {
+              onConflict: 'learner_id,learning_area_id,term,year,assessment_type',
+            });
+            if (error) throw error;
+          } else {
+            upserts.forEach(u => addToOfflineQueue({ type: 'score', data: u }));
+          }
+        }
+        for (const d of deletes) {
+          if (online) {
+            await supabase.from('scores').delete()
+              .eq('learner_id', d.learner_id)
+              .eq('learning_area_id', d.learning_area_id)
+              .eq('term', selectedTerm).eq('year', selectedYear)
+              .eq('assessment_type', selectedAssessment);
+          } else {
+            addToOfflineQueue({
+              type: 'score-delete',
+              data: { ...d, term: selectedTerm, year: selectedYear, assessment_type: selectedAssessment },
+            });
+          }
+        }
+        setLastAutoSaved(new Date());
+        setHasUnsavedChanges(false);
+        if (online) queryClient.invalidateQueries({ queryKey: ['scores'] });
+      } catch (e: any) {
+        console.error('Auto-save error', e);
+      } finally {
+        setAutoSaving(false);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [dirtyCells, scores, editableSubjectIds, selectedTerm, selectedYear, selectedAssessment, schoolId, queryClient]);
+
 
   const getGradeBadge = (grade: AnyGrade | '-') => {
     if (grade === '-') return null;
@@ -364,6 +458,14 @@ export default function MarksEntryPage() {
                 learners={learners as any[]}
               />
             )}
+            <div className="flex items-center text-xs text-muted-foreground gap-1.5 mr-1">
+              {autoSaving ? (
+                <span className="text-amber-600">Auto-saving…</span>
+              ) : lastAutoSaved ? (
+                <span className="text-emerald-600">✓ Saved {lastAutoSaved.toLocaleTimeString()}</span>
+              ) : null}
+              {!isOnline() && <span className="text-destructive">Offline</span>}
+            </div>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !hasUnsavedChanges}

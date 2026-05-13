@@ -416,10 +416,12 @@ export default function ReportsPage() {
           teacherInitials: first ? getTeacherInitials(first.id, l.grade, l.stream) : '',
         };
       });
-      const total = subjectData.reduce((s, d) => s + d.score, 0);
-      const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
-      const mean = subjectData.length > 0 ? total / subjectData.length : 0;
-      const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
+      // Mean only counts subjects with a real (>0) entered score so blanks/zeros don't dilute it
+      const scoredSubjects = subjectData.filter(d => Number(d.score) > 0);
+      const total = scoredSubjects.reduce((s, d) => s + d.score, 0);
+      const maxTotal = scoredSubjects.reduce((s, sub) => s + sub.maxScore, 0);
+      const mean = scoredSubjects.length > 0 ? total / scoredSubjects.length : 0;
+      const avgMax = scoredSubjects.length > 0 ? maxTotal / scoredSubjects.length : 100;
       // Include learner if they have at least ONE non-zero score.
       // Excludes only learners with all-zero (or no) scores entered.
       const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
@@ -441,7 +443,7 @@ export default function ReportsPage() {
 
   const subjectMeans = useMemo(() => {
     return reportDisplaySubjects.map(sub => {
-      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score)).filter((sc: number) => Number(sc) > 0);
       const avg = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
       return { name: sub.name, mean: avg };
     });
@@ -450,7 +452,7 @@ export default function ReportsPage() {
   const classAvgPerSubject = useMemo(() => {
     const map: Record<string, number> = {};
     reportDisplaySubjects.forEach(sub => {
-      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score)).filter((sc: number) => Number(sc) > 0);
       map[sub.name] = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
     });
     return map;

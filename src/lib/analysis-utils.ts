@@ -22,7 +22,7 @@ export function computeAnalysis(
   allScores: any[],
 ): AnalysisResult {
   const subjectAnalyses: SubjectAnalysis[] = gradeSubjects.map(sub => {
-    const scores = allScores.filter((s: any) => s.learning_area_id === sub.id);
+    const scores = allScores.filter((s: any) => s.learning_area_id === sub.id && Number(s.score) > 0);
     const mean = scores.length > 0 ? scores.reduce((a: number, s: any) => a + s.score, 0) / scores.length : 0;
     const grade = getGradeForLevel(mean, sub.max_score, sub.grade || '1');
 
