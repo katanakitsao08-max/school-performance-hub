@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 type School = {
   id: string;
   school_name: string;
+  school_code?: string | null;
   subscription_status?: string | null;
   subscription_plan?: string | null;
 };
