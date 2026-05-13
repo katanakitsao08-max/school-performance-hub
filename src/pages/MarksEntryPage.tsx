@@ -220,12 +220,23 @@ export default function MarksEntryPage() {
     setHasUnsavedChanges(false);
   }, [existingScores]);
 
+  // Auto-save infrastructure
+  useOfflineSync(); // ensures online-recovery sync runs
+  const [dirtyCells, setDirtyCells] = useState<Set<string>>(new Set()); // "learnerId|subjectId"
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastAutoSaved, setLastAutoSaved] = useState<Date | null>(null);
+
   const handleScoreChange = useCallback((learnerId: string, subjectId: string, value: string) => {
     setScores(prev => ({
       ...prev,
       [learnerId]: { ...(prev[learnerId] || {}), [subjectId]: value },
     }));
     setHasUnsavedChanges(true);
+    setDirtyCells(prev => {
+      const next = new Set(prev);
+      next.add(`${learnerId}|${subjectId}`);
+      return next;
+    });
   }, []);
 
   // Save - only save editable subjects
