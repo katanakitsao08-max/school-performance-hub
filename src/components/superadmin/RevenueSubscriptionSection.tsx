@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/table';
 import { DollarSign, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateSubscriptionReceiptPDF } from '@/lib/subscription-receipt-pdf';
+import { useAuth } from '@/contexts/AuthContext';
 
 type School = {
   id: string;
