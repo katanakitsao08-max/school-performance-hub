@@ -416,10 +416,12 @@ export default function ReportsPage() {
           teacherInitials: first ? getTeacherInitials(first.id, l.grade, l.stream) : '',
         };
       });
-      const total = subjectData.reduce((s, d) => s + d.score, 0);
-      const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
-      const mean = subjectData.length > 0 ? total / subjectData.length : 0;
-      const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
+      // Mean only counts subjects with a real (>0) entered score so blanks/zeros don't dilute it
+      const scoredSubjects = subjectData.filter(d => Number(d.score) > 0);
+      const total = scoredSubjects.reduce((s, d) => s + d.score, 0);
+      const maxTotal = scoredSubjects.reduce((s, sub) => s + sub.maxScore, 0);
+      const mean = scoredSubjects.length > 0 ? total / scoredSubjects.length : 0;
+      const avgMax = scoredSubjects.length > 0 ? maxTotal / scoredSubjects.length : 100;
       // Include learner if they have at least ONE non-zero score.
       // Excludes only learners with all-zero (or no) scores entered.
       const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
