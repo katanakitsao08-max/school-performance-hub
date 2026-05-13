@@ -101,11 +101,15 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
   const [openPlan, setOpenPlan] = useState(false);
   const [planSchool, setPlanSchool] = useState<School | null>(null);
   const [planName, setPlanName] = useState('basic');
-  const [planFee, setPlanFee] = useState('12000');
+  const [planYearScope, setPlanYearScope] = useState<string>('default');
+  const [term1, setTerm1] = useState('4000');
+  const [term2, setTerm2] = useState('4000');
+  const [term3, setTerm3] = useState('4000');
 
   const [openPreview, setOpenPreview] = useState(false);
   const [previewData, setPreviewData] = useState<SubscriptionReceiptData | null>(null);
   const [pendingPayment, setPendingPayment] = useState<Payment | null>(null);
+  const [payTerm, setPayTerm] = useState<string>('1');
 
   useEffect(() => writeJSON(STORAGE_PAYMENTS, payments), [payments]);
   useEffect(() => writeJSON(STORAGE_PLANS, plans), [plans]);
@@ -117,24 +121,36 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
   }, [payments, currentYear]);
 
   const planFor = (school: School): PlanInfo => {
-    if (plans[school.id]) return plans[school.id];
+    const stored = plans[school.id];
+    if (stored) {
+      // backfill termFees if older record only had annualFee
+      const termFees = stored.termFees ?? splitToTerms(stored.annualFee || 0);
+      return { ...stored, termFees, annualFee: stored.annualFee || sumTerms(termFees) };
+    }
     const planKey = (school.subscription_plan || 'basic').toLowerCase();
-    return { plan: planKey, annualFee: DEFAULT_PLAN_FEE[planKey] ?? 12000 };
+    const annual = DEFAULT_PLAN_FEE[planKey] ?? 12000;
+    return { plan: planKey, annualFee: annual, termFees: splitToTerms(annual) };
+  };
+
+  const feesForYear = (info: PlanInfo, yr: string | number): { termFees: TermFees; annualFee: number } => {
+    const t = info.yearOverrides?.[String(yr)] ?? info.termFees;
+    return { termFees: t, annualFee: sumTerms(t) };
   };
 
   const rows = useMemo(() => {
     return schools.map(s => {
       const info = planFor(s);
+      const { annualFee } = feesForYear(info, year);
       const yearPayments = payments.filter(
         p => p.schoolId === s.id && new Date(p.date).getFullYear() === Number(year),
       );
       const amountPaid = yearPayments.reduce((sum, p) => sum + p.amount, 0);
-      const balance = Math.max(info.annualFee - amountPaid, 0);
+      const balance = Math.max(annualFee - amountPaid, 0);
       const status: 'Paid' | 'Partial' | 'Unpaid' =
-        amountPaid >= info.annualFee && info.annualFee > 0 ? 'Paid' : amountPaid > 0 ? 'Partial' : 'Unpaid';
+        amountPaid >= annualFee && annualFee > 0 ? 'Paid' : amountPaid > 0 ? 'Partial' : 'Unpaid';
       const last = yearPayments.sort((a, b) => b.date.localeCompare(a.date))[0];
       const nextDue = last ? new Date(new Date(last.date).getTime() + 365 * 86400000).toISOString().slice(0, 10) : `${year}-12-31`;
-      return { school: s, info, amountPaid, balance, status, lastPayment: last?.date || null, nextDue };
+      return { school: s, info, annualFee, amountPaid, balance, status, lastPayment: last?.date || null, nextDue };
     });
   }, [schools, payments, plans, year]);
 
@@ -156,9 +172,24 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
 
   const openRecord = (school: School) => {
     setActiveSchool(school);
-    setPayAmount('');
+    const info = planFor(school);
+    const { termFees } = feesForYear(info, year);
+    setPayTerm('1');
+    setPayAmount(String(termFees.term1 || ''));
     setPayDate(new Date().toISOString().slice(0, 10));
     setOpenPay(true);
+  };
+
+  const onPayTermChange = (v: string) => {
+    setPayTerm(v);
+    if (!activeSchool) return;
+    const info = planFor(activeSchool);
+    const { termFees } = feesForYear(info, new Date(payDate).getFullYear());
+    const map: Record<string, number> = {
+      '1': termFees.term1, '2': termFees.term2, '3': termFees.term3,
+      'annual': sumTerms(termFees),
+    };
+    if (map[v] !== undefined) setPayAmount(String(map[v] || ''));
   };
 
   const savePayment = async () => {
@@ -176,23 +207,27 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       createdAt: new Date().toISOString(),
     };
 
-    // Build receipt preview data
     const info = planFor(activeSchool);
     const yearOfPayment = new Date(payDate).getFullYear();
+    const { annualFee } = feesForYear(info, yearOfPayment);
     const paidThisYear =
       payments
         .filter(p => p.schoolId === activeSchool.id && new Date(p.date).getFullYear() === yearOfPayment)
         .reduce((s, p) => s + p.amount, 0) + amt;
-    const balanceAfter = Math.max(info.annualFee - paidThisYear, 0);
+    const balanceAfter = Math.max(annualFee - paidThisYear, 0);
     const receiptNumber = `PT-${yearOfPayment}-${Date.now().toString().slice(-6)}`;
+
+    const planLabel = payTerm === 'annual'
+      ? `${info.plan} (Annual)`
+      : `${info.plan} (Term ${payTerm})`;
 
     const receiptData: SubscriptionReceiptData = {
       receiptNumber,
       date: payDate,
       schoolName: activeSchool.school_name,
       schoolCode: activeSchool.school_code || null,
-      plan: info.plan,
-      annualFee: info.annualFee,
+      plan: planLabel,
+      annualFee,
       amountPaid: amt,
       balanceAfter,
       year: yearOfPayment,
@@ -205,9 +240,45 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
     setOpenPreview(true);
   };
 
+  const buildReceiptMessage = (d: SubscriptionReceiptData) =>
+    `PerformTrack — Official Payment Receipt\n\n` +
+    `Receipt #: ${d.receiptNumber}\n` +
+    `Date: ${d.date}\n` +
+    `School: ${d.schoolName}${d.schoolCode ? ' (' + d.schoolCode + ')' : ''}\n` +
+    `Plan: ${String(d.plan).toUpperCase()}\n` +
+    `Billing year: ${d.year}\n` +
+    `Annual fee: ${fmtKES(d.annualFee)}\n` +
+    `Amount received: ${fmtKES(d.amountPaid)}\n` +
+    `Outstanding balance: ${fmtKES(d.balanceAfter)}\n\n` +
+    `Issued by: ${d.issuedBy}\n` +
+    `(PDF receipt attached separately.)`;
+
+  const sendToAdmin = (d: SubscriptionReceiptData, school: School | null) => {
+    const phone = school?.contact_phone || '';
+    const email = school?.contact_email || '';
+    const msg = buildReceiptMessage(d);
+    const wa = phone ? buildWaMeLink(phone, msg) : null;
+    if (wa) {
+      window.open(wa, '_blank', 'noopener,noreferrer');
+    } else if (phone) {
+      toast.error('School contact phone is invalid for WhatsApp');
+    } else {
+      toast.message('No school contact phone on file — skipped WhatsApp');
+    }
+    if (email) {
+      const subject = encodeURIComponent(`PerformTrack Receipt ${d.receiptNumber} — ${d.schoolName}`);
+      const body = encodeURIComponent(msg);
+      // open in new tab so we don't navigate away from the dashboard
+      window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+    } else {
+      toast.message('No school contact email on file — skipped email');
+    }
+  };
+
   const confirmAndDownload = async () => {
     if (!pendingPayment || !previewData) return;
     setPayments(prev => [...prev, pendingPayment]);
+    const school = schools.find(s => s.id === pendingPayment.schoolId) || null;
     try {
       await generateSubscriptionReceiptPDF(previewData);
       toast.success(`Payment of ${fmtKES(previewData.amountPaid)} recorded · Receipt downloaded`);
@@ -216,6 +287,8 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       toast.success(`Payment of ${fmtKES(previewData.amountPaid)} recorded`);
       toast.error('Could not generate receipt PDF');
     }
+    // Auto-deliver to school admin via WhatsApp + email
+    sendToAdmin(previewData, school);
     setOpenPreview(false);
     setPendingPayment(null);
     setPreviewData(null);
@@ -232,19 +305,56 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
     const info = planFor(school);
     setPlanSchool(school);
     setPlanName(info.plan);
-    setPlanFee(String(info.annualFee));
+    setPlanYearScope('default');
+    setTerm1(String(info.termFees.term1));
+    setTerm2(String(info.termFees.term2));
+    setTerm3(String(info.termFees.term3));
     setOpenPlan(true);
+  };
+
+  const onPlanYearScopeChange = (v: string) => {
+    setPlanYearScope(v);
+    if (!planSchool) return;
+    const info = planFor(planSchool);
+    const t = v === 'default' ? info.termFees : (info.yearOverrides?.[v] ?? info.termFees);
+    setTerm1(String(t.term1));
+    setTerm2(String(t.term2));
+    setTerm3(String(t.term3));
+  };
+
+  const onPlanNameChange = (v: string) => {
+    setPlanName(v);
+    if (DEFAULT_PLAN_FEE[v] !== undefined) {
+      const t = splitToTerms(DEFAULT_PLAN_FEE[v]);
+      setTerm1(String(t.term1));
+      setTerm2(String(t.term2));
+      setTerm3(String(t.term3));
+    }
   };
 
   const savePlan = () => {
     if (!planSchool) return;
-    const fee = Number(planFee);
-    if (fee < 0 || Number.isNaN(fee)) {
-      toast.error('Enter a valid annual fee');
+    const t1 = Number(term1), t2 = Number(term2), t3 = Number(term3);
+    if ([t1, t2, t3].some(n => Number.isNaN(n) || n < 0)) {
+      toast.error('Enter valid term fees (zero or positive numbers)');
       return;
     }
-    setPlans(prev => ({ ...prev, [planSchool.id]: { plan: planName, annualFee: fee } }));
-    toast.success('Plan updated');
+    const newTerms: TermFees = { term1: t1, term2: t2, term3: t3 };
+    setPlans(prev => {
+      const existing = prev[planSchool.id];
+      const base: PlanInfo = existing
+        ? { ...existing, termFees: existing.termFees ?? splitToTerms(existing.annualFee || 0) }
+        : { plan: planName, annualFee: 0, termFees: { term1: 0, term2: 0, term3: 0 } };
+      let next: PlanInfo;
+      if (planYearScope === 'default') {
+        next = { ...base, plan: planName, termFees: newTerms, annualFee: sumTerms(newTerms) };
+      } else {
+        const overrides = { ...(base.yearOverrides || {}), [planYearScope]: newTerms };
+        next = { ...base, plan: planName, yearOverrides: overrides };
+      }
+      return { ...prev, [planSchool.id]: next };
+    });
+    toast.success(planYearScope === 'default' ? 'Default term fees saved' : `Fees for ${planYearScope} saved`);
     setOpenPlan(false);
   };
 
