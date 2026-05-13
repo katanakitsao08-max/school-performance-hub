@@ -417,6 +417,94 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Preview Modal */}
+      <Dialog open={openPreview} onOpenChange={setOpenPreview}>
+        <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Receipt Preview
+            </DialogTitle>
+            <DialogDescription>
+              Review the receipt details before downloading
+            </DialogDescription>
+          </DialogHeader>
+          {previewData && (
+            <div className="space-y-4">
+              {/* Receipt card preview */}
+              <div className="rounded-lg border border-border overflow-hidden bg-card">
+                {/* Header band */}
+                <div className="bg-primary px-4 py-3 flex items-center gap-3">
+                  <img src={logoUrl} alt="PerformTrack" className="h-8 w-8 object-contain" />
+                  <div>
+                    <p className="text-white font-bold text-sm">PerformTrack</p>
+                    <p className="text-white/80 text-[10px]">Official Subscription Receipt</p>
+                  </div>
+                </div>
+                {/* Body */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Receipt #</span>
+                    <span className="text-sm font-mono font-medium">{previewData.receiptNumber}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Date</span>
+                    <span className="text-sm font-medium">{previewData.date}</span>
+                  </div>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">School</span>
+                    <span className="text-sm font-medium text-right max-w-[60%]">{previewData.schoolName}</span>
+                  </div>
+                  {previewData.schoolCode && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">School Code</span>
+                      <span className="text-sm font-medium">{previewData.schoolCode}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Plan</span>
+                    <span className="text-sm font-medium capitalize">{previewData.plan}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Billing Year</span>
+                    <span className="text-sm font-medium">{previewData.year}</span>
+                  </div>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Annual Fee</span>
+                    <span className="text-sm font-medium">{fmtKES(previewData.annualFee)}</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-success/10 rounded-md px-3 py-2">
+                    <span className="text-xs font-semibold text-success">Amount Received</span>
+                    <span className="text-base font-bold text-success">{fmtKES(previewData.amountPaid)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Outstanding Balance</span>
+                    <span className="text-sm font-medium">{fmtKES(previewData.balanceAfter)}</span>
+                  </div>
+                  <div className="h-px bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Issued By</span>
+                    <span className="text-sm font-medium">{previewData.issuedBy}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={cancelPreview} className="w-full sm:w-auto">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+            <Button onClick={confirmAndDownload} className="w-full sm:w-auto">
+              <Download className="h-4 w-4 mr-1" />
+              Confirm & Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
