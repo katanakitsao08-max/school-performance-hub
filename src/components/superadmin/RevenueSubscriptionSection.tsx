@@ -491,6 +491,19 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
           </DialogHeader>
           <div className="space-y-3">
             <div>
+              <Label htmlFor="pay-term">Payment for</Label>
+              <Select value={payTerm} onValueChange={onPayTermChange}>
+                <SelectTrigger id="pay-term"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Term 1</SelectItem>
+                  <SelectItem value="2">Term 2</SelectItem>
+                  <SelectItem value="3">Term 3</SelectItem>
+                  <SelectItem value="annual">Whole Year</SelectItem>
+                  <SelectItem value="custom">Custom amount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="pay-amount">Amount (KES)</Label>
               <Input id="pay-amount" type="number" min="1" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="e.g. 12000" />
             </div>
