@@ -363,7 +363,7 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-lg md:text-xl font-display font-bold text-foreground">Revenue & Subscriptions</h2>
-          <p className="text-xs text-muted-foreground">Track plan payments per school (saved locally)</p>
+          <p className="text-xs text-muted-foreground">Set per-school term/year fees · auto-receipt to school admin via WhatsApp + email</p>
         </div>
         <div className="flex items-center gap-2">
           <Label htmlFor="year-filter" className="text-xs">Year</Label>
