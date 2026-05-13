@@ -444,7 +444,7 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
                   <TableCell colSpan={9} className="text-center text-muted-foreground py-6">No schools yet</TableCell>
                 </TableRow>
               )}
-              {rows.map(({ school, info, amountPaid, balance, status, lastPayment, nextDue }) => (
+              {rows.map(({ school, info, annualFee, amountPaid, balance, status, lastPayment, nextDue }) => (
                 <TableRow key={school.id}>
                   <TableCell className="font-medium">{school.school_name}</TableCell>
                   <TableCell>
@@ -455,7 +455,7 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
                       {info.plan}
                     </button>
                   </TableCell>
-                  <TableCell className="text-right">{fmtKES(info.annualFee)}</TableCell>
+                  <TableCell className="text-right">{fmtKES(annualFee)}</TableCell>
                   <TableCell className="text-right">{fmtKES(amountPaid)}</TableCell>
                   <TableCell className="text-right">{fmtKES(balance)}</TableCell>
                   <TableCell>
