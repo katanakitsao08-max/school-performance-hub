@@ -516,10 +516,7 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
           <div className="space-y-3">
             <div>
               <Label htmlFor="plan-name">Plan</Label>
-              <Select value={planName} onValueChange={(v) => {
-                setPlanName(v);
-                if (DEFAULT_PLAN_FEE[v] !== undefined) setPlanFee(String(DEFAULT_PLAN_FEE[v]));
-              }}>
+              <Select value={planName} onValueChange={onPlanNameChange}>
                 <SelectTrigger id="plan-name"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.keys(DEFAULT_PLAN_FEE).map(p => (
@@ -529,8 +526,39 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
               </Select>
             </div>
             <div>
-              <Label htmlFor="plan-fee">Annual Fee (KES)</Label>
-              <Input id="plan-fee" type="number" min="0" value={planFee} onChange={e => setPlanFee(e.target.value)} />
+              <Label htmlFor="plan-year-scope">Apply fees to</Label>
+              <Select value={planYearScope} onValueChange={onPlanYearScopeChange}>
+                <SelectTrigger id="plan-year-scope"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default (all years)</SelectItem>
+                  {yearOptions.map(y => (
+                    <SelectItem key={y} value={y}>Override for {y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Set per-year overrides when a school's pricing changes between years.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label htmlFor="term-1" className="text-xs">Term 1 (KES)</Label>
+                <Input id="term-1" type="number" min="0" value={term1} onChange={e => setTerm1(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="term-2" className="text-xs">Term 2 (KES)</Label>
+                <Input id="term-2" type="number" min="0" value={term2} onChange={e => setTerm2(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="term-3" className="text-xs">Term 3 (KES)</Label>
+                <Input id="term-3" type="number" min="0" value={term3} onChange={e => setTerm3(e.target.value)} />
+              </div>
+            </div>
+            <div className="rounded-md bg-muted/40 px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Annual fee (sum of terms)</span>
+              <span className="text-sm font-semibold">
+                {fmtKES((Number(term1) || 0) + (Number(term2) || 0) + (Number(term3) || 0))}
+              </span>
             </div>
           </div>
           <DialogFooter>
