@@ -1,0 +1,14 @@
+# PerformTrack
+
+> PerformTrack is a Competency Based Curriculum (CBC) school performance management platform for Kenyan primary and junior schools. It handles marks entry, KPSEA/KJSEA reporting, attendance, fees, and parent communication.
+
+PerformTrack is a multi-tenant SaaS used by school administrators, headteachers, teachers, and parents. The application is sign-in protected, so most surfaces are not publicly indexable.
+
+## Pages
+
+- [Home](/): Routes signed-in users to their dashboard, signed-out users to login.
+- [Sign in](/login): Username + password login for school staff and parents.
+
+## Optional
+
+- [Forgot password](/forgot-password): Self-service password reset request.
