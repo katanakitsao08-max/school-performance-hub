@@ -206,7 +206,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted/30">
                   {schoolLogoUrl ? (
-                    <img src={schoolLogoUrl} alt="School Logo" className="w-full h-full object-contain p-1" />
+                    <img src={schoolLogoUrl} alt="Current school logo used on reports and documents" className="w-full h-full object-contain p-1" />
                   ) : (
                     <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
                   )}
