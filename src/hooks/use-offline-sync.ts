@@ -41,6 +41,14 @@ export function useOfflineSync() {
             onConflict: 'learner_id,learning_area_id,term,year,assessment_type',
           });
           if (!error) { markSynced(entry.id); successCount++; }
+        } else if (entry.type === 'score-delete') {
+          const d = entry.data as any;
+          const { error } = await supabase.from('scores').delete()
+            .eq('learner_id', d.learner_id)
+            .eq('learning_area_id', d.learning_area_id)
+            .eq('term', d.term).eq('year', d.year)
+            .eq('assessment_type', d.assessment_type);
+          if (!error) { markSynced(entry.id); successCount++; }
         } else if (entry.type === 'attendance') {
           const { error } = await supabase.from('attendance').upsert(entry.data as any);
           if (!error) { markSynced(entry.id); successCount++; }
