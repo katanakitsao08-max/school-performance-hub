@@ -163,9 +163,8 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       date: payDate,
       createdAt: new Date().toISOString(),
     };
-    setPayments(prev => [...prev, newPayment]);
 
-    // Build receipt
+    // Build receipt preview data
     const info = planFor(activeSchool);
     const yearOfPayment = new Date(payDate).getFullYear();
     const paidThisYear =
@@ -175,26 +174,46 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
     const balanceAfter = Math.max(info.annualFee - paidThisYear, 0);
     const receiptNumber = `PT-${yearOfPayment}-${Date.now().toString().slice(-6)}`;
 
+    const receiptData: SubscriptionReceiptData = {
+      receiptNumber,
+      date: payDate,
+      schoolName: activeSchool.school_name,
+      schoolCode: activeSchool.school_code || null,
+      plan: info.plan,
+      annualFee: info.annualFee,
+      amountPaid: amt,
+      balanceAfter,
+      year: yearOfPayment,
+      issuedBy: profile?.full_name || user?.email || 'Super Admin',
+    };
+
+    setPendingPayment(newPayment);
+    setPreviewData(receiptData);
+    setOpenPay(false);
+    setOpenPreview(true);
+  };
+
+  const confirmAndDownload = async () => {
+    if (!pendingPayment || !previewData) return;
+    setPayments(prev => [...prev, pendingPayment]);
     try {
-      await generateSubscriptionReceiptPDF({
-        receiptNumber,
-        date: payDate,
-        schoolName: activeSchool.school_name,
-        schoolCode: activeSchool.school_code || null,
-        plan: info.plan,
-        annualFee: info.annualFee,
-        amountPaid: amt,
-        balanceAfter,
-        year: yearOfPayment,
-        issuedBy: profile?.full_name || user?.email || 'Super Admin',
-      });
-      toast.success(`Payment of ${fmtKES(amt)} recorded · Receipt downloaded`);
+      await generateSubscriptionReceiptPDF(previewData);
+      toast.success(`Payment of ${fmtKES(previewData.amountPaid)} recorded · Receipt downloaded`);
     } catch (e) {
       console.error(e);
-      toast.success(`Payment of ${fmtKES(amt)} recorded`);
+      toast.success(`Payment of ${fmtKES(previewData.amountPaid)} recorded`);
       toast.error('Could not generate receipt PDF');
     }
-    setOpenPay(false);
+    setOpenPreview(false);
+    setPendingPayment(null);
+    setPreviewData(null);
+  };
+
+  const cancelPreview = () => {
+    setOpenPreview(false);
+    setPendingPayment(null);
+    setPreviewData(null);
+    setOpenPay(true);
   };
 
   const openEditPlan = (school: School) => {
