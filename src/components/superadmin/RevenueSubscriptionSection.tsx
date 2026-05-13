@@ -38,11 +38,6 @@ type Payment = {
   createdAt: string;
 };
 
-type PlanInfo = {
-  plan: string;
-  annualFee: number;
-};
-
 type TermFees = { term1: number; term2: number; term3: number };
 type PlanInfo = {
   plan: string;
