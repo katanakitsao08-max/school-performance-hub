@@ -458,6 +458,14 @@ export default function MarksEntryPage() {
                 learners={learners as any[]}
               />
             )}
+            <div className="flex items-center text-xs text-muted-foreground gap-1.5 mr-1">
+              {autoSaving ? (
+                <span className="text-amber-600">Auto-saving…</span>
+              ) : lastAutoSaved ? (
+                <span className="text-emerald-600">✓ Saved {lastAutoSaved.toLocaleTimeString()}</span>
+              ) : null}
+              {!isOnline() && <span className="text-destructive">Offline</span>}
+            </div>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !hasUnsavedChanges}
