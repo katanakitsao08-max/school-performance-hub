@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
 import performTrackLogo from '@/assets/performtrack-logo.png';
 
@@ -58,6 +59,14 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
+      <Helmet>
+        <title>Sign in to PerformTrack — CBC School Portal</title>
+        <meta name="description" content="Sign in to PerformTrack to manage CBC marks entry, KPSEA/KJSEA reports, attendance, fees and parent communication for your school." />
+        <link rel="canonical" href="https://performtrack.co.ke/login" />
+        <meta property="og:title" content="Sign in to PerformTrack" />
+        <meta property="og:description" content="Secure sign-in for school administrators, teachers and parents using PerformTrack." />
+        <meta property="og:url" content="https://performtrack.co.ke/login" />
+      </Helmet>
       {/* Left panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -66,10 +75,10 @@ export default function Login() {
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-primary-foreground">
           <div className="flex items-center gap-4 mb-8">
-            <img src={performTrackLogo} alt="PerformTrack" className="w-16 h-16 rounded-2xl object-contain bg-white/20 backdrop-blur p-1" />
+            <img src={performTrackLogo} alt="PerformTrack logo" className="w-16 h-16 rounded-2xl object-contain bg-white/20 backdrop-blur p-1" />
           </div>
           <h1 className="text-4xl xl:text-5xl font-display font-extrabold leading-tight mb-4">
-            {schoolName}
+            {schoolName} — PerformTrack Portal
           </h1>
           <p className="text-lg text-white/80 mb-8 max-w-md">{schoolMotto}</p>
           <div className="space-y-4 text-white/70 text-sm">
@@ -88,8 +97,8 @@ export default function Login() {
         <div className="w-full max-w-sm">
           {/* Mobile branding */}
           <div className="lg:hidden text-center mb-8">
-            <img src={performTrackLogo} alt="PerformTrack" className="mx-auto w-14 h-14 rounded-2xl object-contain mb-4" />
-            <h1 className="text-2xl font-display font-bold text-foreground">{schoolName}</h1>
+            <img src={performTrackLogo} alt="PerformTrack logo" className="mx-auto w-14 h-14 rounded-2xl object-contain mb-4" />
+            <h2 className="text-2xl font-display font-bold text-foreground">{schoolName}</h2>
             <p className="text-sm text-muted-foreground mt-1">{schoolMotto}</p>
           </div>
 
