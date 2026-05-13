@@ -43,10 +43,18 @@ type PlanInfo = {
   annualFee: number;
 };
 
+type TermFees = { term1: number; term2: number; term3: number };
+type PlanInfo = {
+  plan: string;
+  annualFee: number; // legacy + auto-derived sum of default termFees
+  termFees: TermFees; // default per-term fees
+  yearOverrides?: Record<string, TermFees>; // optional per-year overrides
+};
+
 const STORAGE_PAYMENTS = 'subscriptionPayments';
 const STORAGE_PLANS = 'subscriptionPlans';
 
-// Default annual fees by plan name (KES). Editable via plan info modal in future.
+// Default annual fees by plan name (KES). Used to seed term fees when plan changes.
 const DEFAULT_PLAN_FEE: Record<string, number> = {
   free: 0,
   basic: 12000,
@@ -54,6 +62,12 @@ const DEFAULT_PLAN_FEE: Record<string, number> = {
   premium: 48000,
   enterprise: 96000,
 };
+
+const splitToTerms = (annual: number): TermFees => {
+  const each = Math.round((annual || 0) / 3);
+  return { term1: each, term2: each, term3: Math.max(0, (annual || 0) - each * 2) };
+};
+const sumTerms = (t: TermFees) => Number(t.term1 || 0) + Number(t.term2 || 0) + Number(t.term3 || 0);
 
 function readJSON<T>(key: string, fallback: T): T {
   try {
