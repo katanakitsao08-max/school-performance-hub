@@ -144,7 +144,7 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
     setOpenPay(true);
   };
 
-  const savePayment = () => {
+  const savePayment = async () => {
     if (!activeSchool) return;
     const amt = Number(payAmount);
     if (!amt || amt <= 0) {
@@ -159,7 +159,36 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       createdAt: new Date().toISOString(),
     };
     setPayments(prev => [...prev, newPayment]);
-    toast.success(`Payment of ${fmtKES(amt)} recorded for ${activeSchool.school_name}`);
+
+    // Build receipt
+    const info = planFor(activeSchool);
+    const yearOfPayment = new Date(payDate).getFullYear();
+    const paidThisYear =
+      payments
+        .filter(p => p.schoolId === activeSchool.id && new Date(p.date).getFullYear() === yearOfPayment)
+        .reduce((s, p) => s + p.amount, 0) + amt;
+    const balanceAfter = Math.max(info.annualFee - paidThisYear, 0);
+    const receiptNumber = `PT-${yearOfPayment}-${Date.now().toString().slice(-6)}`;
+
+    try {
+      await generateSubscriptionReceiptPDF({
+        receiptNumber,
+        date: payDate,
+        schoolName: activeSchool.school_name,
+        schoolCode: activeSchool.school_code || null,
+        plan: info.plan,
+        annualFee: info.annualFee,
+        amountPaid: amt,
+        balanceAfter,
+        year: yearOfPayment,
+        issuedBy: profile?.full_name || user?.email || 'Super Admin',
+      });
+      toast.success(`Payment of ${fmtKES(amt)} recorded · Receipt downloaded`);
+    } catch (e) {
+      console.error(e);
+      toast.success(`Payment of ${fmtKES(amt)} recorded`);
+      toast.error('Could not generate receipt PDF');
+    }
     setOpenPay(false);
   };
 
