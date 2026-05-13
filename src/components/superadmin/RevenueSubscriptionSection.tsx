@@ -74,6 +74,7 @@ function fmtKES(n: number) {
 }
 
 export default function RevenueSubscriptionSection({ schools }: { schools: School[] }) {
+  const { profile, user } = useAuth();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<string>(String(currentYear));
   const [payments, setPayments] = useState<Payment[]>(() => readJSON<Payment[]>(STORAGE_PAYMENTS, []));
