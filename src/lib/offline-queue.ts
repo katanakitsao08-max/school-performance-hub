@@ -5,7 +5,7 @@
 
 export interface OfflineEntry {
   id: string;
-  type: 'score' | 'attendance';
+  type: 'score' | 'attendance' | 'score-delete';
   data: Record<string, unknown>;
   timestamp: number;
   synced: boolean;
