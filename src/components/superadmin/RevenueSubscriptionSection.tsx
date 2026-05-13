@@ -91,6 +91,10 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
   const [planName, setPlanName] = useState('basic');
   const [planFee, setPlanFee] = useState('12000');
 
+  const [openPreview, setOpenPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<SubscriptionReceiptData | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<Payment | null>(null);
+
   useEffect(() => writeJSON(STORAGE_PAYMENTS, payments), [payments]);
   useEffect(() => writeJSON(STORAGE_PLANS, plans), [plans]);
 
