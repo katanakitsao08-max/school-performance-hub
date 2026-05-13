@@ -443,7 +443,7 @@ export default function ReportsPage() {
 
   const subjectMeans = useMemo(() => {
     return reportDisplaySubjects.map(sub => {
-      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score)).filter((sc: number) => Number(sc) > 0);
       const avg = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
       return { name: sub.name, mean: avg };
     });
@@ -452,7 +452,7 @@ export default function ReportsPage() {
   const classAvgPerSubject = useMemo(() => {
     const map: Record<string, number> = {};
     reportDisplaySubjects.forEach(sub => {
-      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score));
+      const scores = reportData.flatMap((l: any) => l.subjectData.filter((s: any) => s.id === sub.id).map((s: any) => s.score)).filter((sc: number) => Number(sc) > 0);
       map[sub.name] = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
     });
     return map;
