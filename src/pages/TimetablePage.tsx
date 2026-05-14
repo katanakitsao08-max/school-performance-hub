@@ -215,6 +215,57 @@ export default function TimetablePage() {
     })();
   }, [schoolId, grade]);
 
+  // Load timetable_settings (per school)
+  useEffect(() => {
+    if (!schoolId) return;
+    (async () => {
+      const { data } = await supabase.from('timetable_settings').select('*').eq('school_id', schoolId).maybeSingle();
+      if (data) {
+        const dl = Array.isArray((data as any).day_labels) ? (data as any).day_labels : DAYS;
+        setDaysList(dl.slice(0, (data as any).num_days || dl.length));
+        setWeekendDays(Array.isArray((data as any).weekend) ? (data as any).weekend : ['Saturday', 'Sunday']);
+        setPeriodsPerDay((data as any).periods_per_day || DEFAULT_PERIODS_PER_DAY);
+        setZeroPeriod(!!(data as any).zero_period);
+        const bp = Array.isArray((data as any).break_periods) ? (data as any).break_periods : [];
+        if (bp.length) setBreakInput(bp.join(','));
+        const bl = Array.isArray((data as any).break_labels) ? (data as any).break_labels : [];
+        if (bl.length) setBreakLabelsInput(bl.join(','));
+      }
+    })();
+  }, [schoolId]);
+
+  // Load saved per-class lessons when grade/stream changes; merge into requirements
+  const loadClassLessons = async () => {
+    if (!schoolId || !grade || !stream) { setSavedLessons([]); return; }
+    const { data } = await supabase.from('timetable_class_lessons').select('*')
+      .eq('school_id', schoolId).eq('grade', grade).eq('stream', stream);
+    const list = ((data as any) || []) as any[];
+    setSavedLessons(list.map(r => ({
+      learning_area_id: r.learning_area_id,
+      teacher_id: r.teacher_id, count: r.count, length: r.length, classroom: r.classroom,
+    })));
+  };
+  useEffect(() => { loadClassLessons(); }, [schoolId, grade, stream]);
+
+  const saveSettings = async () => {
+    if (!schoolId) return;
+    setSavingSettings(true);
+    const payload = {
+      school_id: schoolId,
+      num_days: daysList.length,
+      day_labels: daysList,
+      weekend: weekendDays,
+      periods_per_day: periodsPerDay,
+      zero_period: zeroPeriod,
+      break_periods: breakPeriods,
+      break_labels: breakLabels,
+    };
+    const { error } = await supabase.from('timetable_settings').upsert(payload, { onConflict: 'school_id' });
+    setSavingSettings(false);
+    if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+    toast({ title: 'Timetable settings saved' });
+  };
+
   const activate = async () => {
     if (!keyInput.trim() || !schoolId || !user) return;
     setActivating(true);
