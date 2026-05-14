@@ -798,7 +798,7 @@ export default function TimetablePage() {
               <Label>Break labels (in order)</Label>
               <Input value={breakLabelsInput} onChange={e => setBreakLabelsInput(e.target.value)} placeholder="SHORT BREAK, LONG BREAK, LUNCH" />
             </div>
-            <div className="md:col-span-2 flex items-end gap-2">
+            <div className="md:col-span-2 flex items-end gap-2 flex-wrap">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
@@ -808,9 +808,29 @@ export default function TimetablePage() {
                 />
                 <span>Auto-lock last 2 slots as <strong>GAMES</strong> (P7 & P8)</span>
               </label>
+              <Button
+                size="sm" variant="outline"
+                disabled={!grade || !stream}
+                onClick={() => setLessonsDialogOpen(true)}
+              >
+                <BookOpen className="h-4 w-4 mr-1" /> Lessons for class
+                {savedLessons.length > 0 && <Badge variant="secondary" className="ml-1.5 text-[10px]">{savedLessons.length}</Badge>}
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {schoolId && grade && stream && (
+          <LessonsForClassDialog
+            open={lessonsDialogOpen}
+            onOpenChange={setLessonsDialogOpen}
+            schoolId={schoolId}
+            grade={grade}
+            stream={stream}
+            allClasses={grades.flatMap(g => streams.map(s => ({ grade: g, stream: s })))}
+            onSaved={loadClassLessons}
+          />
+        )}
 
         {/* Session times editor */}
         <Card>
