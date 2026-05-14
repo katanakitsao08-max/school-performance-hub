@@ -135,7 +135,7 @@ export default function TimetablePage() {
   const effectiveLockedSlots = useMemo<LockedSlot[]>(() => {
     const base = [...lockedSlots];
     if (gamesEnabled && periodsPerDay >= 11) {
-      DAYS.forEach(d => {
+      daysList.forEach(d => {
         base.push({ classKey: '*', day: d, period: 10, label: 'GAMES' });
         base.push({ classKey: '*', day: d, period: 11, label: 'GAMES' });
       });
@@ -321,7 +321,7 @@ export default function TimetablePage() {
     reqMap[`${grade}|${stream}`] = merged.reqs;
     const r = generateTimetable({
       classes: [{ grade, stream }],
-      days: DAYS,
+      days: daysList,
       periodsPerDay,
       breakPeriods,
       lockedSlots: effectiveLockedSlots,
@@ -410,7 +410,7 @@ export default function TimetablePage() {
 
       const r = generateTimetable({
         classes: classList,
-        days: DAYS,
+        days: daysList,
         periodsPerDay,
         breakPeriods,
         lockedSlots: effectiveLockedSlots,
@@ -442,7 +442,7 @@ export default function TimetablePage() {
       school_id: schoolId,
       name: `${c.grade} ${c.stream} Timetable`,
       grade: c.grade, stream: c.stream,
-      days: DAYS,
+      days: daysList,
       periods_per_day: periodsPerDay,
       break_period: breakPeriods[0] ?? null,
       data: result.grids[`${c.grade}|${c.stream}`] as any,
@@ -461,7 +461,7 @@ export default function TimetablePage() {
       school_id: schoolId,
       name: `${grade} ${stream} Timetable`,
       grade, stream,
-      days: DAYS,
+      days: daysList,
       periods_per_day: periodsPerDay,
       break_period: breakPeriods[0] ?? null,
       data: result.grids[ck] as any,
@@ -476,7 +476,7 @@ export default function TimetablePage() {
     exportTimetablePdf({
       schoolName,
       title: `Class Timetable — ${grade} ${stream}`,
-      days: DAYS, periodsPerDay, breakPeriods,
+      days: daysList, periodsPerDay, breakPeriods,
       grid: result.grids[`${grade}|${stream}`],
       showTeacher: true,
     });
@@ -487,7 +487,7 @@ export default function TimetablePage() {
     exportTimetableExcel({
       schoolName,
       title: `Class Timetable — ${grade} ${stream}`,
-      days: DAYS, periodsPerDay, breakPeriods,
+      days: daysList, periodsPerDay, breakPeriods,
       grid: result.grids[`${grade}|${stream}`],
       showTeacher: true,
     });
@@ -499,7 +499,7 @@ export default function TimetablePage() {
     exportTimetablePdf({
       schoolName,
       title: `Teacher Timetable — ${t.teacherName}`,
-      days: DAYS, periodsPerDay, breakPeriods,
+      days: daysList, periodsPerDay, breakPeriods,
       grid: t.grid,
     });
   };
@@ -510,7 +510,7 @@ export default function TimetablePage() {
       name: `${c.grade}-${c.stream}`,
       opts: {
         title: `${c.grade} ${c.stream}`,
-        days: DAYS, periodsPerDay, breakPeriods,
+        days: daysList, periodsPerDay, breakPeriods,
         grid: result.grids[`${c.grade}|${c.stream}`],
         showTeacher: true,
       },
@@ -521,7 +521,7 @@ export default function TimetablePage() {
     if (!result) return;
     exportTimetableSummaryPdf({
       schoolName,
-      days: DAYS,
+      days: daysList,
       periodsPerDay,
       breakPeriods,
       breakLabels,
@@ -741,7 +741,7 @@ export default function TimetablePage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="*">Every day</SelectItem>
-                  {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  {daysList.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Input type="number" min={1} max={periodsPerDay} value={newLock.period} onChange={e => setNewLock(s => ({ ...s, period: Number(e.target.value) || 1 }))} placeholder="Period" />
@@ -805,7 +805,7 @@ export default function TimetablePage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="*">Every day</SelectItem>
-                      {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      {daysList.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Input type="number" min={1} max={periodsPerDay}
@@ -992,7 +992,7 @@ export default function TimetablePage() {
             <TabsContent value="summary">
               <SummaryAllClassesView
                 schoolName={schoolName}
-                days={DAYS}
+                days={daysList}
                 periodsPerDay={periodsPerDay}
                 breakPeriods={breakPeriods}
                 breakLabels={breakLabels}
@@ -1016,7 +1016,7 @@ export default function TimetablePage() {
                         <Button size="sm" variant="outline" onClick={() => exportTimetablePdf({
                           schoolName,
                           title: `Class Timetable — ${c.grade} ${c.stream}`,
-                          days: DAYS, periodsPerDay, breakPeriods,
+                          days: daysList, periodsPerDay, breakPeriods,
                           grid: g, showTeacher: true,
                         })}>
                           <Download className="h-3 w-3 mr-1" /> PDF
@@ -1024,7 +1024,7 @@ export default function TimetablePage() {
                         <Button size="sm" variant="outline" onClick={() => exportTimetableExcel({
                           schoolName,
                           title: `Class Timetable — ${c.grade} ${c.stream}`,
-                          days: DAYS, periodsPerDay, breakPeriods,
+                          days: daysList, periodsPerDay, breakPeriods,
                           grid: g, showTeacher: true,
                         })}>
                           <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
@@ -1032,7 +1032,7 @@ export default function TimetablePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                      <GridTable grid={g} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
+                      <GridTable grid={g} days={daysList} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
                     </CardContent>
                   </Card>
                 );
@@ -1053,7 +1053,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={daysList} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
@@ -1069,7 +1069,7 @@ export default function TimetablePage() {
             </TabsList>
             <TabsContent value="class">
               <Card><CardContent className="p-0 overflow-x-auto">
-                <GridTable grid={classGrid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
+                <GridTable grid={classGrid} days={daysList} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} showTeacher matchesSearch={matchesSearch} />
               </CardContent></Card>
             </TabsContent>
             <TabsContent value="teachers" className="space-y-4">
@@ -1087,7 +1087,7 @@ export default function TimetablePage() {
                     </Button>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
-                    <GridTable grid={t.grid} days={DAYS} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
+                    <GridTable grid={t.grid} days={daysList} periodsPerDay={periodsPerDay} breakPeriods={breakPeriods} breakLabels={breakLabels} periodTimes={periodTimes} matchesSearch={matchesSearch} />
                   </CardContent>
                 </Card>
               ))}
