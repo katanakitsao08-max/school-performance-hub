@@ -99,15 +99,43 @@ export default function AnalyticsPage() {
 
   // ── Computed analytics ──
 
+  // STRICT QUALIFICATION: only learners with a valid (>0) score for EVERY
+  // assigned subject feed into means, rankings, distributions and gender splits.
+  const qualifiedLearnerIds = useMemo(() => {
+    const requiredIds = subjects.map((s: any) => s.id);
+    if (requiredIds.length === 0) return new Set<string>();
+    return new Set(
+      learners
+        .filter((l: any) => {
+          const ls = scores.filter((s: any) => s.learner_id === l.id);
+          return requiredIds.every(sid => {
+            const sc = ls.find((s: any) => s.learning_area_id === sid);
+            return sc && Number(sc.score) > 0;
+          });
+        })
+        .map((l: any) => l.id),
+    );
+  }, [learners, subjects, scores]);
+
+  const qualifiedScores = useMemo(
+    () => scores.filter((s: any) => qualifiedLearnerIds.has(s.learner_id) && Number(s.score) > 0),
+    [scores, qualifiedLearnerIds],
+  );
+  const qualifiedLearners = useMemo(
+    () => learners.filter((l: any) => qualifiedLearnerIds.has(l.id)),
+    [learners, qualifiedLearnerIds],
+  );
+  const excludedCount = learners.length - qualifiedLearners.length;
+
   // 1. Subject mean scores
   const subjectMeanData = useMemo(() => {
     const filtered = selectedSubject === 'all' ? subjects : subjects.filter(s => s.id === selectedSubject);
     return filtered.map(sub => {
-      const subScores = scores.filter(s => s.learning_area_id === sub.id);
+      const subScores = qualifiedScores.filter(s => s.learning_area_id === sub.id);
       const mean = subScores.length > 0 ? subScores.reduce((s, sc) => s + sc.score, 0) / subScores.length : 0;
       return { name: sub.name, mean: Number(mean.toFixed(1)), maxScore: sub.max_score, id: sub.id };
     }).sort((a, b) => b.mean - a.mean);
-  }, [subjects, scores, selectedSubject]);
+  }, [subjects, qualifiedScores, selectedSubject]);
 
   // 2. Grade distribution
   const gradeDistribution = useMemo(() => {
