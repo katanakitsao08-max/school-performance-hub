@@ -93,6 +93,21 @@ export type SubjectColumn<T extends { id: string; name: string; max_score: numbe
   | { kind: 'single'; subject: T }
   | { kind: 'merged'; label: string; members: T[]; max_score: number };
 
+// Strip noise so "Religious Education" matches "RELIGIOUS EDUCATION ACTIVITIES"
+const canon = (s: string) =>
+  norm(s)
+    .replace(/\bACTIVITIES\b/g, '')
+    .replace(/\bAND\b/g, '&')
+    .replace(/[^A-Z&]+/g, ' ')
+    .trim();
+
+const memberMatches = (subjectName: string, memberCanonical: string) => {
+  const a = canon(subjectName);
+  const b = memberCanonical;
+  if (!a || !b) return false;
+  return a === b || a.includes(b) || b.includes(a);
+};
+
 export function buildSubjectColumns<T extends { id: string; name: string; max_score: number }>(
   subjects: T[],
   grade: string,
@@ -101,14 +116,17 @@ export function buildSubjectColumns<T extends { id: string; name: string; max_sc
   const sorted = sortSubjectsByOrder(subjects, grade);
   if (!mergeOn) return sorted.map(s => ({ kind: 'single' as const, subject: s }));
 
-  const pairs = getMergePairsForGrade(grade);
+  const pairs = getMergePairsForGrade(grade).map(p => ({
+    ...p,
+    canonMembers: p.members.map(canon),
+  }));
   const used = new Set<string>();
   const cols: SubjectColumn<T>[] = [];
   for (const s of sorted) {
     if (used.has(s.id)) continue;
-    const pair = pairs.find(p => p.members.includes(norm(s.name)));
+    const pair = pairs.find(p => p.canonMembers.some(cm => memberMatches(s.name, cm)));
     if (pair) {
-      const members = sorted.filter(x => pair.members.includes(norm(x.name)));
+      const members = sorted.filter(x => pair.canonMembers.some(cm => memberMatches(x.name, cm)));
       if (members.length > 1) {
         members.forEach(m => used.add(m.id));
         cols.push({ kind: 'merged', label: pair.label, members, max_score: members[0].max_score });
@@ -120,3 +138,4 @@ export function buildSubjectColumns<T extends { id: string; name: string; max_sc
   }
   return cols;
 }
+
