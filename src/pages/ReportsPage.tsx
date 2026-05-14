@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { computeAnalysis } from '@/lib/analysis-utils';
+import { isLearnerQualified, describeMissing } from '@/lib/learner-qualification';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -416,23 +417,22 @@ export default function ReportsPage() {
           teacherInitials: first ? getTeacherInitials(first.id, l.grade, l.stream) : '',
         };
       });
-      // Mean only counts subjects with a real (>0) entered score so blanks/zeros don't dilute it
-      const scoredSubjects = subjectData.filter(d => Number(d.score) > 0);
-      const total = scoredSubjects.reduce((s, d) => s + d.score, 0);
-      const maxTotal = scoredSubjects.reduce((s, sub) => s + sub.maxScore, 0);
-      const mean = scoredSubjects.length > 0 ? total / scoredSubjects.length : 0;
-      const avgMax = scoredSubjects.length > 0 ? maxTotal / scoredSubjects.length : 100;
-      // Include learner if they have at least ONE non-zero score.
-      // Excludes only learners with all-zero (or no) scores entered.
-      const hasAnyScore = learnerScores.some(s => Number(s.score) > 0);
+      // STRICT QUALIFICATION: a learner is included only when EVERY assigned
+      // subject has a valid (>0) score. Missing/zero entries disqualify them
+      // from reports, rankings, means and analytics.
+      const isQualified = subjectData.length > 0 && subjectData.every(d => Number(d.score) > 0);
+      const total = subjectData.reduce((s, d) => s + d.score, 0);
+      const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
+      const mean = subjectData.length > 0 ? total / subjectData.length : 0;
+      const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
       return {
         ...l, subjectData, total, mean,
         overallGrade: subjectData.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
-        hasAnyScore,
+        isQualified,
       };
     })
-    // Exclude learners with no scores
-    .filter(l => l.hasAnyScore)
+    // Exclude learners who don't have a valid score for every assigned subject
+    .filter(l => l.isQualified)
     .sort((a, b) => b.total - a.total).map((l, i, arr) => {
       let rank = i + 1;
       if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
@@ -440,6 +440,29 @@ export default function ReportsPage() {
     });
     return mapped;
   }, [learners, allScores, subjects, gradeSubjects, isSchoolWide, selectedGenderFilter, mergeCombinedSubjects]);
+
+  // Excluded learners (incomplete results) — for the warning banner & admin panel
+  const excludedLearners = useMemo(() => {
+    if (isSchoolWide || selectedGrades.length > 1) return [] as ReturnType<typeof describeMissing>[];
+    const filteredLearners = selectedGenderFilter === 'all' ? learners : learners.filter(l => (l as any).gender === selectedGenderFilter);
+    const subjectsForGrade = reportDisplaySubjects.map((s: any) => ({ id: s.id, name: s.name }));
+    if (subjectsForGrade.length === 0) return [];
+    const includedIds = new Set(reportData.map(r => r.id));
+    return filteredLearners
+      .filter(l => !includedIds.has(l.id))
+      .map(l => {
+        const learnerScores = allScores.filter(s => s.learner_id === l.id);
+        const subjectData = reportDisplaySubjects.map((sub: any) => {
+          const memberIds: string[] = String(sub.id).split('+');
+          const cells = memberIds.map(id => learnerScores.find(s => s.learning_area_id === id)).filter(Boolean) as any[];
+          const score = cells.length ? cells.reduce((a, c) => a + Number(c.score || 0), 0) / cells.length : 0;
+          return { id: sub.id, score };
+        });
+        return describeMissing({ id: l.id, full_name: (l as any).full_name, subjectData }, subjectsForGrade);
+      })
+      .filter(d => d.missingCount > 0);
+  }, [learners, allScores, reportData, reportDisplaySubjects, selectedGenderFilter, isSchoolWide, selectedGrades]);
+
 
   const subjectMeans = useMemo(() => {
     return reportDisplaySubjects.map(sub => {
@@ -1340,6 +1363,23 @@ export default function ReportsPage() {
                       : `Grade ${selectedGrade} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`}
                 </CardTitle>
               </CardHeader>
+              {excludedLearners.length > 0 && (
+                <div className="mx-4 mt-3 mb-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs">
+                  <div className="font-semibold text-amber-900 dark:text-amber-200">
+                    {excludedLearners.length} learner{excludedLearners.length === 1 ? ' was' : 's were'} excluded from reports and analytics due to incomplete subject scores.
+                  </div>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-amber-800 dark:text-amber-300">View incomplete results</summary>
+                    <ul className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
+                      {excludedLearners.map(e => (
+                        <li key={e.id} className="text-amber-900/90 dark:text-amber-100/90">
+                          <strong>{e.name}</strong> — missing {e.missingCount}: {e.missingSubjects.join(', ')}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              )}
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>

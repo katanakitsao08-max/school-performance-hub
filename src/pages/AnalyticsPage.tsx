@@ -99,15 +99,43 @@ export default function AnalyticsPage() {
 
   // ── Computed analytics ──
 
+  // STRICT QUALIFICATION: only learners with a valid (>0) score for EVERY
+  // assigned subject feed into means, rankings, distributions and gender splits.
+  const qualifiedLearnerIds = useMemo(() => {
+    const requiredIds = subjects.map((s: any) => s.id);
+    if (requiredIds.length === 0) return new Set<string>();
+    return new Set(
+      learners
+        .filter((l: any) => {
+          const ls = scores.filter((s: any) => s.learner_id === l.id);
+          return requiredIds.every(sid => {
+            const sc = ls.find((s: any) => s.learning_area_id === sid);
+            return sc && Number(sc.score) > 0;
+          });
+        })
+        .map((l: any) => l.id),
+    );
+  }, [learners, subjects, scores]);
+
+  const qualifiedScores = useMemo(
+    () => scores.filter((s: any) => qualifiedLearnerIds.has(s.learner_id) && Number(s.score) > 0),
+    [scores, qualifiedLearnerIds],
+  );
+  const qualifiedLearners = useMemo(
+    () => learners.filter((l: any) => qualifiedLearnerIds.has(l.id)),
+    [learners, qualifiedLearnerIds],
+  );
+  const excludedCount = learners.length - qualifiedLearners.length;
+
   // 1. Subject mean scores
   const subjectMeanData = useMemo(() => {
     const filtered = selectedSubject === 'all' ? subjects : subjects.filter(s => s.id === selectedSubject);
     return filtered.map(sub => {
-      const subScores = scores.filter(s => s.learning_area_id === sub.id);
+      const subScores = qualifiedScores.filter(s => s.learning_area_id === sub.id);
       const mean = subScores.length > 0 ? subScores.reduce((s, sc) => s + sc.score, 0) / subScores.length : 0;
       return { name: sub.name, mean: Number(mean.toFixed(1)), maxScore: sub.max_score, id: sub.id };
     }).sort((a, b) => b.mean - a.mean);
-  }, [subjects, scores, selectedSubject]);
+  }, [subjects, qualifiedScores, selectedSubject]);
 
   // 2. Grade distribution
   const gradeDistribution = useMemo(() => {
@@ -118,7 +146,8 @@ export default function AnalyticsPage() {
     levels.forEach(l => { dist[l] = 0; });
 
     learners.forEach(l => {
-      const ls = scores.filter(s => s.learner_id === l.id);
+      if (!qualifiedLearnerIds.has(l.id)) return;
+      const ls = qualifiedScores.filter(s => s.learner_id === l.id);
       if (!ls.length) return;
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const totalMax = ls.reduce((s, sc) => {
@@ -129,16 +158,16 @@ export default function AnalyticsPage() {
       dist[grade] = (dist[grade] || 0) + 1;
     });
     return Object.entries(dist).map(([name, value]) => ({ name, value }));
-  }, [learners, scores, subjects, selectedGrade, isKJSEA]);
+  }, [learners, qualifiedScores, qualifiedLearnerIds, subjects, selectedGrade, isKJSEA]);
 
   // 3. Gender performance
   const genderAnalysis = useMemo(() => {
     const genders = ['Male', 'Female'];
     return genders.map(g => {
-      const gLearners = learners.filter(l => l.gender === g);
+      const gLearners = qualifiedLearners.filter(l => l.gender === g);
       let totalScore = 0, totalMax = 0, count = 0;
       gLearners.forEach(l => {
-        const ls = scores.filter(s => s.learner_id === l.id);
+        const ls = qualifiedScores.filter(s => s.learner_id === l.id);
         ls.forEach(sc => {
           const sub = subjects.find(sb => sb.id === sc.learning_area_id);
           totalScore += sc.score;
@@ -149,23 +178,23 @@ export default function AnalyticsPage() {
       const mean = count > 0 ? Number((totalScore / count * 100 / (totalMax / count)).toFixed(1)) : 0;
       return { gender: g, count: gLearners.length, entries: count, meanPct: mean };
     });
-  }, [learners, scores, subjects]);
+  }, [qualifiedLearners, qualifiedScores, subjects]);
 
   // Gender per subject
   const genderBySubject = useMemo(() => {
     return subjects.map(sub => {
-      const mScores = scores.filter(s => s.learning_area_id === sub.id && learners.find(l => l.id === s.learner_id && l.gender === 'Male'));
-      const fScores = scores.filter(s => s.learning_area_id === sub.id && learners.find(l => l.id === s.learner_id && l.gender === 'Female'));
+      const mScores = qualifiedScores.filter(s => s.learning_area_id === sub.id && qualifiedLearners.find(l => l.id === s.learner_id && l.gender === 'Male'));
+      const fScores = qualifiedScores.filter(s => s.learning_area_id === sub.id && qualifiedLearners.find(l => l.id === s.learner_id && l.gender === 'Female'));
       const mMean = mScores.length > 0 ? Number((mScores.reduce((s, sc) => s + sc.score, 0) / mScores.length).toFixed(1)) : 0;
       const fMean = fScores.length > 0 ? Number((fScores.reduce((s, sc) => s + sc.score, 0) / fScores.length).toFixed(1)) : 0;
       return { name: sub.name, Male: mMean, Female: fMean };
     });
-  }, [subjects, scores, learners]);
+  }, [subjects, qualifiedScores, qualifiedLearners]);
 
   // 4. Top / Bottom students
   const rankedLearners = useMemo(() => {
-    return learners.map(l => {
-      const ls = scores.filter(s => s.learner_id === l.id);
+    return qualifiedLearners.map(l => {
+      const ls = qualifiedScores.filter(s => s.learner_id === l.id);
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const totalMax = ls.reduce((s, sc) => {
         const sub = subjects.find(sb => sb.id === sc.learning_area_id);
@@ -175,7 +204,7 @@ export default function AnalyticsPage() {
       const grade: AnyGrade | '-' = ls.length > 0 ? getGradeForLevel(total, totalMax, selectedGrade) : '-';
       return { ...l, total, totalMax, pct, grade, subjectCount: ls.length };
     }).filter(l => l.subjectCount > 0).sort((a, b) => b.pct - a.pct);
-  }, [learners, scores, subjects, selectedGrade]);
+  }, [qualifiedLearners, qualifiedScores, subjects, selectedGrade]);
 
   const top10 = rankedLearners.slice(0, 10);
   const bottom10 = [...rankedLearners].reverse().slice(0, 10);
@@ -183,7 +212,7 @@ export default function AnalyticsPage() {
   // 5. Term trends
   const trendData = useMemo(() => {
     return TERMS.map(t => {
-      const termScores = allTermScores.filter(s => s.term === t);
+      const termScores = allTermScores.filter(s => s.term === t && qualifiedLearnerIds.has(s.learner_id) && Number(s.score) > 0);
       const subjectMeans: Record<string, number> = {};
       subjects.forEach(sub => {
         const ss = termScores.filter(s => s.learning_area_id === sub.id);
@@ -192,7 +221,7 @@ export default function AnalyticsPage() {
       const overall = termScores.length > 0 ? Number((termScores.reduce((a, sc) => a + sc.score, 0) / termScores.length).toFixed(1)) : 0;
       return { term: `Term ${t}`, overall, ...subjectMeans };
     });
-  }, [allTermScores, subjects]);
+  }, [allTermScores, subjects, qualifiedLearnerIds]);
 
   // Summary stats
   const overallMean = rankedLearners.length > 0
@@ -204,8 +233,8 @@ export default function AnalyticsPage() {
 
   // KNEC-aligned grade analysis (same engine as the Grade Analysis page)
   const knecAnalysis = useMemo(
-    () => computeGradeAnalysis(learners, subjects, scores),
-    [learners, subjects, scores],
+    () => computeGradeAnalysis(qualifiedLearners, subjects, qualifiedScores),
+    [qualifiedLearners, subjects, qualifiedScores],
   );
 
   return (
@@ -215,6 +244,15 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-display font-bold text-foreground">Analytics Dashboard</h1>
           <p className="text-muted-foreground text-sm">Comprehensive school performance insights</p>
         </div>
+
+        {excludedCount > 0 && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs">
+            <span className="font-semibold text-amber-900 dark:text-amber-200">
+              {excludedCount} learner{excludedCount === 1 ? ' was' : 's were'} excluded
+            </span>
+            <span className="text-amber-800 dark:text-amber-300"> from reports and analytics due to incomplete subject scores.</span>
+          </div>
+        )}
 
         {/* ── Filters ── */}
         <div className="flex gap-3 flex-wrap">

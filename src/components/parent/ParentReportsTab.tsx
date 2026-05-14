@@ -165,18 +165,38 @@ export default function ParentReportsTab({ child }: Props) {
 
   // Compute rankings and class averages
   const { classAvgPerSubject, overallRank, streamRank, totalInClass, totalInStream, gradeDistribution } = useMemo(() => {
+    // Determine qualified learner ids first (every subject has a valid score)
+    const requiredIds = gradeSubjects.map(s => s.id);
+    const qualifiedIds = new Set(
+      gradeLearners
+        .filter(l => {
+          if (requiredIds.length === 0) return false;
+          const ls = allGradeScores.filter(s => s.learner_id === l.id);
+          return requiredIds.every(sid => {
+            const sc = ls.find(s => s.learning_area_id === sid);
+            return sc && Number(sc.score) > 0;
+          });
+        })
+        .map(l => l.id),
+    );
     const classAvg: Record<string, number> = {};
     gradeSubjects.forEach(sub => {
-      const subScores = allGradeScores.filter(s => s.learning_area_id === sub.id);
+      const subScores = allGradeScores.filter(s => s.learning_area_id === sub.id && qualifiedIds.has(s.learner_id) && Number(s.score) > 0);
       classAvg[sub.name] = subScores.length > 0 ? subScores.reduce((sum, s) => sum + s.score, 0) / subScores.length : 0;
     });
 
-    // Compute totals per learner
+    // Compute totals per learner — STRICT: include only learners who have a
+    // valid (>0) score in EVERY subject for the grade.
     const learnerTotals: { id: string; stream: string; total: number }[] = [];
-    const learnerIdsWithScores = new Set(allGradeScores.map(s => s.learner_id));
-    
-    gradeLearners.filter(l => learnerIdsWithScores.has(l.id)).forEach(l => {
+    const requiredSubjectIds = gradeSubjects.map(s => s.id);
+
+    gradeLearners.forEach(l => {
       const lScores = allGradeScores.filter(s => s.learner_id === l.id);
+      const qualified = requiredSubjectIds.length > 0 && requiredSubjectIds.every(sid => {
+        const sc = lScores.find(s => s.learning_area_id === sid);
+        return sc && Number(sc.score) > 0;
+      });
+      if (!qualified) return;
       const total = lScores.reduce((sum, s) => sum + s.score, 0);
       learnerTotals.push({ id: l.id, stream: l.stream, total });
     });
