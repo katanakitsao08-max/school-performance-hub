@@ -92,6 +92,19 @@ export default function TimetablePage() {
   const [lockedSlots, setLockedSlots] = useState<LockedSlot[]>([]);
   const [newLock, setNewLock] = useState({ day: 'Monday', period: 1, label: 'Assembly' });
 
+  // Per-school day/period settings (loaded from timetable_settings)
+  const [daysList, setDaysList] = useState<string[]>(DAYS);
+  const [weekendDays, setWeekendDays] = useState<string[]>(['Saturday', 'Sunday']);
+  const [zeroPeriod, setZeroPeriod] = useState<boolean>(false);
+  const [showDayNumbers, setShowDayNumbers] = useState<boolean>(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Per-class lessons dialog
+  const [lessonsDialogOpen, setLessonsDialogOpen] = useState(false);
+  const [savedLessons, setSavedLessons] = useState<Array<{
+    learning_area_id: string; teacher_id?: string | null; count: number; length: number; classroom?: string | null;
+  }>>([]);
+
   // Merged subject groups (e.g. IRE/CRE share one slot). Local-only (per session).
   type MergeGroup = { id: string; label: string; learningAreaIds: string[] };
   const [mergeGroups, setMergeGroups] = useState<MergeGroup[]>([]);
