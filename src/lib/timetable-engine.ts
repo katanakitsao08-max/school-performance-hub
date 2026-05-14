@@ -65,6 +65,8 @@ export interface GenerateOptions {
   maxLessonsPerDayPerSubject?: number;     // cap same-subject lessons in a day per class
   allowDoubleLessons?: boolean;            // allow back-to-back same subject
   teacherUnavailable?: TeacherUnavailable[]; // per-teacher blackout slots
+  /** Per-class hard cap on the highest slot number a teaching lesson may occupy (1-indexed). */
+  maxPeriodByClass?: Record<string, number>;
 }
 
 export interface GenerationResult {
@@ -159,6 +161,7 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
       ? fullPool.filter(t => t.teacher_id === lesson.req.preferredTeacherId)
       : fullPool;
     const lessonLen = Math.max(1, lesson.req.length || 1);
+    const maxPeriodCap = opts.maxPeriodByClass?.[lesson.classKey] ?? periodsPerDay;
 
     if (pool.length === 0) {
       unfilled.push(`${lesson.classKey} — ${lesson.req.learningAreaName}: no teacher assigned`);
@@ -177,6 +180,8 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
         if (sameSubjCount >= opts.maxLessonsPerDayPerSubject) continue;
       }
       for (let p = 0; p + lessonLen <= periodsPerDay; p++) {
+        // Hard cap: lesson must finish at or before maxPeriodCap (1-indexed slot number)
+        if (p + lessonLen > maxPeriodCap) break;
         // All `lessonLen` consecutive slots must be free, non-break, non-locked
         let ok = true;
         for (let k = 0; k < lessonLen; k++) {
