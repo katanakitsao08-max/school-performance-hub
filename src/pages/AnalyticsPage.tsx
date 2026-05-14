@@ -146,7 +146,8 @@ export default function AnalyticsPage() {
     levels.forEach(l => { dist[l] = 0; });
 
     learners.forEach(l => {
-      const ls = scores.filter(s => s.learner_id === l.id);
+      if (!qualifiedLearnerIds.has(l.id)) return;
+      const ls = qualifiedScores.filter(s => s.learner_id === l.id);
       if (!ls.length) return;
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const totalMax = ls.reduce((s, sc) => {
@@ -157,16 +158,16 @@ export default function AnalyticsPage() {
       dist[grade] = (dist[grade] || 0) + 1;
     });
     return Object.entries(dist).map(([name, value]) => ({ name, value }));
-  }, [learners, scores, subjects, selectedGrade, isKJSEA]);
+  }, [learners, qualifiedScores, qualifiedLearnerIds, subjects, selectedGrade, isKJSEA]);
 
   // 3. Gender performance
   const genderAnalysis = useMemo(() => {
     const genders = ['Male', 'Female'];
     return genders.map(g => {
-      const gLearners = learners.filter(l => l.gender === g);
+      const gLearners = qualifiedLearners.filter(l => l.gender === g);
       let totalScore = 0, totalMax = 0, count = 0;
       gLearners.forEach(l => {
-        const ls = scores.filter(s => s.learner_id === l.id);
+        const ls = qualifiedScores.filter(s => s.learner_id === l.id);
         ls.forEach(sc => {
           const sub = subjects.find(sb => sb.id === sc.learning_area_id);
           totalScore += sc.score;
@@ -177,23 +178,23 @@ export default function AnalyticsPage() {
       const mean = count > 0 ? Number((totalScore / count * 100 / (totalMax / count)).toFixed(1)) : 0;
       return { gender: g, count: gLearners.length, entries: count, meanPct: mean };
     });
-  }, [learners, scores, subjects]);
+  }, [qualifiedLearners, qualifiedScores, subjects]);
 
   // Gender per subject
   const genderBySubject = useMemo(() => {
     return subjects.map(sub => {
-      const mScores = scores.filter(s => s.learning_area_id === sub.id && learners.find(l => l.id === s.learner_id && l.gender === 'Male'));
-      const fScores = scores.filter(s => s.learning_area_id === sub.id && learners.find(l => l.id === s.learner_id && l.gender === 'Female'));
+      const mScores = qualifiedScores.filter(s => s.learning_area_id === sub.id && qualifiedLearners.find(l => l.id === s.learner_id && l.gender === 'Male'));
+      const fScores = qualifiedScores.filter(s => s.learning_area_id === sub.id && qualifiedLearners.find(l => l.id === s.learner_id && l.gender === 'Female'));
       const mMean = mScores.length > 0 ? Number((mScores.reduce((s, sc) => s + sc.score, 0) / mScores.length).toFixed(1)) : 0;
       const fMean = fScores.length > 0 ? Number((fScores.reduce((s, sc) => s + sc.score, 0) / fScores.length).toFixed(1)) : 0;
       return { name: sub.name, Male: mMean, Female: fMean };
     });
-  }, [subjects, scores, learners]);
+  }, [subjects, qualifiedScores, qualifiedLearners]);
 
   // 4. Top / Bottom students
   const rankedLearners = useMemo(() => {
-    return learners.map(l => {
-      const ls = scores.filter(s => s.learner_id === l.id);
+    return qualifiedLearners.map(l => {
+      const ls = qualifiedScores.filter(s => s.learner_id === l.id);
       const total = ls.reduce((s, sc) => s + sc.score, 0);
       const totalMax = ls.reduce((s, sc) => {
         const sub = subjects.find(sb => sb.id === sc.learning_area_id);
@@ -203,7 +204,7 @@ export default function AnalyticsPage() {
       const grade: AnyGrade | '-' = ls.length > 0 ? getGradeForLevel(total, totalMax, selectedGrade) : '-';
       return { ...l, total, totalMax, pct, grade, subjectCount: ls.length };
     }).filter(l => l.subjectCount > 0).sort((a, b) => b.pct - a.pct);
-  }, [learners, scores, subjects, selectedGrade]);
+  }, [qualifiedLearners, qualifiedScores, subjects, selectedGrade]);
 
   const top10 = rankedLearners.slice(0, 10);
   const bottom10 = [...rankedLearners].reverse().slice(0, 10);
@@ -211,7 +212,7 @@ export default function AnalyticsPage() {
   // 5. Term trends
   const trendData = useMemo(() => {
     return TERMS.map(t => {
-      const termScores = allTermScores.filter(s => s.term === t);
+      const termScores = allTermScores.filter(s => s.term === t && qualifiedLearnerIds.has(s.learner_id) && Number(s.score) > 0);
       const subjectMeans: Record<string, number> = {};
       subjects.forEach(sub => {
         const ss = termScores.filter(s => s.learning_area_id === sub.id);
@@ -220,7 +221,7 @@ export default function AnalyticsPage() {
       const overall = termScores.length > 0 ? Number((termScores.reduce((a, sc) => a + sc.score, 0) / termScores.length).toFixed(1)) : 0;
       return { term: `Term ${t}`, overall, ...subjectMeans };
     });
-  }, [allTermScores, subjects]);
+  }, [allTermScores, subjects, qualifiedLearnerIds]);
 
   // Summary stats
   const overallMean = rankedLearners.length > 0
@@ -232,8 +233,8 @@ export default function AnalyticsPage() {
 
   // KNEC-aligned grade analysis (same engine as the Grade Analysis page)
   const knecAnalysis = useMemo(
-    () => computeGradeAnalysis(learners, subjects, scores),
-    [learners, subjects, scores],
+    () => computeGradeAnalysis(qualifiedLearners, subjects, qualifiedScores),
+    [qualifiedLearners, subjects, qualifiedScores],
   );
 
   return (
