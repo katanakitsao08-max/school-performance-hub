@@ -742,14 +742,13 @@ export default function TimetablePage() {
             </div>
             <div>
               <Label className="text-xs">Weekend</Label>
-              <Select value={weekendDays.join('|')} onValueChange={v => setWeekendDays(v.split('|').filter(Boolean))}>
+              <Select value={weekendDays.length ? weekendDays.join('|') : '__none__'} onValueChange={v => setWeekendDays(v === '__none__' ? [] : v.split('|').filter(Boolean))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
                   <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
                   <SelectItem value="Sunday">Sunday only</SelectItem>
                   <SelectItem value="__none__">None</SelectItem>
-                  <SelectItem value="">None</SelectItem>
                 </SelectContent>
               </Select>
             </div>
