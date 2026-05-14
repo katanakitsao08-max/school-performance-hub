@@ -748,6 +748,7 @@ export default function TimetablePage() {
                   <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
                   <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
                   <SelectItem value="Sunday">Sunday only</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   <SelectItem value="">None</SelectItem>
                 </SelectContent>
               </Select>
