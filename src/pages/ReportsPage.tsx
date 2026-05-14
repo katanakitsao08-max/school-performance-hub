@@ -21,7 +21,7 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 import { buildSubjectColumns, sortSubjectsByOrder } from '@/lib/subject-order';
-import { getMergePref } from '@/lib/merge-state';
+import { getMergePref, setMergePref } from '@/lib/merge-state';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -1223,6 +1223,23 @@ export default function ReportsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {!isSchoolWide && selectedGrades.length <= 1 && (
+            <div className="space-y-1">
+              <Label className="text-xs">Combine related subjects</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-background">
+                <Switch
+                  checked={mergeCombinedSubjects}
+                  onCheckedChange={(v) => {
+                    setMergeCombinedSubjects(v);
+                    const at = isMerged ? 'end_term' : selectedAssessment;
+                    if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">{mergeCombinedSubjects ? 'Merged' : 'Separate'}</span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1">
             <Label className="text-xs">Gender</Label>
