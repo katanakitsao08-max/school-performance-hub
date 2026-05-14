@@ -61,6 +61,34 @@ export const MERGE_PAIRS: Array<{ label: string; members: string[] }> = [
   { label: 'SCIENCE & AGRICULTURE', members: ['SCIENCE', 'SCIENCE AND TECHNOLOGY', 'INTEGRATED SCIENCE', 'AGRICULTURE'] },
 ];
 
+// Lower-primary (Grade 1-3) only: merge Religious + Environmental + Creative Activities.
+export const LOWER_PRIMARY_MERGE_PAIRS: Array<{ label: string; members: string[] }> = [
+  {
+    label: 'RELIGIOUS + ENVIRONMENTAL + CREATIVE ACTIVITIES',
+    members: [
+      'RELIGIOUS EDUCATION ACTIVITIES',
+      'CHRISTIAN RELIGIOUS EDUCATION ACTIVITIES',
+      'ISLAMIC RELIGIOUS EDUCATION ACTIVITIES',
+      'CRE ACTIVITIES',
+      'IRE ACTIVITIES',
+      'ENVIRONMENTAL ACTIVITIES',
+      'CREATIVE ACTIVITIES',
+      'CREATIVE ARTS ACTIVITIES',
+      'PSYCHOMOTOR AND CREATIVE ACTIVITIES',
+    ],
+  },
+];
+
+export function isLowerPrimary(grade: string): boolean {
+  const n = parseInt(grade, 10);
+  return n >= 1 && n <= 3;
+}
+
+export function getMergePairsForGrade(grade: string) {
+  if (isLowerPrimary(grade)) return LOWER_PRIMARY_MERGE_PAIRS;
+  return MERGE_PAIRS;
+}
+
 export type SubjectColumn<T extends { id: string; name: string; max_score: number }> =
   | { kind: 'single'; subject: T }
   | { kind: 'merged'; label: string; members: T[]; max_score: number };
