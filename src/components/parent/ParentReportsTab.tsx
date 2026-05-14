@@ -171,12 +171,18 @@ export default function ParentReportsTab({ child }: Props) {
       classAvg[sub.name] = subScores.length > 0 ? subScores.reduce((sum, s) => sum + s.score, 0) / subScores.length : 0;
     });
 
-    // Compute totals per learner
+    // Compute totals per learner — STRICT: include only learners who have a
+    // valid (>0) score in EVERY subject for the grade.
     const learnerTotals: { id: string; stream: string; total: number }[] = [];
-    const learnerIdsWithScores = new Set(allGradeScores.map(s => s.learner_id));
-    
-    gradeLearners.filter(l => learnerIdsWithScores.has(l.id)).forEach(l => {
+    const requiredSubjectIds = gradeSubjects.map(s => s.id);
+
+    gradeLearners.forEach(l => {
       const lScores = allGradeScores.filter(s => s.learner_id === l.id);
+      const qualified = requiredSubjectIds.length > 0 && requiredSubjectIds.every(sid => {
+        const sc = lScores.find(s => s.learning_area_id === sid);
+        return sc && Number(sc.score) > 0;
+      });
+      if (!qualified) return;
       const total = lScores.reduce((sum, s) => sum + s.score, 0);
       learnerTotals.push({ id: l.id, stream: l.stream, total });
     });
