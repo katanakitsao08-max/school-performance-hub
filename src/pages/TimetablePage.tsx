@@ -437,6 +437,7 @@ export default function TimetablePage() {
       lockedSlots: effectiveLockedSlots,
       requirementsByClass: reqMap,
       assignments: merged.assigns,
+      maxPeriodByClass: { [`${grade}|${stream}`]: maxSlotForGrade(grade) },
       ...(advancedRulesOn ? {
         maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
         allowDoubleLessons,
@@ -526,6 +527,7 @@ export default function TimetablePage() {
         lockedSlots: effectiveLockedSlots,
         requirementsByClass: reqMap,
         assignments: mergedAssignments,
+        maxPeriodByClass: Object.fromEntries(classList.map(c => [`${c.grade}|${c.stream}`, maxSlotForGrade(c.grade)])),
         ...(advancedRulesOn ? {
           maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
           allowDoubleLessons,
