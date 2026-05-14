@@ -165,9 +165,23 @@ export default function ParentReportsTab({ child }: Props) {
 
   // Compute rankings and class averages
   const { classAvgPerSubject, overallRank, streamRank, totalInClass, totalInStream, gradeDistribution } = useMemo(() => {
+    // Determine qualified learner ids first (every subject has a valid score)
+    const requiredIds = gradeSubjects.map(s => s.id);
+    const qualifiedIds = new Set(
+      gradeLearners
+        .filter(l => {
+          if (requiredIds.length === 0) return false;
+          const ls = allGradeScores.filter(s => s.learner_id === l.id);
+          return requiredIds.every(sid => {
+            const sc = ls.find(s => s.learning_area_id === sid);
+            return sc && Number(sc.score) > 0;
+          });
+        })
+        .map(l => l.id),
+    );
     const classAvg: Record<string, number> = {};
     gradeSubjects.forEach(sub => {
-      const subScores = allGradeScores.filter(s => s.learning_area_id === sub.id);
+      const subScores = allGradeScores.filter(s => s.learning_area_id === sub.id && qualifiedIds.has(s.learner_id) && Number(s.score) > 0);
       classAvg[sub.name] = subScores.length > 0 ? subScores.reduce((sum, s) => sum + s.score, 0) / subScores.length : 0;
     });
 
