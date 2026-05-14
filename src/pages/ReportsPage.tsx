@@ -1363,6 +1363,23 @@ export default function ReportsPage() {
                       : `Grade ${selectedGrade} ${streamLabel} — Term ${selectedTerm}, ${selectedYear}`}
                 </CardTitle>
               </CardHeader>
+              {excludedLearners.length > 0 && (
+                <div className="mx-4 mt-3 mb-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs">
+                  <div className="font-semibold text-amber-900 dark:text-amber-200">
+                    {excludedLearners.length} learner{excludedLearners.length === 1 ? ' was' : 's were'} excluded from reports and analytics due to incomplete subject scores.
+                  </div>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-amber-800 dark:text-amber-300">View incomplete results</summary>
+                    <ul className="mt-1 space-y-0.5 max-h-40 overflow-y-auto">
+                      {excludedLearners.map(e => (
+                        <li key={e.id} className="text-amber-900/90 dark:text-amber-100/90">
+                          <strong>{e.name}</strong> — missing {e.missingCount}: {e.missingSubjects.join(', ')}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </div>
+              )}
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
