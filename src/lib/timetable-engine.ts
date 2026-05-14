@@ -6,6 +6,12 @@ export interface SubjectRequirement {
   learningAreaId: string;
   learningAreaName: string;
   lessonsPerWeek: number;
+  /** Periods per lesson (1 = single, 2 = double, etc.). Default 1. */
+  length?: number;
+  /** Optional teacher override (overrides teacher_assignments pool). */
+  preferredTeacherId?: string;
+  /** Optional classroom label (rendered in cell). */
+  classroom?: string;
 }
 
 export interface TeacherAssignmentRow {
