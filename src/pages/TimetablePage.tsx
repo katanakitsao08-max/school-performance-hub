@@ -699,8 +699,63 @@ export default function TimetablePage() {
           <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
         </div>
 
+        {/* School-wide day & period settings */}
         <Card>
-          <CardHeader><CardTitle>Configuration</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Day & period settings</CardTitle>
+            <CardDescription>School-wide. Saved per school.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-4">
+            <div>
+              <Label className="text-xs">Periods per day</Label>
+              <Input type="number" min={4} max={14} value={periodsPerDay}
+                onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={zeroPeriod} onChange={e => setZeroPeriod(e.target.checked)} className="h-4 w-4" />
+                <span>Work with zero period</span>
+              </label>
+            </div>
+            <div>
+              <Label className="text-xs">Number of days</Label>
+              <Input type="number" min={1} max={7} value={daysList.length}
+                onChange={e => {
+                  const n = Math.max(1, Math.min(7, Number(e.target.value) || 5));
+                  setDaysList(prev => {
+                    const base = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                    const next = [...prev];
+                    while (next.length < n) next.push(base[next.length] || `Day ${next.length+1}`);
+                    return next.slice(0, n);
+                  });
+                }} />
+            </div>
+            <div className="md:col-span-3">
+              <Label className="text-xs">Day labels (comma-separated, in order)</Label>
+              <Input value={daysList.join(', ')}
+                onChange={e => setDaysList(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} />
+            </div>
+            <div>
+              <Label className="text-xs">Weekend</Label>
+              <Select value={weekendDays.join('|')} onValueChange={v => setWeekendDays(v.split('|').filter(Boolean))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
+                  <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
+                  <SelectItem value="Sunday">Sunday only</SelectItem>
+                  <SelectItem value="">None</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-4">
+              <Button size="sm" onClick={saveSettings} disabled={savingSettings}>
+                {savingSettings ? 'Saving…' : 'Save settings'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardContent className="grid gap-4 md:grid-cols-5">
             <div>
               <Label>Block</Label>
