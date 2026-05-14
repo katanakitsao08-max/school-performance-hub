@@ -65,6 +65,8 @@ export interface GenerateOptions {
   maxLessonsPerDayPerSubject?: number;     // cap same-subject lessons in a day per class
   allowDoubleLessons?: boolean;            // allow back-to-back same subject
   teacherUnavailable?: TeacherUnavailable[]; // per-teacher blackout slots
+  /** Per-class hard cap on the highest slot number a teaching lesson may occupy (1-indexed). */
+  maxPeriodByClass?: Record<string, number>;
 }
 
 export interface GenerationResult {
