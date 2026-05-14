@@ -138,6 +138,33 @@ export default function TimetablePage() {
     [breakLabelsInput],
   );
 
+  /**
+   * Cap last allowed slot per band:
+   *  - Lower Primary (1-3): cannot go past LUNCH break (the latest break)
+   *  - Upper Primary (4-6): up to 7th teaching lesson
+   *  - Junior School (7-9): up to 8th teaching lesson
+   * Returns the 1-indexed slot number (inclusive) the lesson must end at or before.
+   */
+  const maxSlotForGrade = (grade: string): number => {
+    const teachingToSlot: number[] = []; // teachingToSlot[t-1] = slot number for teaching lesson t
+    for (let s = 1; s <= periodsPerDay; s++) {
+      if (!breakPeriods.includes(s)) teachingToSlot.push(s);
+    }
+    const n = parseInt(grade, 10);
+    if (!isNaN(n) && n >= 1 && n <= 3) {
+      // Lower primary: lessons must end before the LUNCH (latest) break
+      const lunchSlot = breakPeriods.length ? Math.max(...breakPeriods) : periodsPerDay + 1;
+      return lunchSlot - 1;
+    }
+    if (!isNaN(n) && n >= 4 && n <= 6) {
+      return teachingToSlot[6] ?? periodsPerDay; // 7th teaching lesson
+    }
+    if (!isNaN(n) && n >= 7 && n <= 9) {
+      return teachingToSlot[7] ?? periodsPerDay; // 8th teaching lesson
+    }
+    return periodsPerDay;
+  };
+
   // Resize period times array when periodsPerDay changes
   useEffect(() => {
     setPeriodTimes(prev => {
