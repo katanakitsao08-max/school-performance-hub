@@ -1494,6 +1494,90 @@ export type Database = {
           },
         ]
       }
+      timetable_class_lessons: {
+        Row: {
+          classroom: string | null
+          count: number
+          created_at: string
+          grade: string
+          id: string
+          learning_area_id: string
+          length: number
+          school_id: string
+          stream: string
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          classroom?: string | null
+          count?: number
+          created_at?: string
+          grade: string
+          id?: string
+          learning_area_id: string
+          length?: number
+          school_id: string
+          stream: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          classroom?: string | null
+          count?: number
+          created_at?: string
+          grade?: string
+          id?: string
+          learning_area_id?: string
+          length?: number
+          school_id?: string
+          stream?: string
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      timetable_settings: {
+        Row: {
+          break_labels: Json
+          break_periods: Json
+          created_at: string
+          day_labels: Json
+          id: string
+          num_days: number
+          periods_per_day: number
+          school_id: string
+          updated_at: string
+          weekend: Json
+          zero_period: boolean
+        }
+        Insert: {
+          break_labels?: Json
+          break_periods?: Json
+          created_at?: string
+          day_labels?: Json
+          id?: string
+          num_days?: number
+          periods_per_day?: number
+          school_id: string
+          updated_at?: string
+          weekend?: Json
+          zero_period?: boolean
+        }
+        Update: {
+          break_labels?: Json
+          break_periods?: Json
+          created_at?: string
+          day_labels?: Json
+          id?: string
+          num_days?: number
+          periods_per_day?: number
+          school_id?: string
+          updated_at?: string
+          weekend?: Json
+          zero_period?: boolean
+        }
+        Relationships: []
+      }
       timetables: {
         Row: {
           break_period: number | null
