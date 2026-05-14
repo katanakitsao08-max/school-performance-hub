@@ -161,6 +161,7 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
       ? fullPool.filter(t => t.teacher_id === lesson.req.preferredTeacherId)
       : fullPool;
     const lessonLen = Math.max(1, lesson.req.length || 1);
+    const maxPeriodCap = opts.maxPeriodByClass?.[lesson.classKey] ?? periodsPerDay;
 
     if (pool.length === 0) {
       unfilled.push(`${lesson.classKey} — ${lesson.req.learningAreaName}: no teacher assigned`);
