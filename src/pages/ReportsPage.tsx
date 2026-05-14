@@ -21,7 +21,7 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 import { buildSubjectColumns, sortSubjectsByOrder } from '@/lib/subject-order';
-import { getMergePref } from '@/lib/merge-state';
+import { getMergePref, setMergePref } from '@/lib/merge-state';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
