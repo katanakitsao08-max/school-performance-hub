@@ -1224,6 +1224,23 @@ export default function ReportsPage() {
             </Select>
           </div>
 
+          {!isSchoolWide && selectedGrades.length <= 1 && (
+            <div className="space-y-1">
+              <Label className="text-xs">Combine related subjects</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-background">
+                <Switch
+                  checked={mergeCombinedSubjects}
+                  onCheckedChange={(v) => {
+                    setMergeCombinedSubjects(v);
+                    const at = isMerged ? 'end_term' : selectedAssessment;
+                    if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">{mergeCombinedSubjects ? 'Merged' : 'Separate'}</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label className="text-xs">Gender</Label>
             <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
