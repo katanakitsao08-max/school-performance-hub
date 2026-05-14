@@ -101,11 +101,12 @@ export function buildSubjectColumns<T extends { id: string; name: string; max_sc
   const sorted = sortSubjectsByOrder(subjects, grade);
   if (!mergeOn) return sorted.map(s => ({ kind: 'single' as const, subject: s }));
 
+  const pairs = getMergePairsForGrade(grade);
   const used = new Set<string>();
   const cols: SubjectColumn<T>[] = [];
   for (const s of sorted) {
     if (used.has(s.id)) continue;
-    const pair = MERGE_PAIRS.find(p => p.members.includes(norm(s.name)));
+    const pair = pairs.find(p => p.members.includes(norm(s.name)));
     if (pair) {
       const members = sorted.filter(x => pair.members.includes(norm(x.name)));
       if (members.length > 1) {
