@@ -180,6 +180,8 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
         if (sameSubjCount >= opts.maxLessonsPerDayPerSubject) continue;
       }
       for (let p = 0; p + lessonLen <= periodsPerDay; p++) {
+        // Hard cap: lesson must finish at or before maxPeriodCap (1-indexed slot number)
+        if (p + lessonLen > maxPeriodCap) break;
         // All `lessonLen` consecutive slots must be free, non-break, non-locked
         let ok = true;
         for (let k = 0; k < lessonLen; k++) {
