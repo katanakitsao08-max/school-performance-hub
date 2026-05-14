@@ -96,7 +96,7 @@ export default function TimetablePage() {
   const [daysList, setDaysList] = useState<string[]>(DAYS);
   const [weekendDays, setWeekendDays] = useState<string[]>(['Saturday', 'Sunday']);
   // Days actually used for scheduling — weekends excluded
-  const scheduleDays = React.useMemo(
+  const scheduleDays = useMemo(
     () => daysList.filter(d => !weekendDays.includes(d)),
     [daysList, weekendDays],
   );
