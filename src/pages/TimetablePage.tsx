@@ -380,7 +380,20 @@ export default function TimetablePage() {
     }
     setGenerating(true);
     setBatchMode(false);
-    const baseReqs = requirements.filter(r => r.lessonsPerWeek > 0);
+    // Prefer saved per-class lessons (with length/teacher overrides) when present
+    const baseReqs: SubjectRequirement[] = savedLessons.length > 0
+      ? savedLessons.map(s => {
+          const area = requirements.find(r => r.learningAreaId === s.learning_area_id);
+          return {
+            learningAreaId: s.learning_area_id,
+            learningAreaName: area?.learningAreaName || 'Subject',
+            lessonsPerWeek: s.count,
+            length: s.length,
+            preferredTeacherId: s.teacher_id || undefined,
+            classroom: s.classroom || undefined,
+          };
+        })
+      : requirements.filter(r => r.lessonsPerWeek > 0);
     const merged = applyMerges(baseReqs, streamAssignments);
     const reqMap: Record<string, SubjectRequirement[]> = {};
     reqMap[`${grade}|${stream}`] = merged.reqs;
