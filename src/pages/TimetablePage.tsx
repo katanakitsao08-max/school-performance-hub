@@ -95,6 +95,11 @@ export default function TimetablePage() {
   // Per-school day/period settings (loaded from timetable_settings)
   const [daysList, setDaysList] = useState<string[]>(DAYS);
   const [weekendDays, setWeekendDays] = useState<string[]>(['Saturday', 'Sunday']);
+  // Days actually used for scheduling — weekends excluded
+  const scheduleDays = React.useMemo(
+    () => daysList.filter(d => !weekendDays.includes(d)),
+    [daysList, weekendDays],
+  );
   const [zeroPeriod, setZeroPeriod] = useState<boolean>(false);
   const [showDayNumbers, setShowDayNumbers] = useState<boolean>(false);
   const [savingSettings, setSavingSettings] = useState(false);
