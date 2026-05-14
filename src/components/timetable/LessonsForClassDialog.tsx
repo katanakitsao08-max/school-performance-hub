@@ -60,7 +60,7 @@ export function LessonsForClassDialog({ open, onOpenChange, schoolId, grade, str
       setAreas(areaList);
 
       // Resolve teacher names
-      const tIds = Array.from(new Set(((ta as any) || []).map((r: any) => r.teacher_id)));
+      const tIds = Array.from(new Set(((ta as any) || []).map((r: any) => r.teacher_id as string))) as string[];
       const nameMap: Record<string, string> = {};
       if (tIds.length > 0) {
         const { data: profs } = await supabase
