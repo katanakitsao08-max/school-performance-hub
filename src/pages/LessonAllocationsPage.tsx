@@ -11,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Save } from 'lucide-react';
+import { Save, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getCbcBand, getOfficialLessonsPerWeek, type CbcBand } from '@/data/cbc-subjects';
 
 type BandKey = 'lower-primary' | 'upper-primary' | 'junior-secondary' | 'pre-primary';
