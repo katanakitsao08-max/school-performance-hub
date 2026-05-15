@@ -25,6 +25,7 @@ const GradesPage = lazy(() => import("./pages/GradesPage"));
 const LearnersPage = lazy(() => import("./pages/LearnersPage"));
 const MarksEntryPage = lazy(() => import("./pages/MarksEntryPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const ConsolidatedReportsPage = lazy(() => import("./pages/ConsolidatedReportsPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const SmsPage = lazy(() => import("./pages/SmsPage"));
 const PromotionPage = lazy(() => import("./pages/PromotionPage"));
@@ -158,6 +159,7 @@ const App = () => (
                 <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><MarksEntryPage /></ProtectedRoute>} />
                 <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><AttendancePage /></ProtectedRoute>} />
                 <Route path="/reports" element={<ProtectedRoute><ErrorBoundary inline label="Reports"><ReportsPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/consolidated-reports" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Consolidated Reports"><ConsolidatedReportsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
                 <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
                 <Route path="/parent-communication" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Parent Communication"><ParentCommunicationPage /></ErrorBoundary></ProtectedRoute>} />
