@@ -573,6 +573,69 @@ export type Database = {
           },
         ]
       }
+      learning_path_entitlements: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          amount: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          learner_id: string
+          mpesa_code: string | null
+          mpesa_phone: string | null
+          notes: string | null
+          paid_to: string
+          parent_user_id: string
+          rejection_reason: string | null
+          school_id: string
+          status: string
+          submitted_at: string
+          updated_at: string
+          weeks: number
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          amount?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          learner_id: string
+          mpesa_code?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          paid_to?: string
+          parent_user_id: string
+          rejection_reason?: string | null
+          school_id: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          weeks?: number
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          amount?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          learner_id?: string
+          mpesa_code?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          paid_to?: string
+          parent_user_id?: string
+          rejection_reason?: string | null
+          school_id?: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          weeks?: number
+        }
+        Relationships: []
+      }
       learning_progress: {
         Row: {
           badges: string[]
@@ -2098,6 +2161,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
+      has_active_learning_path: {
+        Args: { _learner_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
