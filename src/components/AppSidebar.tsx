@@ -64,6 +64,7 @@ const adminSections: NavSection[] = [
       { title: "Curriculum Library", url: "/curriculum-library", icon: Library },
       { title: "Timetable", url: "/timetable", icon: CalendarClock },
       { title: "Lesson Allocations", url: "/lesson-allocations", icon: ClipboardList },
+      { title: "Subjects & Teachers", url: "/class-subjects-teachers", icon: BookOpen },
     ],
   },
   {
