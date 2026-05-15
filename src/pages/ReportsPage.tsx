@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School, Archive, Loader2, Sparkles, MessageCircle } from 'lucide-react';
 import { WhatsAppSendDialog, type WhatsAppRecipient } from '@/components/WhatsAppSendDialog';
 import { toast } from 'sonner';
-import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade, computeLearnerMeanPoints } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
