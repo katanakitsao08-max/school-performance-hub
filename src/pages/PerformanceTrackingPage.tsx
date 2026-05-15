@@ -89,8 +89,9 @@ export default function PerformanceTrackingPage() {
 
   const [selectedStream, setSelectedStream] = useState('');
   useEffect(() => {
-    if (dbStreams.length > 0 && !dbStreams.includes(selectedStream)) {
-      setSelectedStream(dbStreams[0]);
+    const valid = ['__ALL__', ...dbStreams];
+    if (dbStreams.length > 0 && !valid.includes(selectedStream)) {
+      setSelectedStream('__ALL__');
     }
   }, [dbStreams, selectedStream]);
 
@@ -98,21 +99,23 @@ export default function PerformanceTrackingPage() {
     if (!isTeacher || !selectedGrade || !selectedStream) return null;
     return new Set<string>(
       (myAssignments?.subjects || [])
-        .filter((a: any) => a.grade === selectedGrade && a.stream === selectedStream)
+        .filter((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream))
         .map((a: any) => a.learning_area_id)
     );
   }, [isTeacher, myAssignments, selectedGrade, selectedStream]);
 
   const { data: learners = [] } = useQuery({
-    queryKey: ['tracking-learners', selectedGrade, selectedStream],
+    queryKey: ['tracking-learners', selectedGrade, selectedStream, schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('learners').select('*')
-        .eq('grade', selectedGrade).eq('stream', selectedStream)
+      let q = supabase.from('learners').select('*')
+        .eq('grade', selectedGrade)
         .eq('is_active', true).eq('school_id', schoolId!)
         .order('full_name');
+      if (selectedStream !== '__ALL__') q = q.eq('stream', selectedStream);
+      const { data } = await q;
       return data || [];
     },
-    enabled: !!schoolId && !!selectedStream,
+    enabled: !!schoolId && !!selectedGrade && !!selectedStream,
   });
 
   const { data: subjects = [] } = useQuery({
@@ -123,7 +126,7 @@ export default function PerformanceTrackingPage() {
         .order('name');
       let list = data || [];
       if (isTeacher) {
-        const isClassTeacherHere = (myAssignments?.classes || []).some((a: any) => a.grade === selectedGrade && a.stream === selectedStream);
+        const isClassTeacherHere = (myAssignments?.classes || []).some((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream));
         if (!isClassTeacherHere) list = list.filter((s: any) => selectedStreamSubjectIds?.has(s.id));
       }
       return sortSubjectsByOrder(list as any[], selectedGrade);
@@ -244,8 +247,11 @@ export default function PerformanceTrackingPage() {
           <div className="space-y-1">
             <Label className="text-xs">Stream</Label>
             <Select value={selectedStream} onValueChange={setSelectedStream} disabled={dbStreams.length === 0}>
-              <SelectTrigger className="w-[120px]"><SelectValue placeholder={dbStreams.length === 0 ? 'No streams' : 'Select'} /></SelectTrigger>
-              <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder={dbStreams.length === 0 ? 'No streams' : 'Select'} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__ALL__">All streams</SelectItem>
+                {dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
@@ -273,8 +279,8 @@ export default function PerformanceTrackingPage() {
         {trackingMode === 'class' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream}, {selectedYear}</CardTitle>
-              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream, selectedYear, schoolName)}>
+              <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream === '__ALL__' ? '(All streams)' : selectedStream}, {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream === '__ALL__' ? 'All streams' : selectedStream, selectedYear, schoolName)}>
                 <Download className="h-4 w-4 mr-1" /> PDF
               </Button>
             </CardHeader>
