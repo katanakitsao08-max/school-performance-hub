@@ -42,9 +42,8 @@ interface Lesson {
   realWorldChallenge: string; xpReward: number; badge: string;
 }
 
-/* ---------- Local progress storage (per child + subject) ---------- */
 interface SubjectProgress {
-  level: number;        // 1..9 placed level
+  level: number;
   xp: number;
   streak: number;
   badges: string[];
@@ -52,13 +51,64 @@ interface SubjectProgress {
   topicsCovered: string[];
   lastPlayed?: string;
 }
+
+const TUTOR_NAME = 'Mr Kitsao the Teacher';
+
+/* ---------- Local cache fallback ---------- */
 const storeKey = (childId: string, subjectId: string) => `lp:${childId}:${subjectId}`;
-const readProgress = (childId: string, subjectId: string): SubjectProgress | null => {
+const readLocalProgress = (childId: string, subjectId: string): SubjectProgress | null => {
   try { const v = localStorage.getItem(storeKey(childId, subjectId)); return v ? JSON.parse(v) : null; } catch { return null; }
 };
-const writeProgress = (childId: string, subjectId: string, p: SubjectProgress) => {
+const writeLocalProgress = (childId: string, subjectId: string, p: SubjectProgress) => {
   try { localStorage.setItem(storeKey(childId, subjectId), JSON.stringify(p)); } catch { /* ignore */ }
 };
+
+/* ---------- DB sync ---------- */
+async function loadProgress(childId: string, subjectId: string): Promise<SubjectProgress | null> {
+  try {
+    const { data } = await (supabase as any)
+      .from('learning_progress')
+      .select('level, xp, streak, badges, lessons_completed, topics_covered, last_played')
+      .eq('learner_id', childId).eq('subject_id', subjectId).maybeSingle();
+    if (data) return {
+      level: data.level, xp: data.xp, streak: data.streak,
+      badges: data.badges ?? [], lessonsCompleted: data.lessons_completed,
+      topicsCovered: data.topics_covered ?? [], lastPlayed: data.last_played,
+    };
+  } catch { /* fall through */ }
+  return readLocalProgress(childId, subjectId);
+}
+async function saveProgress(childId: string, subjectId: string, subjectName: string, p: SubjectProgress) {
+  writeLocalProgress(childId, subjectId, p);
+  try {
+    await (supabase as any).from('learning_progress').upsert({
+      learner_id: childId, subject_id: subjectId, subject_name: subjectName,
+      level: p.level, xp: p.xp, streak: p.streak, badges: p.badges,
+      lessons_completed: p.lessonsCompleted, topics_covered: p.topicsCovered,
+      last_played: p.lastPlayed ?? new Date().toISOString(),
+    }, { onConflict: 'learner_id,subject_id' });
+  } catch (e) { console.warn('progress save failed', e); }
+}
+async function saveResponse(row: {
+  learner_id: string; subject_id: string; subject_name: string;
+  source: 'assessment' | 'exercise';
+  question: string; selected_answer: string | null; correct_answer: string | null;
+  is_correct: boolean; difficulty: number | null; strand: string | null;
+  explanation: string | null; level_at_time: number | null;
+}) {
+  try { await (supabase as any).from('learning_responses').insert(row); }
+  catch (e) { console.warn('response save failed', e); }
+}
+async function loadRecentResponses(childId: string, subjectId: string) {
+  try {
+    const { data } = await (supabase as any)
+      .from('learning_responses')
+      .select('source, question, is_correct, difficulty, strand, explanation, created_at')
+      .eq('learner_id', childId).eq('subject_id', subjectId)
+      .order('created_at', { ascending: false }).limit(15);
+    return data ?? [];
+  } catch { return []; }
+}
 
 const bandColor = (avg: number | null) => {
   if (avg == null) return 'bg-muted text-muted-foreground border-muted';
@@ -78,15 +128,11 @@ const bandLabel = (avg: number | null) => {
 export default function ParentLearningPathTab({ child }: Props) {
   const { toast } = useToast();
 
-  // ----- Subject list -----
   const { data: areas = [] } = useQuery({
     queryKey: ['parent-lp-areas', child.grade, child.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('learning_areas')
-        .select('id, name, grade')
-        .eq('grade', child.grade)
-        .eq('is_active', true);
+      const { data } = await supabase.from('learning_areas')
+        .select('id, name, grade').eq('grade', child.grade).eq('is_active', true);
       return data || [];
     },
   });
@@ -94,13 +140,25 @@ export default function ParentLearningPathTab({ child }: Props) {
   const { data: scores = [] } = useQuery({
     queryKey: ['parent-lp-scores', child.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('scores')
-        .select('learning_area_id, score')
-        .eq('learner_id', child.id);
+      const { data } = await supabase.from('scores')
+        .select('learning_area_id, score').eq('learner_id', child.id);
       return data || [];
     },
   });
+
+  // progress per subject (DB-backed)
+  const [progressBySubject, setProgressBySubject] = useState<Record<string, SubjectProgress | null>>({});
+  useEffect(() => {
+    if (!areas.length) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        areas.map(async a => [a.id, await loadProgress(child.id, a.id)] as const)
+      );
+      if (!cancelled) setProgressBySubject(Object.fromEntries(entries));
+    })();
+    return () => { cancelled = true; };
+  }, [areas, child.id]);
 
   const subjectStats = useMemo(() => {
     const map = new Map<string, number[]>();
@@ -111,12 +169,11 @@ export default function ParentLearningPathTab({ child }: Props) {
     return areas.map(a => {
       const list = map.get(a.id) || [];
       const avg = list.length ? Math.round(list.reduce((x, y) => x + y, 0) / list.length) : null;
-      const prog = readProgress(child.id, a.id);
-      return { id: a.id, name: a.name, avg, progress: prog };
+      return { id: a.id, name: a.name, avg, progress: progressBySubject[a.id] ?? null };
     }).sort((a, b) => (a.avg ?? 999) - (b.avg ?? 999));
-  }, [areas, scores, child.id]);
+  }, [areas, scores, progressBySubject]);
 
-  // ----- Adventure dialog state -----
+  // ---------- Adventure dialog state ----------
   const [open, setOpen] = useState(false);
   const [activeSubject, setActiveSubject] = useState<{ id: string; name: string; avg: number | null } | null>(null);
   const [stage, setStage] = useState<'intro' | 'assessment' | 'lesson' | 'celebrate'>('intro');
@@ -130,23 +187,22 @@ export default function ParentLearningPathTab({ child }: Props) {
   const [assessShowFeedback, setAssessShowFeedback] = useState(false);
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [lessonPhase, setLessonPhase] = useState<'story' | 'lesson' | 'worked' | 'exercises' | 'done'>('story');
+  const [lessonPhase, setLessonPhase] = useState<'story' | 'lesson' | 'worked' | 'exercises'>('story');
   const [exIdx, setExIdx] = useState(0);
   const [exSelected, setExSelected] = useState<string | null>(null);
   const [exShowFeedback, setExShowFeedback] = useState(false);
   const [exCorrect, setExCorrect] = useState(0);
   const [showHint, setShowHint] = useState(false);
 
-  const startAdventure = (s: { id: string; name: string; avg: number | null }) => {
+  const startAdventure = async (s: { id: string; name: string; avg: number | null }) => {
     setActiveSubject(s);
-    const p = readProgress(child.id, s.id);
+    const p = await loadProgress(child.id, s.id);
     setProgress(p);
-    setStage(p ? 'lesson' : 'intro');
-    // reset transient state
     setAssessment(null); setAssessIdx(0); setAssessAnswers([]); setAssessSelected(null); setAssessShowFeedback(false);
     setLesson(null); setLessonPhase('story'); setExIdx(0); setExSelected(null); setExShowFeedback(false); setExCorrect(0); setShowHint(false);
     setOpen(true);
-    if (p) loadLesson(s, p);
+    if (p) { setStage('lesson'); loadLesson(s, p); }
+    else setStage('intro');
   };
 
   /* ---------- API calls ---------- */
@@ -189,10 +245,12 @@ export default function ParentLearningPathTab({ child }: Props) {
     setLoading(true); setStage('lesson');
     setLesson(null); setLessonPhase('story'); setExIdx(0); setExSelected(null); setExShowFeedback(false); setExCorrect(0); setShowHint(false);
     try {
+      const recent = await loadRecentResponses(child.id, subj.id);
       const res = await callFn('lesson', {
         _subject: subj,
         level: p?.level ?? Math.max(1, parseInt(String(child.grade).replace(/\D/g, ''), 10) || 4),
         previousTopics: (p?.topicsCovered ?? []).slice(-8),
+        recentResponses: recent,
       });
       const l = (res as any)?.data as Lesson;
       if (!l?.exercises?.length) throw new Error('No lesson returned');
@@ -203,29 +261,52 @@ export default function ParentLearningPathTab({ child }: Props) {
   };
 
   /* ---------- Assessment flow ---------- */
-  const submitAssessmentAnswer = () => {
-    if (assessSelected == null || !assessment) return;
+  const submitAssessmentAnswer = async () => {
+    if (assessSelected == null || !assessment || !activeSubject) return;
     setAssessShowFeedback(true);
+    const q = assessment.questions[assessIdx];
+    const isCorrect = assessSelected === q.answerIndex;
+    // persist this single response (await so it's in DB before next lesson loads)
+    await saveResponse({
+      learner_id: child.id,
+      subject_id: activeSubject.id,
+      subject_name: activeSubject.name,
+      source: 'assessment',
+      question: q.question,
+      selected_answer: q.options[assessSelected] ?? null,
+      correct_answer: q.options[q.answerIndex] ?? null,
+      is_correct: isCorrect,
+      difficulty: q.difficulty ?? null,
+      strand: q.strand ?? null,
+      explanation: q.explanation ?? null,
+      level_at_time: progress?.level ?? null,
+    });
   };
-  const nextAssessmentQ = () => {
-    if (!assessment) return;
+
+  const nextAssessmentQ = async () => {
+    if (!assessment || !activeSubject) return;
     const newAns = [...assessAnswers, assessSelected!];
     setAssessAnswers(newAns);
     setAssessSelected(null);
     setAssessShowFeedback(false);
     if (assessIdx + 1 >= assessment.questions.length) {
-      // compute placement
-      const correct = assessment.questions.reduce((acc, q, i) => acc + (newAns[i] === q.answerIndex ? 1 : 0), 0);
+      // adaptive placement based on difficulty-weighted correctness
+      const totalWeight = assessment.questions.reduce((a, q) => a + (q.difficulty || 1), 0);
+      const earnedWeight = assessment.questions.reduce(
+        (a, q, i) => a + ((newAns[i] === q.answerIndex ? (q.difficulty || 1) : 0)), 0,
+      );
+      const ratio = earnedWeight / Math.max(totalWeight, 1);
       const baseGrade = Math.max(1, parseInt(String(child.grade).replace(/\D/g, ''), 10) || 4);
-      // 0-1 correct → -2, 2 → -1, 3 → same, 4 → +1, 5 → +1 (cap)
-      const delta = correct <= 1 ? -2 : correct === 2 ? -1 : correct === 3 ? 0 : 1;
+      const delta = ratio >= 0.85 ? 1 : ratio >= 0.6 ? 0 : ratio >= 0.4 ? -1 : -2;
       const placedLevel = Math.min(9, Math.max(1, baseGrade + delta));
+      const correct = assessment.questions.reduce((acc, q, i) => acc + (newAns[i] === q.answerIndex ? 1 : 0), 0);
       const newProg: SubjectProgress = {
         level: placedLevel, xp: 20, streak: 1, badges: ['Pathfinder'],
         lessonsCompleted: 0, topicsCovered: [], lastPlayed: new Date().toISOString(),
       };
-      if (activeSubject) writeProgress(child.id, activeSubject.id, newProg);
+      await saveProgress(child.id, activeSubject.id, activeSubject.name, newProg);
       setProgress(newProg);
+      setProgressBySubject(prev => ({ ...prev, [activeSubject.id]: newProg }));
       toast({
         title: `Placed at Level ${placedLevel}!`,
         description: `${correct}/${assessment.questions.length} correct. Earned 20 XP and the Pathfinder badge.`,
@@ -238,20 +319,38 @@ export default function ParentLearningPathTab({ child }: Props) {
 
   /* ---------- Exercise flow ---------- */
   const currentExercise = lesson?.exercises[exIdx];
-  const checkExercise = () => {
-    if (!currentExercise || exSelected == null) return;
-    setExShowFeedback(true);
-    const correct =
-      currentExercise.type === 'mcq'
-        ? exSelected === (currentExercise.options?.[currentExercise.answerIndex ?? -1] ?? '')
-        : exSelected.trim().toLowerCase() === String(currentExercise.answer).trim().toLowerCase();
-    if (correct) setExCorrect(c => c + 1);
+  const isExerciseCorrect = () => {
+    if (!currentExercise || exSelected == null) return false;
+    return currentExercise.type === 'mcq'
+      ? exSelected === (currentExercise.options?.[currentExercise.answerIndex ?? -1] ?? '')
+      : exSelected.trim().toLowerCase() === String(currentExercise.answer).trim().toLowerCase();
   };
-  const nextExercise = () => {
-    if (!lesson) return;
+  const checkExercise = async () => {
+    if (!currentExercise || exSelected == null || !activeSubject || !lesson) return;
+    setExShowFeedback(true);
+    const correct = isExerciseCorrect();
+    if (correct) setExCorrect(c => c + 1);
+    await saveResponse({
+      learner_id: child.id,
+      subject_id: activeSubject.id,
+      subject_name: activeSubject.name,
+      source: 'exercise',
+      question: currentExercise.question,
+      selected_answer: exSelected,
+      correct_answer: currentExercise.type === 'mcq'
+        ? (currentExercise.options?.[currentExercise.answerIndex ?? -1] ?? null)
+        : currentExercise.answer,
+      is_correct: correct,
+      difficulty: currentExercise.difficulty ?? null,
+      strand: lesson.strand ?? null,
+      explanation: currentExercise.explanation ?? null,
+      level_at_time: lesson.level ?? null,
+    });
+  };
+  const nextExercise = async () => {
+    if (!lesson || !activeSubject) return;
     setExSelected(null); setExShowFeedback(false); setShowHint(false);
     if (exIdx + 1 >= lesson.exercises.length) {
-      // finish
       const earned = Math.round((lesson.xpReward ?? 50) * (exCorrect / lesson.exercises.length || 0.2));
       const newProg: SubjectProgress = {
         level: progress?.level ?? lesson.level,
@@ -262,18 +361,55 @@ export default function ParentLearningPathTab({ child }: Props) {
         topicsCovered: [...(progress?.topicsCovered ?? []), `${lesson.strand}: ${lesson.subStrand}`],
         lastPlayed: new Date().toISOString(),
       };
-      // adapt level: ≥4/5 right → +1; ≤1/5 → -1
       if (exCorrect >= 4) newProg.level = Math.min(9, newProg.level + 1);
       else if (exCorrect <= 1) newProg.level = Math.max(1, newProg.level - 1);
-      if (activeSubject) writeProgress(child.id, activeSubject.id, newProg);
+      await saveProgress(child.id, activeSubject.id, activeSubject.name, newProg);
       setProgress(newProg);
+      setProgressBySubject(prev => ({ ...prev, [activeSubject.id]: newProg }));
       setStage('celebrate');
     } else {
       setExIdx(exIdx + 1);
     }
   };
 
-  /* ---------- Render helpers ---------- */
+  /* ---------- Sticky footer action button ---------- */
+  const FooterAction = () => {
+    if (loading) return null;
+    if (stage === 'intro') {
+      return <Button size="lg" className="w-full" onClick={startAssessment}>
+        <Brain className="h-4 w-4 mr-2" /> Start Brain Quiz
+      </Button>;
+    }
+    if (stage === 'assessment' && assessment) {
+      return !assessShowFeedback
+        ? <Button className="w-full" size="lg" onClick={submitAssessmentAnswer} disabled={assessSelected == null}>Check Answer</Button>
+        : <Button className="w-full" size="lg" onClick={nextAssessmentQ}>
+            {assessIdx + 1 >= assessment.questions.length ? 'See My Level' : 'Next Question'}
+            <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>;
+    }
+    if (stage === 'lesson' && lesson) {
+      if (lessonPhase === 'story') return <Button className="w-full" size="lg" onClick={() => setLessonPhase('lesson')}>Let's go! <ArrowRight className="h-4 w-4 ml-1" /></Button>;
+      if (lessonPhase === 'lesson') return <Button className="w-full" size="lg" onClick={() => setLessonPhase('worked')}>Show me an example <ArrowRight className="h-4 w-4 ml-1" /></Button>;
+      if (lessonPhase === 'worked') return <Button className="w-full" size="lg" onClick={() => setLessonPhase('exercises')}>I'm ready to try! <Target className="h-4 w-4 ml-1" /></Button>;
+      if (lessonPhase === 'exercises' && currentExercise) {
+        return !exShowFeedback
+          ? <Button className="w-full" size="lg" onClick={checkExercise} disabled={exSelected == null || exSelected === ''}>Check</Button>
+          : <Button className="w-full" size="lg" onClick={nextExercise}>
+              {exIdx + 1 >= lesson.exercises.length ? 'Finish Lesson 🏆' : 'Next Exercise'}
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>;
+      }
+    }
+    if (stage === 'celebrate') {
+      return <div className="flex gap-2 w-full">
+        <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Done</Button>
+        <Button className="flex-1" onClick={() => loadLesson()}><RotateCcw className="h-4 w-4 mr-1" /> Next Lesson</Button>
+      </div>;
+    }
+    return null;
+  };
+
   const HeaderBar = () => (
     <div className="flex items-center justify-between gap-3 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-3 border border-primary/15">
       <div className="flex items-center gap-2">
@@ -281,7 +417,7 @@ export default function ParentLearningPathTab({ child }: Props) {
           <Brain className="h-5 w-5" />
         </div>
         <div>
-          <div className="text-xs text-muted-foreground">Tito the Tutor</div>
+          <div className="text-xs text-muted-foreground">{TUTOR_NAME}</div>
           <div className="text-sm font-semibold">{activeSubject?.name}</div>
         </div>
       </div>
@@ -302,7 +438,7 @@ export default function ParentLearningPathTab({ child }: Props) {
             CBC Learning Adventure for {child.full_name.split(' ')[0]}
           </CardTitle>
           <CardDescription className="text-xs">
-            Tap a subject. Tito the Tutor will first check {child.full_name.split(' ')[0]}'s level
+            Tap a subject. {TUTOR_NAME} will first check {child.full_name.split(' ')[0]}'s level
             with a quick fun quiz, then unlock interactive Kenya CBC lessons with games,
             exercises and rewards — Math-Whizz style.
           </CardDescription>
@@ -346,23 +482,23 @@ export default function ParentLearningPathTab({ child }: Props) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-0">
-          <DialogHeader className="px-5 pt-5">
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-5 pt-5 pb-2 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" />
               {activeSubject?.name} · Learning Adventure
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs">
               Personalised for {child.full_name} — Grade {child.grade}, Kenya CBC (KICD).
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-5 pt-2"><HeaderBar /></div>
+          <div className="px-5 pt-1 shrink-0"><HeaderBar /></div>
 
-          <ScrollArea className="flex-1 px-5 py-4">
+          <ScrollArea className="flex-1 min-h-0 px-5 py-3">
             {loading && (
               <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Tito is preparing something fun…
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> {TUTOR_NAME.split(' ')[0]} {TUTOR_NAME.split(' ')[1]} is preparing something fun…
               </div>
             )}
 
@@ -374,16 +510,15 @@ export default function ParentLearningPathTab({ child }: Props) {
                 </div>
                 <h3 className="text-lg font-display font-bold">Hi {child.full_name.split(' ')[0]}! 👋</h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Before we begin, let's play a quick <strong>5-question brain quiz</strong> grounded in
-                  the Kenya CBC for Grade {child.grade}. It helps me find the perfect level for you —
-                  not too easy, not too hard. Ready?
+                  I'm <strong>{TUTOR_NAME}</strong>. Let's play a quick <strong>5-question brain quiz</strong> grounded in
+                  the Kenya CBC for Grade {child.grade}. It helps me find your perfect level —
+                  not too easy, not too hard.
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground">
                   <Badge variant="secondary"><Target className="h-3 w-3 mr-1" /> 5 Questions</Badge>
                   <Badge variant="secondary"><Star className="h-3 w-3 mr-1" /> +20 XP</Badge>
                   <Badge variant="secondary"><Award className="h-3 w-3 mr-1" /> Pathfinder Badge</Badge>
                 </div>
-                <Button size="lg" onClick={startAssessment}><Brain className="h-4 w-4 mr-2" /> Start Brain Quiz</Button>
               </div>
             )}
 
@@ -427,15 +562,6 @@ export default function ParentLearningPathTab({ child }: Props) {
                     )}
                   </CardContent>
                 </Card>
-                <div className="flex justify-end">
-                  {!assessShowFeedback ? (
-                    <Button onClick={submitAssessmentAnswer} disabled={assessSelected == null}>Check Answer</Button>
-                  ) : (
-                    <Button onClick={nextAssessmentQ}>
-                      {assessIdx + 1 >= assessment.questions.length ? 'See My Level' : 'Next'} <ArrowRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  )}
-                </div>
               </div>
             )}
 
@@ -460,7 +586,6 @@ export default function ParentLearningPathTab({ child }: Props) {
                           ))}
                         </ul>
                       </div>
-                      <Button size="sm" onClick={() => setLessonPhase('lesson')}>Let's go! <ArrowRight className="h-4 w-4 ml-1" /></Button>
                     </CardContent>
                   </Card>
                 )}
@@ -488,7 +613,6 @@ export default function ParentLearningPathTab({ child }: Props) {
                           </div>
                         ))}
                       </div>
-                      <Button size="sm" onClick={() => setLessonPhase('worked')}>Show me an example <ArrowRight className="h-4 w-4 ml-1" /></Button>
                     </CardContent>
                   </Card>
                 )}
@@ -504,7 +628,6 @@ export default function ParentLearningPathTab({ child }: Props) {
                       <div className="rounded-md bg-success/10 border border-success/20 text-success p-2 text-sm font-semibold">
                         ✅ Answer: {lesson.workedExample.answer}
                       </div>
-                      <Button size="sm" onClick={() => setLessonPhase('exercises')}>I'm ready to try! <Target className="h-4 w-4 ml-1" /></Button>
                     </CardContent>
                   </Card>
                 )}
@@ -563,29 +686,15 @@ export default function ParentLearningPathTab({ child }: Props) {
                         )}
                         {exShowFeedback && (
                           <div className={cn('text-sm rounded-md p-3 leading-relaxed border',
-                            (currentExercise.type === 'mcq'
-                              ? exSelected === (currentExercise.options?.[currentExercise.answerIndex ?? -1] ?? '')
-                              : (exSelected ?? '').trim().toLowerCase() === currentExercise.answer.trim().toLowerCase())
+                            isExerciseCorrect()
                               ? 'bg-success/10 border-success/20 text-success'
                               : 'bg-destructive/10 border-destructive/20 text-destructive')}>
-                            {(currentExercise.type === 'mcq'
-                              ? exSelected === (currentExercise.options?.[currentExercise.answerIndex ?? -1] ?? '')
-                              : (exSelected ?? '').trim().toLowerCase() === currentExercise.answer.trim().toLowerCase())
-                              ? '🎉 Correct! ' : `❌ Not quite. Answer: ${currentExercise.answer}. `}
+                            {isExerciseCorrect() ? '🎉 Correct! ' : `❌ Not quite. Answer: ${currentExercise.answer}. `}
                             {currentExercise.explanation}
                           </div>
                         )}
                       </CardContent>
                     </Card>
-                    <div className="flex justify-end">
-                      {!exShowFeedback ? (
-                        <Button onClick={checkExercise} disabled={exSelected == null || exSelected === ''}>Check</Button>
-                      ) : (
-                        <Button onClick={nextExercise}>
-                          {exIdx + 1 >= lesson.exercises.length ? 'Finish Lesson 🏆' : 'Next'} <ArrowRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 )}
               </div>
@@ -612,13 +721,14 @@ export default function ParentLearningPathTab({ child }: Props) {
                     <p className="text-sm">{lesson.realWorldChallenge}</p>
                   </CardContent>
                 </Card>
-                <div className="flex justify-center gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setOpen(false)}>Done for now</Button>
-                  <Button onClick={() => loadLesson()}><RotateCcw className="h-4 w-4 mr-1" /> Next Lesson</Button>
-                </div>
               </div>
             )}
           </ScrollArea>
+
+          {/* Sticky footer — always visible action button */}
+          <div className="border-t bg-background px-5 py-3 shrink-0">
+            <FooterAction />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

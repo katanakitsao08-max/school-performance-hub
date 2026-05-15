@@ -22,9 +22,14 @@ interface Req {
   averageScore?: number | null;
   weakStrands?: string[];
   mode: 'assessment' | 'lesson' | 'interventions' | 'tutor';
-  level?: number;          // placed level (1-9), used for "lesson"
-  topic?: string;          // optional topic focus
-  previousTopics?: string[]; // to avoid repeats
+  level?: number;
+  topic?: string;
+  previousTopics?: string[];
+  recentResponses?: Array<{
+    source: string; question: string; is_correct: boolean;
+    difficulty?: number | null; strand?: string | null;
+    explanation?: string | null; created_at?: string;
+  }>;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -53,7 +58,7 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Partial<Req>;
     const {
       learnerName, grade, subject, averageScore, weakStrands,
-      mode, level, topic, previousTopics,
+      mode, level, topic, previousTopics, recentResponses,
     } = body;
 
     if (!learnerName || !grade || !subject || !mode) {
@@ -70,6 +75,36 @@ Deno.serve(async (req) => {
     const avoid = previousTopics?.length
       ? `Do NOT repeat these topics already covered: ${previousTopics.join('; ')}.`
       : '';
+
+    // Summarise the learner's most recent answered questions so the model can
+    // truly adapt: which strands they got right/wrong, average difficulty
+    // they manage, and what to reinforce vs stretch.
+    let adaptiveBrief = '';
+    if (recentResponses?.length) {
+      const correct = recentResponses.filter(r => r.is_correct);
+      const wrong = recentResponses.filter(r => !r.is_correct);
+      const avgDiffCorrect = correct.length
+        ? (correct.reduce((a, r) => a + (r.difficulty || 0), 0) / correct.length).toFixed(1) : 'n/a';
+      const avgDiffWrong = wrong.length
+        ? (wrong.reduce((a, r) => a + (r.difficulty || 0), 0) / wrong.length).toFixed(1) : 'n/a';
+      const wrongStrands = Array.from(new Set(wrong.map(r => r.strand).filter(Boolean))).slice(0, 5);
+      const recentSamples = recentResponses.slice(0, 6).map(r =>
+        `- [${r.is_correct ? '✓' : '✗'} d${r.difficulty ?? '?'}] (${r.strand ?? '—'}) ${String(r.question).slice(0, 120)}`
+      ).join('\n');
+      adaptiveBrief = `
+LEARNER'S RECENT ANSWERS (most recent first — use these to adapt):
+${recentSamples}
+- Correct: ${correct.length}/${recentResponses.length}
+- Avg difficulty handled correctly: ${avgDiffCorrect}/5
+- Avg difficulty when wrong: ${avgDiffWrong}/5
+- Strands the learner struggled with: ${wrongStrands.join(', ') || 'none clear yet'}
+
+Use this to:
+* Reinforce the weak strand(s) above with extra scaffolding.
+* Calibrate exercise difficulty around their proven ability (start one notch easier than where they failed, end one notch above where they succeeded).
+* Avoid asking near-duplicates of the listed questions.`;
+    }
+
 
     const cbcGrounding = `
 You are a Kenya CBC (Competency Based Curriculum, KICD) tutor. ALL content MUST
@@ -117,13 +152,14 @@ Return STRICT JSON only, no prose, no markdown fences. Schema:
       prompt = `${cbcGrounding}
 
 ${perf} ${weak}
+${adaptiveBrief}
 Build an interactive, fun MINI-LESSON for ${learnerName} at LEVEL ${placedLevel}
 (treat level as effective grade) in ${subject}. ${avoid}
-${topic ? `Focus topic: ${topic}.` : 'Pick ONE specific CBC sub-strand appropriate for the level.'}
+${topic ? `Focus topic: ${topic}.` : 'Pick ONE specific CBC sub-strand appropriate for the level — prefer one of the weak strands above if any.'}
 
 Math-Whizz style:
 - bite-sized (5-8 min)
-- a friendly mascot voice ("Tito the Tutor")
+- a friendly teacher voice ("Mr Kitsao the Teacher")
 - a tiny story hook with Kenyan context
 - 1 worked example with clear steps
 - 5 practice exercises of GRADUALLY INCREASING difficulty

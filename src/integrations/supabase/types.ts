@@ -573,6 +573,118 @@ export type Database = {
           },
         ]
       }
+      learning_progress: {
+        Row: {
+          badges: string[]
+          id: string
+          last_played: string | null
+          learner_id: string
+          lessons_completed: number
+          level: number
+          streak: number
+          subject_id: string
+          subject_name: string
+          topics_covered: string[]
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          badges?: string[]
+          id?: string
+          last_played?: string | null
+          learner_id: string
+          lessons_completed?: number
+          level?: number
+          streak?: number
+          subject_id: string
+          subject_name: string
+          topics_covered?: string[]
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          badges?: string[]
+          id?: string
+          last_played?: string | null
+          learner_id?: string
+          lessons_completed?: number
+          level?: number
+          streak?: number
+          subject_id?: string
+          subject_name?: string
+          topics_covered?: string[]
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_progress_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_responses: {
+        Row: {
+          correct_answer: string | null
+          created_at: string
+          difficulty: number | null
+          explanation: string | null
+          id: string
+          is_correct: boolean
+          learner_id: string
+          level_at_time: number | null
+          question: string
+          selected_answer: string | null
+          source: string
+          strand: string | null
+          subject_id: string
+          subject_name: string
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: number | null
+          explanation?: string | null
+          id?: string
+          is_correct: boolean
+          learner_id: string
+          level_at_time?: number | null
+          question: string
+          selected_answer?: string | null
+          source: string
+          strand?: string | null
+          subject_id: string
+          subject_name: string
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: number | null
+          explanation?: string | null
+          id?: string
+          is_correct?: boolean
+          learner_id?: string
+          level_at_time?: number | null
+          question?: string
+          selected_answer?: string | null
+          source?: string
+          strand?: string | null
+          subject_id?: string
+          subject_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_responses_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
