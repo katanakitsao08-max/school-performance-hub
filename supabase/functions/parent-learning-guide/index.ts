@@ -22,9 +22,14 @@ interface Req {
   averageScore?: number | null;
   weakStrands?: string[];
   mode: 'assessment' | 'lesson' | 'interventions' | 'tutor';
-  level?: number;          // placed level (1-9), used for "lesson"
-  topic?: string;          // optional topic focus
-  previousTopics?: string[]; // to avoid repeats
+  level?: number;
+  topic?: string;
+  previousTopics?: string[];
+  recentResponses?: Array<{
+    source: string; question: string; is_correct: boolean;
+    difficulty?: number | null; strand?: string | null;
+    explanation?: string | null; created_at?: string;
+  }>;
 }
 
 function jsonResponse(body: unknown, status = 200) {
