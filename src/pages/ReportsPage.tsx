@@ -546,9 +546,9 @@ export default function ReportsPage() {
     return terms;
   };
 
-  const classMean = reportData.length > 0 ? reportData.reduce((s, l) => s + l.mean, 0) / reportData.length : 0;
-  const highest = reportData.length > 0 ? Math.max(...reportData.map(l => l.total)) : 0;
-  const lowest = reportData.length > 0 ? Math.min(...reportData.map(l => l.total)) : 0;
+  const classMean = reportData.length > 0 ? reportData.reduce((s, l: any) => s + (l.avgPoints || 0), 0) / reportData.length : 0;
+  const highest = reportData.length > 0 ? Math.max(...reportData.map((l: any) => l.totalPoints || 0)) : 0;
+  const lowest = reportData.length > 0 ? Math.min(...reportData.map((l: any) => l.totalPoints || 0)) : 0;
 
   const generateComment = (learner: any) => {
     const avgMax = learner.subjectData.length
