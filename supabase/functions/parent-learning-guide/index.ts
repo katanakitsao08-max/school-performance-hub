@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Partial<Req>;
     const {
       learnerName, grade, subject, averageScore, weakStrands,
-      mode, level, topic, previousTopics,
+      mode, level, topic, previousTopics, recentResponses,
     } = body;
 
     if (!learnerName || !grade || !subject || !mode) {
