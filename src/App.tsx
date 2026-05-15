@@ -35,6 +35,7 @@ const TeacherAssignmentsPage = lazy(() => import("./pages/TeacherAssignmentsPage
 const GradeAnalysisPage = lazy(() => import("./pages/GradeAnalysisPage"));
 const StrandsPage = lazy(() => import("./pages/StrandsPage"));
 const PerformanceTrackingPage = lazy(() => import("./pages/PerformanceTrackingPage"));
+const TeacherDashboardPage = lazy(() => import("./pages/TeacherDashboardPage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
 const ContentGenerationPage = lazy(() => import("./pages/ContentGenerationPage"));
 const TimetablePage = lazy(() => import("./pages/TimetablePage"));
@@ -169,6 +170,7 @@ const App = () => (
                 <Route path="/teacher-assignments" element={<ProtectedRoute allowedRoles={['admin']}><TeacherAssignmentsPage /></ProtectedRoute>} />
                 <Route path="/grade-analysis" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><GradeAnalysisPage /></ProtectedRoute>} />
                 <Route path="/performance-tracking" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'teacher']}><PerformanceTrackingPage /></ProtectedRoute>} />
+                <Route path="/teacher-dashboard" element={<ProtectedRoute allowedRoles={['teacher']}><ErrorBoundary inline label="Teacher Dashboard"><TeacherDashboardPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
                 <Route path="/fees" element={<ProtectedRoute allowedRoles={['admin']}><FeesPage /></ProtectedRoute>} />
                 <Route path="/content-generation" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ContentGenerationPage /></ProtectedRoute>} />
