@@ -68,6 +68,34 @@ export default function PerformanceTrackingPage() {
     enabled: !!schoolId,
   });
 
+  const { data: schoolLogoUrl = '' } = useQuery({
+    queryKey: ['school-logo', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('school_settings')
+        .select('value')
+        .eq('school_id', schoolId!)
+        .eq('key', 'school_logo_url')
+        .maybeSingle();
+      return (data?.value as string) || '';
+    },
+    enabled: !!schoolId,
+  });
+
+  // Teacher's assigned subject names for this grade/stream (for header display)
+  const { data: teacherSubjectNames = [] } = useQuery({
+    queryKey: ['teacher-subject-names', user?.id, schoolId, selectedGrade, selectedStream],
+    queryFn: async () => {
+      const ids = (myAssignments?.subjects || [])
+        .filter((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream))
+        .map((a: any) => a.learning_area_id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from('learning_areas').select('name').in('id', ids);
+      return Array.from(new Set((data || []).map((x: any) => x.name as string))).sort();
+    },
+    enabled: !!schoolId && isTeacher && !!selectedGrade,
+  });
+
   const { data: allDbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId, selectedGrade],
     queryFn: async () => {
