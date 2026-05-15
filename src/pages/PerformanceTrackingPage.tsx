@@ -256,6 +256,28 @@ export default function PerformanceTrackingPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* School / context header */}
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 flex items-center gap-4">
+            {schoolLogoUrl ? (
+              <img src={schoolLogoUrl} alt={`${schoolName || 'School'} logo`} className="h-16 w-16 rounded-md object-contain bg-muted" />
+            ) : (
+              <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">Logo</div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-display font-bold truncate">{schoolName || 'School'}</h2>
+              <p className="text-sm text-muted-foreground">
+                Grade {selectedGrade}{selectedStream && selectedStream !== '__ALL__' ? ` • ${selectedStream}` : ''} • {selectedYear}
+              </p>
+              {isTeacher && teacherSubjectNames.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-medium text-foreground">Subjects:</span> {teacherSubjectNames.join(', ')}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <div>
           <h1 className="text-2xl font-display font-bold">Performance Tracking</h1>
           <p className="text-muted-foreground text-sm">Track learner performance across assessments and terms</p>
