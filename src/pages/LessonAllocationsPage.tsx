@@ -11,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Save } from 'lucide-react';
+import { Save, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getCbcBand, getOfficialLessonsPerWeek, type CbcBand } from '@/data/cbc-subjects';
 
 type BandKey = 'lower-primary' | 'upper-primary' | 'junior-secondary' | 'pre-primary';
@@ -160,11 +161,16 @@ export default function LessonAllocationsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold">Weekly Lesson Allocations</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure lessons per week per subject by school band. Values apply to all grades in the selected band.
-          </p>
+        <div className="flex items-start justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">Weekly Lesson Allocations</h1>
+            <p className="text-sm text-muted-foreground">
+              Configure lessons per week per subject by school band. Values apply to all grades in the selected band.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/timetable"><ArrowLeft className="h-4 w-4 mr-1" /> Back to Timetable</Link>
+          </Button>
         </div>
 
         <Card>
