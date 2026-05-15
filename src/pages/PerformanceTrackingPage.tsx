@@ -68,6 +68,19 @@ export default function PerformanceTrackingPage() {
     enabled: !!schoolId,
   });
 
+  const { data: schoolLogoUrl = '' } = useQuery({
+    queryKey: ['school-logo', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('school_settings')
+        .select('value')
+        .eq('school_id', schoolId!)
+        .eq('key', 'school_logo_url')
+        .maybeSingle();
+      return (data?.value as string) || '';
+    },
+    enabled: !!schoolId,
+  });
   const { data: allDbStreams = [] } = useQuery({
     queryKey: ['streams', schoolId, selectedGrade],
     queryFn: async () => {
@@ -102,6 +115,20 @@ export default function PerformanceTrackingPage() {
       else setSelectedStream('__ALL__');
     }
   }, [dbStreams, selectedStream, isTeacher]);
+
+  // Teacher's assigned subject names for this grade/stream (for header display)
+  const { data: teacherSubjectNames = [] } = useQuery({
+    queryKey: ['teacher-subject-names', user?.id, schoolId, selectedGrade, selectedStream, myAssignments],
+    queryFn: async () => {
+      const ids: string[] = (myAssignments?.subjects || [])
+        .filter((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream))
+        .map((a: any) => a.learning_area_id);
+      if (!ids.length) return [] as string[];
+      const { data } = await supabase.from('learning_areas').select('name').in('id', ids);
+      return Array.from(new Set((data || []).map((x: any) => x.name as string))).sort();
+    },
+    enabled: !!schoolId && isTeacher && !!selectedGrade,
+  });
 
   const selectedStreamSubjectIds = useMemo(() => {
     if (!isTeacher || !selectedGrade || !selectedStream) return null;
@@ -229,6 +256,28 @@ export default function PerformanceTrackingPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
+        {/* School / context header */}
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 flex items-center gap-4">
+            {schoolLogoUrl ? (
+              <img src={schoolLogoUrl} alt={`${schoolName || 'School'} logo`} className="h-16 w-16 rounded-md object-contain bg-muted" />
+            ) : (
+              <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">Logo</div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-display font-bold truncate">{schoolName || 'School'}</h2>
+              <p className="text-sm text-muted-foreground">
+                Grade {selectedGrade}{selectedStream && selectedStream !== '__ALL__' ? ` • ${selectedStream}` : ''} • {selectedYear}
+              </p>
+              {isTeacher && teacherSubjectNames.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-medium text-foreground">Subjects:</span> {teacherSubjectNames.join(', ')}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <div>
           <h1 className="text-2xl font-display font-bold">Performance Tracking</h1>
           <p className="text-muted-foreground text-sm">Track learner performance across assessments and terms</p>
@@ -305,7 +354,7 @@ export default function PerformanceTrackingPage() {
                         </TableHead>
                       ))
                     )}
-                    <TableHead className="text-center min-w-[60px] font-bold">Total</TableHead>
+                    <TableHead className="text-center min-w-[80px] font-bold">Total Marks</TableHead>
                     <TableHead className="text-center min-w-[60px] font-bold">Avg</TableHead>
                     <TableHead className="text-center min-w-[50px] font-bold">Rank</TableHead>
                   </TableRow>
