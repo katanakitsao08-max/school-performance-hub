@@ -152,13 +152,14 @@ Return STRICT JSON only, no prose, no markdown fences. Schema:
       prompt = `${cbcGrounding}
 
 ${perf} ${weak}
+${adaptiveBrief}
 Build an interactive, fun MINI-LESSON for ${learnerName} at LEVEL ${placedLevel}
 (treat level as effective grade) in ${subject}. ${avoid}
-${topic ? `Focus topic: ${topic}.` : 'Pick ONE specific CBC sub-strand appropriate for the level.'}
+${topic ? `Focus topic: ${topic}.` : 'Pick ONE specific CBC sub-strand appropriate for the level — prefer one of the weak strands above if any.'}
 
 Math-Whizz style:
 - bite-sized (5-8 min)
-- a friendly mascot voice ("Tito the Tutor")
+- a friendly teacher voice ("Mr Kitsao the Teacher")
 - a tiny story hook with Kenyan context
 - 1 worked example with clear steps
 - 5 practice exercises of GRADUALLY INCREASING difficulty
