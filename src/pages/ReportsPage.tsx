@@ -509,9 +509,9 @@ export default function ReportsPage() {
       streamGroups[key].push(l);
     });
     Object.values(streamGroups).forEach(group => {
-      group.sort((a, b) => b.total - a.total).forEach((l, i, arr) => {
+      group.sort((a: any, b: any) => b.totalPoints - a.totalPoints || b.total - a.total).forEach((l: any, i, arr: any[]) => {
         let rank = i + 1;
-        if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+        if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
         map[l.id] = rank;
       });
     });
