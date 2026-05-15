@@ -116,6 +116,20 @@ export default function PerformanceTrackingPage() {
     }
   }, [dbStreams, selectedStream, isTeacher]);
 
+  // Teacher's assigned subject names for this grade/stream (for header display)
+  const { data: teacherSubjectNames = [] } = useQuery({
+    queryKey: ['teacher-subject-names', user?.id, schoolId, selectedGrade, selectedStream, myAssignments],
+    queryFn: async () => {
+      const ids: string[] = (myAssignments?.subjects || [])
+        .filter((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream))
+        .map((a: any) => a.learning_area_id);
+      if (!ids.length) return [] as string[];
+      const { data } = await supabase.from('learning_areas').select('name').in('id', ids);
+      return Array.from(new Set((data || []).map((x: any) => x.name as string))).sort();
+    },
+    enabled: !!schoolId && isTeacher && !!selectedGrade,
+  });
+
   const selectedStreamSubjectIds = useMemo(() => {
     if (!isTeacher || !selectedGrade || !selectedStream) return null;
     return new Set<string>(
