@@ -150,6 +150,7 @@ export default function LessonAllocationsPage() {
       toast({ title: 'Saved', description: `Allocations applied to ${gradesInBand.length} grade(s) in this band.` });
       setEdits({});
       qc.invalidateQueries({ queryKey: ['gsl-band', schoolId, gradesInBand.join(',')] });
+      qc.invalidateQueries({ queryKey: ['la-band', schoolId, gradesInBand.join(',')] });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
