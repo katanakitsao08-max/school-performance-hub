@@ -1312,8 +1312,8 @@ export default function ReportsPage() {
                     </TableBody>
                   </Table>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-muted rounded-lg">
-                    <div><span className="text-sm text-muted-foreground">Total:</span><p className="text-xl font-bold">{selectedLearnerData.total}</p></div>
-                    <div><span className="text-sm text-muted-foreground">Mean:</span><p className="text-xl font-bold">{selectedLearnerData.mean.toFixed(1)}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Total Pts:</span><p className="text-xl font-bold">{(selectedLearnerData as any).totalPoints ?? 0}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Mean Pts:</span><p className="text-xl font-bold">{((selectedLearnerData as any).avgPoints ?? 0).toFixed(2)}</p></div>
                     <div>
                       <span className="text-sm text-muted-foreground">Overall Grade:</span>
                       <p className="text-xl font-bold">
