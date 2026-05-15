@@ -243,8 +243,8 @@ export default function PerformanceTrackingPage() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Stream</Label>
-            <Select value={selectedStream} onValueChange={setSelectedStream}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+            <Select value={selectedStream} onValueChange={setSelectedStream} disabled={dbStreams.length === 0}>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder={dbStreams.length === 0 ? 'No streams' : 'Select'} /></SelectTrigger>
               <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
