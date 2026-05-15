@@ -53,9 +53,9 @@ export default function LearningPathSubscriptionsSection() {
         learnerIds.length ? supabase.from('learners').select('id, full_name, grade, admission_number').in('id', learnerIds) : Promise.resolve({ data: [] } as any),
         schoolIds.length ? supabase.from('schools').select('id, school_name').in('id', schoolIds) : Promise.resolve({ data: [] } as any),
       ]);
-      const lm = new Map((learners || []).map((l: any) => [l.id, l]));
-      const sm = new Map((schools || []).map((s: any) => [s.id, s]));
-      return list.map(r => ({ ...r, learner: lm.get(r.learner_id), school: sm.get(r.school_id) }));
+      const lm = new Map<string, any>((learners || []).map((l: any) => [l.id, l]));
+      const sm = new Map<string, any>((schools || []).map((s: any) => [s.id, s]));
+      return list.map(r => ({ ...r, learner: lm.get(r.learner_id), school: sm.get(r.school_id) })) as Row[];
     },
   });
 
