@@ -97,9 +97,11 @@ export default function PerformanceTrackingPage() {
   useEffect(() => {
     const valid = ['__ALL__', ...dbStreams];
     if (!valid.includes(selectedStream)) {
-      setSelectedStream('__ALL__');
+      // For teachers with a single assigned stream, auto-select it; otherwise default to All
+      if (isTeacher && dbStreams.length === 1) setSelectedStream(dbStreams[0]);
+      else setSelectedStream('__ALL__');
     }
-  }, [dbStreams, selectedStream]);
+  }, [dbStreams, selectedStream, isTeacher]);
 
   const selectedStreamSubjectIds = useMemo(() => {
     if (!isTeacher || !selectedGrade || !selectedStream) return null;
