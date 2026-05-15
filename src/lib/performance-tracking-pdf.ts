@@ -41,7 +41,7 @@ export function downloadClassPerformancePdf(
       headers.push(`T${term} ${ASSESSMENT_TYPE_LABELS[at]}`);
     });
   });
-  headers.push('Total', 'Avg', 'Grade', 'Rank');
+  headers.push('Total Marks', 'Avg', 'Grade', 'Rank');
 
   const body = performanceData.map((l, idx) => {
     const row: string[] = [String(idx + 1), l.full_name];
