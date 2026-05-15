@@ -89,8 +89,9 @@ export default function PerformanceTrackingPage() {
 
   const [selectedStream, setSelectedStream] = useState('');
   useEffect(() => {
-    if (dbStreams.length > 0 && !dbStreams.includes(selectedStream)) {
-      setSelectedStream(dbStreams[0]);
+    const valid = ['__ALL__', ...dbStreams];
+    if (dbStreams.length > 0 && !valid.includes(selectedStream)) {
+      setSelectedStream('__ALL__');
     }
   }, [dbStreams, selectedStream]);
 
