@@ -39,6 +39,7 @@ const TeacherDashboardPage = lazy(() => import("./pages/TeacherDashboardPage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
 const ContentGenerationPage = lazy(() => import("./pages/ContentGenerationPage"));
 const TimetablePage = lazy(() => import("./pages/TimetablePage"));
+const LessonAllocationsPage = lazy(() => import("./pages/LessonAllocationsPage"));
 const TimetableKeysPage = lazy(() => import("./pages/TimetableKeysPage"));
 const FeesPage = lazy(() => import("./pages/FeesPage"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
