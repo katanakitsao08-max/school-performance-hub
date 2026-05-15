@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -752,7 +753,12 @@ export default function TimetablePage() {
             <h1 className="text-3xl font-bold">Block Timetable Generator</h1>
             <p className="text-muted-foreground text-sm">Auto-scheduling with collision detection. Lower / Upper Primary & Junior School support.</p>
           </div>
-          <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/lesson-allocations"><SettingsIcon className="h-4 w-4 mr-1" /> Lesson Allocations</Link>
+            </Button>
+            <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
+          </div>
         </div>
 
         {/* School-wide day & period settings */}
