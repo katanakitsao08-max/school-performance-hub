@@ -120,9 +120,7 @@ function RefreshRedirector() {
       role === 'parent' ? '/parent' :
       '/';
 
-    if (path !== target) {
-      navigate(target, { replace: true });
-    }
+    navigate(target, { replace: true });
   }, [loading, user, role, location.pathname, navigate]);
 
   return null;
