@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useLearningPathAccess } from '@/hooks/use-learning-path-access';
+import LearningPathPaywall from './LearningPathPaywall';
 
 interface Props {
-  child: { id: string; full_name: string; grade: string; stream: string; gender: string };
+  child: { id: string; full_name: string; grade: string; stream: string; gender: string; school_id?: string | null };
 }
 
 /* ---------- Types from edge function ---------- */
@@ -127,6 +129,16 @@ const bandLabel = (avg: number | null) => {
 
 export default function ParentLearningPathTab({ child }: Props) {
   const { toast } = useToast();
+  const { hasAccess, isLoading: accessLoading } = useLearningPathAccess(child.id);
+
+  if (accessLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (!hasAccess) return <LearningPathPaywall child={child} />;
 
   const { data: areas = [] } = useQuery({
     queryKey: ['parent-lp-areas', child.grade, child.id],
@@ -440,7 +452,7 @@ export default function ParentLearningPathTab({ child }: Props) {
           <CardDescription className="text-xs">
             Tap a subject. {TUTOR_NAME} will first check {child.full_name.split(' ')[0]}'s level
             with a quick fun quiz, then unlock interactive Kenya CBC lessons with games,
-            exercises and rewards — Interactive lesson.
+            exercises and rewards.
           </CardDescription>
         </CardHeader>
       </Card>
