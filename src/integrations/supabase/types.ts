@@ -416,6 +416,36 @@ export type Database = {
         }
         Relationships: []
       }
+      grade_subject_lessons: {
+        Row: {
+          created_at: string
+          grade: string
+          id: string
+          learning_area_id: string
+          lessons_per_week: number
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          grade: string
+          id?: string
+          learning_area_id: string
+          lessons_per_week?: number
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          grade?: string
+          id?: string
+          learning_area_id?: string
+          lessons_per_week?: number
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       learner_face_descriptors: {
         Row: {
           descriptor: Json

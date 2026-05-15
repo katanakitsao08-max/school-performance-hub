@@ -216,16 +216,27 @@ export default function TimetablePage() {
   useEffect(() => {
     if (!schoolId || !grade) return;
     (async () => {
-      const [{ data: la }, { data: ta }] = await Promise.all([
+      const [{ data: la }, { data: ta }, { data: gsl }] = await Promise.all([
         supabase.from('learning_areas').select('id, name').eq('school_id', schoolId).eq('grade', grade).eq('is_active', true),
         supabase
           .from('teacher_assignments')
           .select('teacher_id, learning_area_id, grade, stream')
           .eq('school_id', schoolId)
           .eq('grade', grade),
+        supabase
+          .from('grade_subject_lessons')
+          .select('learning_area_id, lessons_per_week')
+          .eq('school_id', schoolId)
+          .eq('grade', grade),
       ]);
       const las = (la || []) as { id: string; name: string }[];
-      setRequirements(las.map(l => ({ learningAreaId: l.id, learningAreaName: l.name, lessonsPerWeek: 5 })));
+      const allocMap: Record<string, number> = {};
+      ((gsl as any) || []).forEach((r: any) => { allocMap[r.learning_area_id] = r.lessons_per_week; });
+      setRequirements(las.map(l => ({
+        learningAreaId: l.id,
+        learningAreaName: l.name,
+        lessonsPerWeek: allocMap[l.id] ?? 5,
+      })));
       const taRows = ((ta as any) || []) as any[];
       const teacherIds = Array.from(new Set(taRows.map(r => r.teacher_id)));
       const nameMap: Record<string, string> = {};
@@ -501,6 +512,16 @@ export default function TimetablePage() {
         .eq('is_active', true)
         .in('grade', gradesIn);
       if (laErr) throw laErr;
+      const { data: gslAll } = await supabase
+        .from('grade_subject_lessons')
+        .select('grade, learning_area_id, lessons_per_week')
+        .eq('school_id', schoolId)
+        .in('grade', gradesIn);
+      const allocByGrade: Record<string, Record<string, number>> = {};
+      ((gslAll as any) || []).forEach((r: any) => {
+        if (!allocByGrade[r.grade]) allocByGrade[r.grade] = {};
+        allocByGrade[r.grade][r.learning_area_id] = r.lessons_per_week;
+      });
       const areasByGrade: Record<string, { id: string; name: string }[]> = {};
       ((la as any) || []).forEach((l: any) => {
         if (!areasByGrade[l.grade]) areasByGrade[l.grade] = [];
@@ -511,8 +532,9 @@ export default function TimetablePage() {
       let mergedAssignments = allAssignments;
       classList.forEach(c => {
         const areas = areasByGrade[c.grade] || [];
+        const allocs = allocByGrade[c.grade] || {};
         const baseReqs: SubjectRequirement[] = areas.map(a => ({
-          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
+          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: allocs[a.id] ?? 5,
         }));
         const m = applyMerges(baseReqs, mergedAssignments);
         reqMap[`${c.grade}|${c.stream}`] = m.reqs;

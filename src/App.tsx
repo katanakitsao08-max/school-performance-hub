@@ -39,6 +39,7 @@ const TeacherDashboardPage = lazy(() => import("./pages/TeacherDashboardPage"));
 const MorePage = lazy(() => import("./pages/MorePage"));
 const ContentGenerationPage = lazy(() => import("./pages/ContentGenerationPage"));
 const TimetablePage = lazy(() => import("./pages/TimetablePage"));
+const LessonAllocationsPage = lazy(() => import("./pages/LessonAllocationsPage"));
 const TimetableKeysPage = lazy(() => import("./pages/TimetableKeysPage"));
 const FeesPage = lazy(() => import("./pages/FeesPage"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
@@ -152,6 +153,7 @@ const App = () => (
                 <Route path="/curriculum-manager" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Curriculum Design Manager"><CurriculumDesignManagerPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/curriculum-library" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Curriculum Library"><CurriculumLibraryPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Timetable"><TimetablePage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/lesson-allocations" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Lesson Allocations"><LessonAllocationsPage /></ErrorBoundary></ProtectedRoute>} />
                 {/* School-level routes */}
                 <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Users"><UsersPage /></ErrorBoundary></ProtectedRoute>} />
