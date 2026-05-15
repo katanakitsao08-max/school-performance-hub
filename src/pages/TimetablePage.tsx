@@ -512,6 +512,16 @@ export default function TimetablePage() {
         .eq('is_active', true)
         .in('grade', gradesIn);
       if (laErr) throw laErr;
+      const { data: gslAll } = await supabase
+        .from('grade_subject_lessons')
+        .select('grade, learning_area_id, lessons_per_week')
+        .eq('school_id', schoolId)
+        .in('grade', gradesIn);
+      const allocByGrade: Record<string, Record<string, number>> = {};
+      ((gslAll as any) || []).forEach((r: any) => {
+        if (!allocByGrade[r.grade]) allocByGrade[r.grade] = {};
+        allocByGrade[r.grade][r.learning_area_id] = r.lessons_per_week;
+      });
       const areasByGrade: Record<string, { id: string; name: string }[]> = {};
       ((la as any) || []).forEach((l: any) => {
         if (!areasByGrade[l.grade]) areasByGrade[l.grade] = [];
@@ -522,8 +532,9 @@ export default function TimetablePage() {
       let mergedAssignments = allAssignments;
       classList.forEach(c => {
         const areas = areasByGrade[c.grade] || [];
+        const allocs = allocByGrade[c.grade] || {};
         const baseReqs: SubjectRequirement[] = areas.map(a => ({
-          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: 5,
+          learningAreaId: a.id, learningAreaName: a.name, lessonsPerWeek: allocs[a.id] ?? 5,
         }));
         const m = applyMerges(baseReqs, mergedAssignments);
         reqMap[`${c.grade}|${c.stream}`] = m.reqs;
