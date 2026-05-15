@@ -1459,18 +1459,15 @@ export default function ReportsPage() {
                           );
                         })}
                         {(() => {
-                          const totalSum = reportData.reduce((a, l) => a + l.total, 0);
-                          const meanTotal = reportData.length ? totalSum / reportData.length : 0;
-                          const maxTotal = reportDisplaySubjects.reduce((s, sub) => s + sub.max_score, 0);
-                          const avgMax = reportDisplaySubjects.length ? maxTotal / reportDisplaySubjects.length : 100;
-                          const gradeForClass = reportDisplaySubjects.length && reportData.length
-                            ? getGradeForLevel(classMean, avgMax, reportData[0].grade)
-                            : '-';
+                          const totalPtsSum = reportData.reduce((a, l: any) => a + (l.totalPoints || 0), 0);
+                          const meanTotalPts = reportData.length ? totalPtsSum / reportData.length : 0;
+                          const { meanPointsToLevel } = require('@/lib/cbc-utils');
+                          const levelForClass = reportData.length ? meanPointsToLevel(classMean) : '-';
                           return (
                             <>
-                              <TableCell className="text-center">{reportData.length ? meanTotal.toFixed(1) : '-'}</TableCell>
-                              <TableCell className="text-center">{classMean.toFixed(1)}</TableCell>
-                              <TableCell className="text-center">{gradeForClass}</TableCell>
+                              <TableCell className="text-center">{reportData.length ? meanTotalPts.toFixed(1) : '-'}</TableCell>
+                              <TableCell className="text-center">{classMean.toFixed(2)}</TableCell>
+                              <TableCell className="text-center">{levelForClass}</TableCell>
                               <TableCell className="text-center">—</TableCell>
                             </>
                           );
@@ -1480,9 +1477,9 @@ export default function ReportsPage() {
                   )}
                 </Table>
                 <div className="p-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div><span className="text-muted-foreground">Class Mean:</span> <strong>{classMean.toFixed(1)}</strong></div>
-                  <div><span className="text-muted-foreground">Highest Total:</span> <strong>{highest}</strong></div>
-                  <div><span className="text-muted-foreground">Lowest Total:</span> <strong>{lowest}</strong></div>
+                  <div><span className="text-muted-foreground">Class Mean Pts:</span> <strong>{classMean.toFixed(2)}</strong></div>
+                  <div><span className="text-muted-foreground">Highest Pts:</span> <strong>{highest}</strong></div>
+                  <div><span className="text-muted-foreground">Lowest Pts:</span> <strong>{lowest}</strong></div>
                   <div><span className="text-muted-foreground">Total Learners:</span> <strong>{reportData.length}</strong></div>
                 </div>
               </CardContent>
