@@ -69,6 +69,7 @@ const adminSections: NavSection[] = [
     label: "Insights",
     items: [
       { title: "Reports", url: "/reports", icon: FileText },
+      { title: "Consolidated Reports", url: "/consolidated-reports", icon: FileText },
       { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
@@ -132,6 +133,7 @@ const headteacherSections: NavSection[] = [
     items: [
       { title: "Learners", url: "/learners", icon: GraduationCap },
       { title: "Reports", url: "/reports", icon: FileText },
+      { title: "Consolidated Reports", url: "/consolidated-reports", icon: FileText },
       { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
