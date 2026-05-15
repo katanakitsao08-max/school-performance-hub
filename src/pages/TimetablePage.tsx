@@ -755,6 +755,9 @@ export default function TimetablePage() {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
+              <Link to="/class-subjects-teachers"><BookOpen className="h-4 w-4 mr-1" /> Subjects & Teachers</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to="/lesson-allocations"><SettingsIcon className="h-4 w-4 mr-1" /> Lesson Allocations</Link>
             </Button>
             <Badge className="bg-primary"><Unlock className="h-3 w-3 mr-1" /> Activated</Badge>
