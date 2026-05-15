@@ -425,17 +425,21 @@ export default function ReportsPage() {
       const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
       const mean = subjectData.length > 0 ? total / subjectData.length : 0;
       const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
+      // Points-based aggregate (CBC) — used for ranking & overall level (Item 7+8).
+      const pts = computeLearnerMeanPoints(subjectData.map((d: any) => ({ score: Number(d.score) || 0, maxScore: d.maxScore })));
       return {
         ...l, subjectData, total, mean,
-        overallGrade: subjectData.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
+        totalPoints: pts.totalPoints,
+        avgPoints: pts.avgPoints,
+        levelLabel: pts.level,
+        overallGrade: pts.level === '-' ? '-' : pts.level,
         isQualified,
       };
     })
-    // Exclude learners who don't have a valid score for every assigned subject
     .filter(l => l.isQualified)
-    .sort((a, b) => b.total - a.total).map((l, i, arr) => {
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.total - a.total).map((l, i, arr) => {
       let rank = i + 1;
-      if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+      if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
       return { ...l, rank };
     });
     return mapped;
