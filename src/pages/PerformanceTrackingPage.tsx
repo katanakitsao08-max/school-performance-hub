@@ -354,7 +354,7 @@ export default function PerformanceTrackingPage() {
                         </TableHead>
                       ))
                     )}
-                    <TableHead className="text-center min-w-[60px] font-bold">Total</TableHead>
+                    <TableHead className="text-center min-w-[80px] font-bold">Total Marks</TableHead>
                     <TableHead className="text-center min-w-[60px] font-bold">Avg</TableHead>
                     <TableHead className="text-center min-w-[50px] font-bold">Rank</TableHead>
                   </TableRow>
