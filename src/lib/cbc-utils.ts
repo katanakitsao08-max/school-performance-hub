@@ -113,6 +113,59 @@ export function getGradePoints(grade: AnyGrade): number {
   return 0;
 }
 
+// ----- Performance-level points (CBC unified 8-level scale) -----
+// Used so all grades (KPSEA + KJSEA) contribute comparable points
+// to learner mean / ranking (per Item 7 + 8).
+export type PerfLevel = 'EE1' | 'EE2' | 'ME1' | 'ME2' | 'AE1' | 'AE2' | 'BE1' | 'BE2';
+
+const PERF_LEVEL_POINTS: Record<PerfLevel, number> = {
+  EE1: 8, EE2: 7, ME1: 6, ME2: 5, AE1: 4, AE2: 3, BE1: 2, BE2: 1,
+};
+
+export function getPerfLevel(score: number, maxScore: number): PerfLevel {
+  const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  if (pct >= 90) return 'EE1';
+  if (pct >= 75) return 'EE2';
+  if (pct >= 62) return 'ME1';
+  if (pct >= 50) return 'ME2';
+  if (pct >= 37) return 'AE1';
+  if (pct >= 25) return 'AE2';
+  if (pct >= 12) return 'BE1';
+  return 'BE2';
+}
+
+export function getPerfLevelPoints(level: PerfLevel): number {
+  return PERF_LEVEL_POINTS[level];
+}
+
+export function meanPointsToLevel(avgPoints: number): PerfLevel {
+  if (avgPoints >= 7.5) return 'EE1';
+  if (avgPoints >= 6.5) return 'EE2';
+  if (avgPoints >= 5.5) return 'ME1';
+  if (avgPoints >= 4.5) return 'ME2';
+  if (avgPoints >= 3.5) return 'AE1';
+  if (avgPoints >= 2.5) return 'AE2';
+  if (avgPoints >= 1.5) return 'BE1';
+  return 'BE2';
+}
+
+export interface MeanPointsResult {
+  totalPoints: number;
+  avgPoints: number;
+  level: PerfLevel | '-';
+  perSubjectPoints: number[];
+}
+
+export function computeLearnerMeanPoints(
+  subjectData: { score: number; maxScore: number }[],
+): MeanPointsResult {
+  if (!subjectData.length) return { totalPoints: 0, avgPoints: 0, level: '-', perSubjectPoints: [] };
+  const perSubjectPoints = subjectData.map(s => getPerfLevelPoints(getPerfLevel(s.score, s.maxScore)));
+  const totalPoints = perSubjectPoints.reduce((a, b) => a + b, 0);
+  const avgPoints = totalPoints / subjectData.length;
+  return { totalPoints, avgPoints, level: meanPointsToLevel(avgPoints), perSubjectPoints };
+}
+
 export function generateTeacherComment(
   learnerName: string,
   meanScore: number,

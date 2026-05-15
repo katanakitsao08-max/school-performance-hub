@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Printer, FileDown, User, School, Archive, Loader2, Sparkles, MessageCircle } from 'lucide-react';
 import { WhatsAppSendDialog, type WhatsAppRecipient } from '@/components/WhatsAppSendDialog';
 import { toast } from 'sonner';
-import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade } from '@/lib/cbc-utils';
+import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGrade, getGradeForLevel, getGradeColor, getGradeLabel, getGradePoints, generateTeacherComment, isKJSEAGradeLevel, type AnyGrade, computeLearnerMeanPoints, meanPointsToLevel } from '@/lib/cbc-utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
@@ -425,17 +425,21 @@ export default function ReportsPage() {
       const maxTotal = subjectData.reduce((s, sub) => s + sub.maxScore, 0);
       const mean = subjectData.length > 0 ? total / subjectData.length : 0;
       const avgMax = subjectData.length > 0 ? maxTotal / subjectData.length : 100;
+      // Points-based aggregate (CBC) — used for ranking & overall level (Item 7+8).
+      const pts = computeLearnerMeanPoints(subjectData.map((d: any) => ({ score: Number(d.score) || 0, maxScore: d.maxScore })));
       return {
         ...l, subjectData, total, mean,
-        overallGrade: subjectData.length > 0 ? getGradeForLevel(mean, avgMax, l.grade) : '-',
+        totalPoints: pts.totalPoints,
+        avgPoints: pts.avgPoints,
+        levelLabel: pts.level,
+        overallGrade: pts.level === '-' ? '-' : pts.level,
         isQualified,
       };
     })
-    // Exclude learners who don't have a valid score for every assigned subject
     .filter(l => l.isQualified)
-    .sort((a, b) => b.total - a.total).map((l, i, arr) => {
+    .sort((a, b) => b.totalPoints - a.totalPoints || b.total - a.total).map((l, i, arr) => {
       let rank = i + 1;
-      if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+      if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
       return { ...l, rank };
     });
     return mapped;
@@ -505,9 +509,9 @@ export default function ReportsPage() {
       streamGroups[key].push(l);
     });
     Object.values(streamGroups).forEach(group => {
-      group.sort((a, b) => b.total - a.total).forEach((l, i, arr) => {
+      group.sort((a: any, b: any) => b.totalPoints - a.totalPoints || b.total - a.total).forEach((l: any, i, arr: any[]) => {
         let rank = i + 1;
-        if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
+        if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
         map[l.id] = rank;
       });
     });
@@ -542,9 +546,9 @@ export default function ReportsPage() {
     return terms;
   };
 
-  const classMean = reportData.length > 0 ? reportData.reduce((s, l) => s + l.mean, 0) / reportData.length : 0;
-  const highest = reportData.length > 0 ? Math.max(...reportData.map(l => l.total)) : 0;
-  const lowest = reportData.length > 0 ? Math.min(...reportData.map(l => l.total)) : 0;
+  const classMean = reportData.length > 0 ? reportData.reduce((s, l: any) => s + (l.avgPoints || 0), 0) / reportData.length : 0;
+  const highest = reportData.length > 0 ? Math.max(...reportData.map((l: any) => l.totalPoints || 0)) : 0;
+  const lowest = reportData.length > 0 ? Math.min(...reportData.map((l: any) => l.totalPoints || 0)) : 0;
 
   const generateComment = (learner: any) => {
     const avgMax = learner.subjectData.length
@@ -1308,8 +1312,8 @@ export default function ReportsPage() {
                     </TableBody>
                   </Table>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-muted rounded-lg">
-                    <div><span className="text-sm text-muted-foreground">Total:</span><p className="text-xl font-bold">{selectedLearnerData.total}</p></div>
-                    <div><span className="text-sm text-muted-foreground">Mean:</span><p className="text-xl font-bold">{selectedLearnerData.mean.toFixed(1)}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Total Pts:</span><p className="text-xl font-bold">{(selectedLearnerData as any).totalPoints ?? 0}</p></div>
+                    <div><span className="text-sm text-muted-foreground">Mean Pts:</span><p className="text-xl font-bold">{((selectedLearnerData as any).avgPoints ?? 0).toFixed(2)}</p></div>
                     <div>
                       <span className="text-sm text-muted-foreground">Overall Grade:</span>
                       <p className="text-xl font-bold">
@@ -1407,9 +1411,9 @@ export default function ReportsPage() {
                       {!isSchoolWide && selectedGrades.length === 1 && reportDisplaySubjects.map(s => (
                         <TableHead key={s.id} className="text-center">{s.name}</TableHead>
                       ))}
-                      <TableHead className="text-center">Total</TableHead>
-                      <TableHead className="text-center">Mean</TableHead>
-                      <TableHead className="text-center">Grade</TableHead>
+                      <TableHead className="text-center">Total Pts</TableHead>
+                      <TableHead className="text-center">Mean Pts</TableHead>
+                      <TableHead className="text-center">Level</TableHead>
                       <TableHead className="text-center">Rank</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1429,8 +1433,8 @@ export default function ReportsPage() {
                             </div>
                           </TableCell>
                         ))}
-                        <TableCell className="text-center font-bold">{l.total}</TableCell>
-                        <TableCell className="text-center">{l.mean.toFixed(1)}</TableCell>
+                        <TableCell className="text-center font-bold">{(l as any).totalPoints ?? 0}</TableCell>
+                        <TableCell className="text-center">{((l as any).avgPoints ?? 0).toFixed(2)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className={l.overallGrade !== '-' ? getGradeColor(l.overallGrade as any) : ''}>
                             {l.overallGrade}
@@ -1455,18 +1459,14 @@ export default function ReportsPage() {
                           );
                         })}
                         {(() => {
-                          const totalSum = reportData.reduce((a, l) => a + l.total, 0);
-                          const meanTotal = reportData.length ? totalSum / reportData.length : 0;
-                          const maxTotal = reportDisplaySubjects.reduce((s, sub) => s + sub.max_score, 0);
-                          const avgMax = reportDisplaySubjects.length ? maxTotal / reportDisplaySubjects.length : 100;
-                          const gradeForClass = reportDisplaySubjects.length && reportData.length
-                            ? getGradeForLevel(classMean, avgMax, reportData[0].grade)
-                            : '-';
+                          const totalPtsSum = reportData.reduce((a, l: any) => a + (l.totalPoints || 0), 0);
+                          const meanTotalPts = reportData.length ? totalPtsSum / reportData.length : 0;
+                          const levelForClass = reportData.length ? meanPointsToLevel(classMean) : '-';
                           return (
                             <>
-                              <TableCell className="text-center">{reportData.length ? meanTotal.toFixed(1) : '-'}</TableCell>
-                              <TableCell className="text-center">{classMean.toFixed(1)}</TableCell>
-                              <TableCell className="text-center">{gradeForClass}</TableCell>
+                              <TableCell className="text-center">{reportData.length ? meanTotalPts.toFixed(1) : '-'}</TableCell>
+                              <TableCell className="text-center">{classMean.toFixed(2)}</TableCell>
+                              <TableCell className="text-center">{levelForClass}</TableCell>
                               <TableCell className="text-center">—</TableCell>
                             </>
                           );
@@ -1476,9 +1476,9 @@ export default function ReportsPage() {
                   )}
                 </Table>
                 <div className="p-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div><span className="text-muted-foreground">Class Mean:</span> <strong>{classMean.toFixed(1)}</strong></div>
-                  <div><span className="text-muted-foreground">Highest Total:</span> <strong>{highest}</strong></div>
-                  <div><span className="text-muted-foreground">Lowest Total:</span> <strong>{lowest}</strong></div>
+                  <div><span className="text-muted-foreground">Class Mean Pts:</span> <strong>{classMean.toFixed(2)}</strong></div>
+                  <div><span className="text-muted-foreground">Highest Pts:</span> <strong>{highest}</strong></div>
+                  <div><span className="text-muted-foreground">Lowest Pts:</span> <strong>{lowest}</strong></div>
                   <div><span className="text-muted-foreground">Total Learners:</span> <strong>{reportData.length}</strong></div>
                 </div>
               </CardContent>
