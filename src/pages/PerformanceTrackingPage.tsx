@@ -82,8 +82,9 @@ export default function PerformanceTrackingPage() {
     const set = new Set<string>();
     (myAssignments?.subjects || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
     (myAssignments?.classes || []).forEach((a: any) => { if (a.grade === selectedGrade) set.add(a.stream); });
-    // Use assigned streams directly (don't intersect with streams table — names may differ)
-    return Array.from(set).sort();
+    const assigned = Array.from(set).filter(Boolean).sort();
+    // Fallback to all school streams if teacher has no stream-specific assignments for this grade
+    return assigned.length > 0 ? assigned : allDbStreams;
   }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
 
   const [selectedStream, setSelectedStream] = useState('');
