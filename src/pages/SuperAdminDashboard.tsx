@@ -6,6 +6,7 @@ import { Building2, Users, GraduationCap, CheckCircle2, AlertTriangle, Clock } f
 import { useAuth } from '@/contexts/AuthContext';
 import RevenueSubscriptionSection from '@/components/superadmin/RevenueSubscriptionSection';
 import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTogglesSection';
+import LearningPathSubscriptionsSection from '@/components/superadmin/LearningPathSubscriptionsSection';
 import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
 
@@ -141,6 +142,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: Per-school feature toggles (additive) */}
         <SchoolFeatureTogglesSection schools={schools} />
+
+        {/* Learning Path subscriptions (manual M-Pesa approval) */}
+        <LearningPathSubscriptionsSection />
 
         {/* New: SMS management (additive) */}
         <SuperAdminSmsSection schools={schools} />
