@@ -1461,7 +1461,6 @@ export default function ReportsPage() {
                         {(() => {
                           const totalPtsSum = reportData.reduce((a, l: any) => a + (l.totalPoints || 0), 0);
                           const meanTotalPts = reportData.length ? totalPtsSum / reportData.length : 0;
-                          const { meanPointsToLevel } = require('@/lib/cbc-utils');
                           const levelForClass = reportData.length ? meanPointsToLevel(classMean) : '-';
                           return (
                             <>
