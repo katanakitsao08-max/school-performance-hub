@@ -111,6 +111,10 @@ function RefreshRedirector() {
 
     if (exempt || !user) return;
 
+    // Keep users on the protected page they explicitly opened/refreshed.
+    // Role-based redirects are already handled by ProtectedRoute below.
+    if (path !== '/dashboard') return;
+
     const target =
       role === 'super_admin' ? '/super-admin' :
       role === 'parent' ? '/parent' :
