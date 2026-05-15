@@ -279,8 +279,8 @@ export default function PerformanceTrackingPage() {
         {trackingMode === 'class' && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream}, {selectedYear}</CardTitle>
-              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream, selectedYear, schoolName)}>
+              <CardTitle className="text-sm">Class Performance Across Assessments — Grade {selectedGrade} {selectedStream === '__ALL__' ? '(All streams)' : selectedStream}, {selectedYear}</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => downloadClassPerformancePdf(performanceData, classAverages, selectedGrade, selectedStream === '__ALL__' ? 'All streams' : selectedStream, selectedYear, schoolName)}>
                 <Download className="h-4 w-4 mr-1" /> PDF
               </Button>
             </CardHeader>
