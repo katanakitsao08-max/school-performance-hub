@@ -440,7 +440,7 @@ export default function ParentLearningPathTab({ child }: Props) {
           <CardDescription className="text-xs">
             Tap a subject. {TUTOR_NAME} will first check {child.full_name.split(' ')[0]}'s level
             with a quick fun quiz, then unlock interactive Kenya CBC lessons with games,
-            exercises and rewards — Math-Whizz style.
+            exercises and rewards — Interactive lesson.
           </CardDescription>
         </CardHeader>
       </Card>

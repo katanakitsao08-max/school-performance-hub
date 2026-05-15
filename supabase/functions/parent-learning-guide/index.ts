@@ -1,7 +1,7 @@
 // CBC-grounded adaptive learning engine for the Parent Portal.
 // Modes:
 //   - "assessment": 5 IQ/placement questions sized to the learner's grade
-//   - "lesson":     a fun, interactive Math-Whizz style mini-lesson at the
+//   - "lesson":     a fun, interactive Interactive lesson mini-lesson at the
 //                   placed level, with worked example + 5 graded exercises
 //   - "interventions": parent-facing improvement plan (kept for back-compat)
 //   - "tutor":      legacy long-form guide (kept for back-compat)
@@ -113,7 +113,7 @@ Use authentic CBC strand and sub-strand names (e.g. for Mathematics Grade 4:
 "Numbers", "Measurement", "Geometry", "Data Handling"; for Integrated Science:
 "Living things and their environment", "Force and Energy", etc.). Use Kenyan
 context (shillings, ugali, matatu, Nairobi, Mombasa, Lake Victoria, etc.).
-Tone: warm, playful, encouraging — like Math-Whizz. Age-appropriate for the
+Tone: warm, playful, encouraging. Age-appropriate for the
 grade. Never mention AI.`;
 
     let prompt = '';
@@ -157,7 +157,7 @@ Build an interactive, fun MINI-LESSON for ${learnerName} at LEVEL ${placedLevel}
 (treat level as effective grade) in ${subject}. ${avoid}
 ${topic ? `Focus topic: ${topic}.` : 'Pick ONE specific CBC sub-strand appropriate for the level — prefer one of the weak strands above if any.'}
 
-Math-Whizz style:
+Interactive lesson:
 - bite-sized (5-8 min)
 - a friendly teacher voice ("Mr Kitsao the Teacher")
 - a tiny story hook with Kenyan context
