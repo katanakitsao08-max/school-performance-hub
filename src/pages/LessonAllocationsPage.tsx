@@ -109,20 +109,37 @@ export default function LessonAllocationsPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const rows: any[] = [];
-      groups.forEach(g => {
+      for (const g of groups) {
         const v = Math.max(0, Math.min(40, Number(valueFor(g)) || 0));
-        // For every learning_area in this group (across all grades in band), upsert
-        g.areaIds.forEach(areaId => {
-          const area = areas.find((a: any) => a.id === areaId);
-          if (!area) return;
+
+        // Map: grade -> learning_area_id present for this group
+        const gradesCovered = new Map<string, string>();
+        g.areaIds.forEach(id => {
+          const a = areas.find((x: any) => x.id === id);
+          if (a) gradesCovered.set(a.grade, a.id);
+        });
+
+        // For every grade in the band, ensure a learning_area exists, then queue upsert
+        for (const grade of gradesInBand) {
+          let laId = gradesCovered.get(grade);
+          if (!laId) {
+            // Create learning area for this grade using the group's display name
+            const { data: created, error: cErr } = await supabase
+              .from('learning_areas')
+              .insert({ school_id: schoolId, grade, name: g.displayName, is_active: true })
+              .select('id')
+              .single();
+            if (cErr) throw cErr;
+            laId = created!.id;
+          }
           rows.push({
             school_id: schoolId,
-            grade: area.grade,
-            learning_area_id: areaId,
+            grade,
+            learning_area_id: laId,
             lessons_per_week: v,
           });
-        });
-      });
+        }
+      }
       if (!rows.length) return;
       const { error } = await supabase
         .from('grade_subject_lessons')
@@ -133,6 +150,7 @@ export default function LessonAllocationsPage() {
       toast({ title: 'Saved', description: `Allocations applied to ${gradesInBand.length} grade(s) in this band.` });
       setEdits({});
       qc.invalidateQueries({ queryKey: ['gsl-band', schoolId, gradesInBand.join(',')] });
+      qc.invalidateQueries({ queryKey: ['la-band', schoolId, gradesInBand.join(',')] });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
