@@ -125,7 +125,7 @@ export default function PerformanceTrackingPage() {
         .order('name');
       let list = data || [];
       if (isTeacher) {
-        const isClassTeacherHere = (myAssignments?.classes || []).some((a: any) => a.grade === selectedGrade && a.stream === selectedStream);
+        const isClassTeacherHere = (myAssignments?.classes || []).some((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream));
         if (!isClassTeacherHere) list = list.filter((s: any) => selectedStreamSubjectIds?.has(s.id));
       }
       return sortSubjectsByOrder(list as any[], selectedGrade);
