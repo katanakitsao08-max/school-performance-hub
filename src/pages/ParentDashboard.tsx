@@ -12,6 +12,7 @@ import ParentPerformanceTab from '@/components/parent/ParentPerformanceTab';
 import ParentAttendanceTab from '@/components/parent/ParentAttendanceTab';
 import ParentFeesTab from '@/components/parent/ParentFeesTab';
 import ParentReportsTab from '@/components/parent/ParentReportsTab';
+import ParentLearningPathTab from '@/components/parent/ParentLearningPathTab';
 
 export default function ParentDashboard() {
   const { user, profile } = useAuth();
@@ -77,8 +78,9 @@ export default function ParentDashboard() {
 
             {activeChild && (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList className="w-full grid grid-cols-4">
+                <TabsList className="w-full grid grid-cols-5">
                   <TabsTrigger value="performance" className="text-xs">Performance</TabsTrigger>
+                  <TabsTrigger value="learning" className="text-xs">Learning</TabsTrigger>
                   <TabsTrigger value="attendance" className="text-xs">Attendance</TabsTrigger>
                   <TabsTrigger value="fees" className="text-xs">Fees</TabsTrigger>
                   <TabsTrigger value="reports" className="text-xs">Reports</TabsTrigger>
@@ -86,6 +88,9 @@ export default function ParentDashboard() {
 
                 <TabsContent value="performance">
                   <ParentPerformanceTab child={activeChild} />
+                </TabsContent>
+                <TabsContent value="learning">
+                  <ParentLearningPathTab child={activeChild} />
                 </TabsContent>
                 <TabsContent value="attendance">
                   <ParentAttendanceTab child={activeChild} />
