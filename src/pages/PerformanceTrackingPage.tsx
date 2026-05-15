@@ -98,21 +98,23 @@ export default function PerformanceTrackingPage() {
     if (!isTeacher || !selectedGrade || !selectedStream) return null;
     return new Set<string>(
       (myAssignments?.subjects || [])
-        .filter((a: any) => a.grade === selectedGrade && a.stream === selectedStream)
+        .filter((a: any) => a.grade === selectedGrade && (selectedStream === '__ALL__' || a.stream === selectedStream))
         .map((a: any) => a.learning_area_id)
     );
   }, [isTeacher, myAssignments, selectedGrade, selectedStream]);
 
   const { data: learners = [] } = useQuery({
-    queryKey: ['tracking-learners', selectedGrade, selectedStream],
+    queryKey: ['tracking-learners', selectedGrade, selectedStream, schoolId],
     queryFn: async () => {
-      const { data } = await supabase.from('learners').select('*')
-        .eq('grade', selectedGrade).eq('stream', selectedStream)
+      let q = supabase.from('learners').select('*')
+        .eq('grade', selectedGrade)
         .eq('is_active', true).eq('school_id', schoolId!)
         .order('full_name');
+      if (selectedStream !== '__ALL__') q = q.eq('stream', selectedStream);
+      const { data } = await q;
       return data || [];
     },
-    enabled: !!schoolId && !!selectedStream,
+    enabled: !!schoolId && !!selectedGrade && !!selectedStream,
   });
 
   const { data: subjects = [] } = useQuery({
