@@ -1411,9 +1411,9 @@ export default function ReportsPage() {
                       {!isSchoolWide && selectedGrades.length === 1 && reportDisplaySubjects.map(s => (
                         <TableHead key={s.id} className="text-center">{s.name}</TableHead>
                       ))}
-                      <TableHead className="text-center">Total</TableHead>
-                      <TableHead className="text-center">Mean</TableHead>
-                      <TableHead className="text-center">Grade</TableHead>
+                      <TableHead className="text-center">Total Pts</TableHead>
+                      <TableHead className="text-center">Mean Pts</TableHead>
+                      <TableHead className="text-center">Level</TableHead>
                       <TableHead className="text-center">Rank</TableHead>
                     </TableRow>
                   </TableHeader>
