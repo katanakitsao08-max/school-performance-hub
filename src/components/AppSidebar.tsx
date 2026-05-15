@@ -116,6 +116,7 @@ const teacherSections: NavSection[] = [
   {
     label: "Insights",
     items: [
+      { title: "My Dashboard", url: "/teacher-dashboard", icon: Activity },
       { title: "Reports", url: "/reports", icon: FileText },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
       { title: "Subject Analysis", url: "/grade-analysis", icon: PieChart },
