@@ -69,12 +69,18 @@ export default function PerformanceTrackingPage() {
   });
 
   const { data: allDbStreams = [] } = useQuery({
-    queryKey: ['streams', schoolId],
+    queryKey: ['streams', schoolId, selectedGrade],
     queryFn: async () => {
-      const { data } = await supabase.from('streams').select('name').eq('school_id', schoolId!).order('name');
-      return (data || []).map((s: any) => s.name as string);
+      const [{ data: configuredStreams }, { data: learnerStreams }] = await Promise.all([
+        supabase.from('streams').select('name').eq('school_id', schoolId!).order('name'),
+        supabase.from('learners').select('stream').eq('school_id', schoolId!).eq('grade', selectedGrade).eq('is_active', true),
+      ]);
+      return Array.from(new Set([
+        ...(configuredStreams || []).map((s: any) => s.name as string),
+        ...(learnerStreams || []).map((l: any) => l.stream as string),
+      ].filter(Boolean))).sort();
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !!selectedGrade,
   });
 
   const dbStreams = useMemo(() => {
@@ -87,10 +93,10 @@ export default function PerformanceTrackingPage() {
     return assigned.length > 0 ? assigned : allDbStreams;
   }, [isTeacher, allDbStreams, myAssignments, selectedGrade]);
 
-  const [selectedStream, setSelectedStream] = useState('');
+  const [selectedStream, setSelectedStream] = useState('__ALL__');
   useEffect(() => {
     const valid = ['__ALL__', ...dbStreams];
-    if (dbStreams.length > 0 && !valid.includes(selectedStream)) {
+    if (!valid.includes(selectedStream)) {
       setSelectedStream('__ALL__');
     }
   }, [dbStreams, selectedStream]);
