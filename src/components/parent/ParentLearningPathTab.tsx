@@ -434,6 +434,15 @@ export default function ParentLearningPathTab({ child }: Props) {
     </div>
   );
 
+  if (accessLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (!hasAccess) return <LearningPathPaywall child={child} />;
+
   return (
     <div className="space-y-4">
       <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
