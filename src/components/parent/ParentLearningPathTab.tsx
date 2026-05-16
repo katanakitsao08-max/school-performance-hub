@@ -131,15 +131,6 @@ export default function ParentLearningPathTab({ child }: Props) {
   const { toast } = useToast();
   const { hasAccess, isLoading: accessLoading } = useLearningPathAccess(child.id);
 
-  if (accessLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-  if (!hasAccess) return <LearningPathPaywall child={child} />;
-
   const { data: areas = [] } = useQuery({
     queryKey: ['parent-lp-areas', child.grade, child.id],
     queryFn: async () => {
@@ -147,6 +138,7 @@ export default function ParentLearningPathTab({ child }: Props) {
         .select('id, name, grade').eq('grade', child.grade).eq('is_active', true);
       return data || [];
     },
+    enabled: hasAccess,
   });
 
   const { data: scores = [] } = useQuery({
@@ -156,6 +148,7 @@ export default function ParentLearningPathTab({ child }: Props) {
         .select('learning_area_id, score').eq('learner_id', child.id);
       return data || [];
     },
+    enabled: hasAccess,
   });
 
   // progress per subject (DB-backed)
@@ -440,6 +433,15 @@ export default function ParentLearningPathTab({ child }: Props) {
       </div>
     </div>
   );
+
+  if (accessLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (!hasAccess) return <LearningPathPaywall child={child} />;
 
   return (
     <div className="space-y-4">
