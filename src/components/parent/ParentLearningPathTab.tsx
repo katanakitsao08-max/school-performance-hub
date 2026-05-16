@@ -858,6 +858,68 @@ export default function ParentLearningPathTab({ child }: Props) {
                 </Card>
               </div>
             )}
+
+            {/* REVISION (KPSEA / KJSEA) */}
+            {!loading && stage === 'revision' && revision && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">{revision.examType} · Q{revIdx + 1} of {revision.questions.length}</span>
+                  <span className="text-muted-foreground">{revision.questions[revIdx].strand}</span>
+                </div>
+                <Progress value={((revIdx + (revShowFeedback ? 1 : 0)) / revision.questions.length) * 100} className="h-2" />
+                <Card className="border-primary/20">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="text-sm font-medium leading-relaxed">{revision.questions[revIdx].question}</p>
+                    <div className="grid gap-2">
+                      {revision.questions[revIdx].options.map((opt, i) => {
+                        const correct = i === revision.questions[revIdx].answerIndex;
+                        const picked = revSelected === i;
+                        return (
+                          <Button key={i}
+                            variant={picked ? 'default' : 'outline'} size="sm"
+                            className={cn('justify-start h-auto py-2 text-left whitespace-normal',
+                              revShowFeedback && correct && 'border-success bg-success/10 text-success hover:bg-success/10',
+                              revShowFeedback && picked && !correct && 'border-destructive bg-destructive/10 text-destructive hover:bg-destructive/10')}
+                            disabled={revShowFeedback}
+                            onClick={() => setRevSelected(i)}>
+                            <span className="font-bold mr-2">{String.fromCharCode(65 + i)}.</span>
+                            <span className="flex-1">{opt}</span>
+                            {revShowFeedback && correct && <CheckCircle2 className="h-4 w-4 ml-2" />}
+                            {revShowFeedback && picked && !correct && <XCircle className="h-4 w-4 ml-2" />}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    {revShowFeedback && (
+                      <div className="text-xs rounded-md bg-muted p-3 leading-relaxed">
+                        💡 {revision.questions[revIdx].explanation}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {!loading && stage === 'revision-done' && revision && (
+              <div className="space-y-4 text-center py-4">
+                <div className="mx-auto h-20 w-20 rounded-full bg-primary/15 grid place-items-center">
+                  <GraduationCap className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-display font-bold">{revision.examType} Revision Complete</h3>
+                {(() => {
+                  const correct = revision.questions.reduce((a, q, i) => a + (revAnswers[i] === q.answerIndex ? 1 : 0), 0);
+                  const pct = Math.round((correct / revision.questions.length) * 100);
+                  return (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Score: <strong>{correct} / {revision.questions.length}</strong> ({pct}%)
+                      </p>
+                      <Badge className={cn(bandColor(pct))}>{bandLabel(pct)}</Badge>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </ScrollArea>
 
           {/* Sticky footer — always visible action button */}
