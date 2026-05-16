@@ -210,6 +210,38 @@ export default function ParentLearningPathTab({ child }: Props) {
   const [exCorrect, setExCorrect] = useState(0);
   const [showHint, setShowHint] = useState(false);
 
+  // Revision test state (KPSEA / KJSEA)
+  const [revision, setRevision] = useState<RevisionTest | null>(null);
+  const [revIdx, setRevIdx] = useState(0);
+  const [revAnswers, setRevAnswers] = useState<number[]>([]);
+  const [revSelected, setRevSelected] = useState<number | null>(null);
+  const [revShowFeedback, setRevShowFeedback] = useState(false);
+
+  const gradeNum = parseInt(String(child.grade).replace(/\D/g, ''), 10);
+  const examType: 'KPSEA' | 'KJSEA' | null =
+    gradeNum === 6 ? 'KPSEA' : gradeNum === 9 ? 'KJSEA' : null;
+
+  // Auto-close adventure & re-check access when entitlement expires.
+  useEffect(() => {
+    if (!activeEntitlement?.expires_at) return;
+    const ms = new Date(activeEntitlement.expires_at).getTime() - Date.now();
+    if (ms <= 0) return;
+    const t = setTimeout(() => {
+      setOpen(false);
+      refetchAccess();
+      toast({
+        title: 'Learning Path expired',
+        description: 'Your weekly access has ended. Renew with KES 50 to continue.',
+      });
+    }, Math.min(ms, 2_147_483_000));
+    return () => clearTimeout(t);
+  }, [activeEntitlement?.expires_at, refetchAccess, toast]);
+
+  // Safety: if access is revoked while dialog is open, close it.
+  useEffect(() => {
+    if (!accessLoading && !hasAccess && open) setOpen(false);
+  }, [hasAccess, accessLoading, open]);
+
   const startAdventure = async (s: { id: string; name: string; avg: number | null }) => {
     setActiveSubject(s);
     const p = await loadProgress(child.id, s.id);
