@@ -308,6 +308,46 @@ export default function ParentLearningPathTab({ child }: Props) {
     } finally { setLoading(false); }
   };
 
+  /* ---------- Revision (KPSEA / KJSEA) flow ---------- */
+  const startRevision = async (s: { id: string; name: string; avg: number | null }) => {
+    if (!examType) return;
+    setActiveSubject(s);
+    setRevision(null); setRevIdx(0); setRevAnswers([]); setRevSelected(null); setRevShowFeedback(false);
+    setOpen(true); setStage('revision'); setLoading(true);
+    try {
+      const res = await callFn('revision', { _subject: s, examType });
+      const r = (res as any)?.data as RevisionTest;
+      if (!r?.questions?.length) throw new Error('No questions returned');
+      setRevision(r);
+    } catch (e: any) {
+      toast({ title: 'Could not load revision test', description: e.message, variant: 'destructive' });
+      setOpen(false);
+    } finally { setLoading(false); }
+  };
+
+  const submitRevisionAnswer = async () => {
+    if (revSelected == null || !revision || !activeSubject) return;
+    setRevShowFeedback(true);
+    const q = revision.questions[revIdx];
+    const isCorrect = revSelected === q.answerIndex;
+    await saveResponse({
+      learner_id: child.id, subject_id: activeSubject.id, subject_name: activeSubject.name,
+      source: 'assessment', question: q.question,
+      selected_answer: q.options[revSelected] ?? null,
+      correct_answer: q.options[q.answerIndex] ?? null,
+      is_correct: isCorrect, difficulty: q.difficulty ?? null,
+      strand: q.strand ?? null, explanation: q.explanation ?? null,
+      level_at_time: progress?.level ?? gradeNum,
+    });
+  };
+  const nextRevisionQ = () => {
+    if (!revision) return;
+    const newAns = [...revAnswers, revSelected!];
+    setRevAnswers(newAns); setRevSelected(null); setRevShowFeedback(false);
+    if (revIdx + 1 >= revision.questions.length) setStage('revision-done');
+    else setRevIdx(revIdx + 1);
+  };
+
   /* ---------- Assessment flow ---------- */
   const submitAssessmentAnswer = async () => {
     if (assessSelected == null || !assessment || !activeSubject) return;
