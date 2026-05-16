@@ -696,6 +696,16 @@ export default function ParentLearningPathTab({ child }: Props) {
                   <Card className="bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-950/20 border-amber-200/50">
                     <CardContent className="p-4 space-y-3">
                       <Badge variant="secondary" className="text-[10px]">📖 Today's Story</Badge>
+                      {lesson.imageQueries && lesson.imageQueries.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {lesson.imageQueries.slice(0, 2).map((q, i) => (
+                            <img key={i} src={unsplashUrl(q)} alt={q}
+                              loading="lazy"
+                              className="w-full h-28 object-cover rounded-md border border-amber-200/40"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                          ))}
+                        </div>
+                      )}
                       <p className="text-sm leading-relaxed">{lesson.story}</p>
                       <div className="space-y-1 pt-2">
                         <div className="text-xs font-semibold uppercase text-muted-foreground">By the end you can…</div>
@@ -705,6 +715,12 @@ export default function ParentLearningPathTab({ child }: Props) {
                           ))}
                         </ul>
                       </div>
+                      {lesson.videoQuery && (
+                        <a href={youtubeSearchUrl(lesson.videoQuery)} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs font-medium text-primary hover:underline pt-1">
+                          🎥 Watch a Kenyan video about this
+                        </a>
+                      )}
                     </CardContent>
                   </Card>
                 )}
