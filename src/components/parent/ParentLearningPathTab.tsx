@@ -583,6 +583,11 @@ export default function ParentLearningPathTab({ child }: Props) {
                 <Button size="sm" className="w-full" onClick={() => startAdventure(s)}>
                   {s.progress ? <><BookOpen className="h-3.5 w-3.5 mr-1" /> Continue Adventure</> : <><Brain className="h-3.5 w-3.5 mr-1" /> Start with Placement Quiz</>}
                 </Button>
+                {examType && (
+                  <Button size="sm" variant="outline" className="w-full" onClick={() => startRevision(s)}>
+                    <GraduationCap className="h-3.5 w-3.5 mr-1" /> {examType} Revision Test
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
