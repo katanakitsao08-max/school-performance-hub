@@ -553,6 +553,12 @@ export default function ParentLearningPathTab({ child }: Props) {
         </CardHeader>
       </Card>
 
+      {activeEntitlement?.expires_at && (
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80 flex items-center justify-between">
+          <span>⏳ Access active until <strong>{new Date(activeEntitlement.expires_at).toLocaleString()}</strong>. Auto-closes on expiry.</span>
+        </div>
+      )}
+
       {subjectStats.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
           No learning areas found for Grade {child.grade} yet.
