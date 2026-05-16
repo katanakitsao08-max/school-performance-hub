@@ -42,7 +42,18 @@ interface Lesson {
   workedExample: { problem: string; steps: string[]; answer: string };
   exercises: Exercise[];
   realWorldChallenge: string; xpReward: number; badge: string;
+  imageQueries?: string[];
+  videoQuery?: string;
 }
+interface RevisionTest {
+  title: string; instructions: string; examType: 'KPSEA' | 'KJSEA';
+  questions: AssessmentQ[];
+}
+
+const unsplashUrl = (q: string) =>
+  `https://source.unsplash.com/featured/600x320/?${encodeURIComponent(q + ',kenya,africa,school,children')}`;
+const youtubeSearchUrl = (q: string) =>
+  `https://www.youtube.com/results?search_query=${encodeURIComponent(q + ' Kenya CBC')}`;
 
 interface SubjectProgress {
   level: number;
