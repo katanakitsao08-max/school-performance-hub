@@ -21,10 +21,11 @@ interface Req {
   subject: string;
   averageScore?: number | null;
   weakStrands?: string[];
-  mode: 'assessment' | 'lesson' | 'interventions' | 'tutor';
+  mode: 'assessment' | 'lesson' | 'interventions' | 'tutor' | 'revision';
   level?: number;
   topic?: string;
   previousTopics?: string[];
+  examType?: 'KPSEA' | 'KJSEA';
   recentResponses?: Array<{
     source: string; question: string; is_correct: boolean;
     difficulty?: number | null; strand?: string | null;
