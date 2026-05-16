@@ -175,8 +175,8 @@ Return STRICT JSON only, no prose, no markdown fences. Schema:
   "level": ${placedLevel},
   "story": "string — 2-3 sentence hook with Kenyan context",
   "learningGoals": ["I can ...", "I can ...", "I can ..."],
-  "vocabulary": [{"term":"string","meaning":"string"}],   // 4-6 items
-  "lessonSteps": [                                      // 4-6 steps
+  "vocabulary": [{"term":"string","meaning":"string"}],
+  "lessonSteps": [
     {"title":"string","explanation":"string","example":"string"}
   ],
   "workedExample": {
@@ -184,23 +184,48 @@ Return STRICT JSON only, no prose, no markdown fences. Schema:
     "steps":["step 1","step 2","step 3"],
     "answer":"string"
   },
-  "exercises": [                                        // exactly 5
+  "exercises": [
     {
-      "id":"e1",
-      "difficulty": 1,                                 // 1..5
-      "type":"mcq" ,                                   // "mcq" or "input"
-      "question":"string",
-      "options":["A","B","C","D"],                     // omit for input type
-      "answer":"string — exact correct answer (for input) OR option text (for mcq)",
-      "answerIndex": 0,                                // for mcq only
-      "hint":"string — small nudge",
-      "explanation":"string — why, friendly tone"
+      "id":"e1","difficulty": 1,"type":"mcq",
+      "question":"string","options":["A","B","C","D"],
+      "answer":"string","answerIndex": 0,
+      "hint":"string","explanation":"string"
     }
   ],
+  "imageQueries": ["string — 2-3 short search phrases for AFRICAN/KENYAN context illustrations, e.g. 'kenyan children classroom', 'maasai market counting', 'lake victoria fishing'"],
+  "videoQuery": "string — a YouTube search phrase for an African/Kenyan educational video about this sub-strand, e.g. 'CBC Grade 4 fractions Kenya'",
   "realWorldChallenge":"string — fun task to do at home today",
   "xpReward": 50,
   "badge":"string — short name e.g. 'Number Ninja'"
 }`;
+    } else if (mode === 'revision') {
+      wantsJson = true;
+      const exam = examType || (String(grade).includes('6') ? 'KPSEA' : 'KJSEA');
+      const examGrade = exam === 'KPSEA' ? '6' : '9';
+      prompt = `${cbcGrounding}
+
+Create a ${exam} REVISION TEST for ${learnerName} (Grade ${examGrade}) in ${subject},
+strictly mirroring the official KNEC ${exam} format and style. 12 questions covering
+the full Grade ${examGrade} ${subject} CBC syllabus, mixed difficulty (mostly at-grade,
+2 stretch). Authentic Kenyan context. Each question MCQ with 4 options.
+
+Return STRICT JSON only:
+{
+  "title": "string — e.g. '${exam} Revision: ${subject}'",
+  "instructions": "string — exam-style instruction (1 sentence)",
+  "examType": "${exam}",
+  "questions": [
+    {
+      "id":"q1","difficulty": 2,
+      "strand":"string — CBC strand",
+      "question":"string",
+      "options":["A","B","C","D"],
+      "answerIndex": 0,
+      "explanation":"string — marking-scheme style explanation"
+    }
+  ]
+}
+12 questions total.`;
     } else if (mode === 'interventions') {
       prompt = `${cbcGrounding}
 ${perf} ${weak}
