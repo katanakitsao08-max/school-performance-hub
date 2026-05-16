@@ -192,7 +192,7 @@ export default function ParentLearningPathTab({ child }: Props) {
   // ---------- Adventure dialog state ----------
   const [open, setOpen] = useState(false);
   const [activeSubject, setActiveSubject] = useState<{ id: string; name: string; avg: number | null } | null>(null);
-  const [stage, setStage] = useState<'intro' | 'assessment' | 'lesson' | 'celebrate'>('intro');
+  const [stage, setStage] = useState<'intro' | 'assessment' | 'lesson' | 'celebrate' | 'revision' | 'revision-done'>('intro');
   const [progress, setProgress] = useState<SubjectProgress | null>(null);
 
   const [loading, setLoading] = useState(false);
