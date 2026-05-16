@@ -495,6 +495,17 @@ export default function ParentLearningPathTab({ child }: Props) {
         <Button className="flex-1" onClick={() => loadLesson()}><RotateCcw className="h-4 w-4 mr-1" /> Next Lesson</Button>
       </div>;
     }
+    if (stage === 'revision' && revision) {
+      return !revShowFeedback
+        ? <Button className="w-full" size="lg" onClick={submitRevisionAnswer} disabled={revSelected == null}>Check Answer</Button>
+        : <Button className="w-full" size="lg" onClick={nextRevisionQ}>
+            {revIdx + 1 >= revision.questions.length ? 'See My Score' : 'Next Question'}
+            <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>;
+    }
+    if (stage === 'revision-done') {
+      return <Button className="w-full" size="lg" onClick={() => setOpen(false)}>Done</Button>;
+    }
     return null;
   };
 
