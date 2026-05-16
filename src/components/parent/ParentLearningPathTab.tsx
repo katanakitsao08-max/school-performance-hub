@@ -140,7 +140,7 @@ const bandLabel = (avg: number | null) => {
 
 export default function ParentLearningPathTab({ child }: Props) {
   const { toast } = useToast();
-  const { hasAccess, isLoading: accessLoading } = useLearningPathAccess(child.id);
+  const { hasAccess, activeEntitlement, isLoading: accessLoading, refetch: refetchAccess } = useLearningPathAccess(child.id);
 
   const { data: areas = [] } = useQuery({
     queryKey: ['parent-lp-areas', child.grade, child.id],
