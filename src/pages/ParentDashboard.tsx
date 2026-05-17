@@ -14,6 +14,7 @@ import ParentAttendanceTab from "@/components/parent/ParentAttendanceTab";
 import ParentFeesTab from "@/components/parent/ParentFeesTab";
 import ParentReportsTab from "@/components/parent/ParentReportsTab";
 import ParentLearningPathTab from "@/components/parent/ParentLearningPathTab";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function ParentDashboard() {
   const { user, profile } = useAuth();
@@ -123,34 +124,22 @@ export default function ParentDashboard() {
 
             {activeChild && (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList className="w-full grid grid-cols-5">
-                  <TabsTrigger value="performance" className="text-xs">
-                    Performance
-                  </TabsTrigger>
-
-                  <TabsTrigger value="learning" className="text-xs">
-                    Learning
-                  </TabsTrigger>
-
-                  <TabsTrigger value="attendance" className="text-xs">
-                    Attendance
-                  </TabsTrigger>
-
-                  <TabsTrigger value="fees" className="text-xs">
-                    Fees
-                  </TabsTrigger>
-
-                  <TabsTrigger value="reports" className="text-xs">
-                    Reports
-                  </TabsTrigger>
-                </TabsList>
+                <div className="-mx-1 overflow-x-auto no-scrollbar">
+                  <TabsList className="inline-flex w-auto min-w-full md:grid md:grid-cols-5">
+                    <TabsTrigger value="performance" className="text-xs whitespace-nowrap">Performance</TabsTrigger>
+                    <TabsTrigger value="learning" className="text-xs whitespace-nowrap">Learning</TabsTrigger>
+                    <TabsTrigger value="attendance" className="text-xs whitespace-nowrap">Attendance</TabsTrigger>
+                    <TabsTrigger value="fees" className="text-xs whitespace-nowrap">Fees</TabsTrigger>
+                    <TabsTrigger value="reports" className="text-xs whitespace-nowrap">Reports</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="performance">
-                  <ParentPerformanceTab child={activeChild} />
+                  <ErrorBoundary inline label="Performance"><ParentPerformanceTab child={activeChild} /></ErrorBoundary>
                 </TabsContent>
 
                 <TabsContent value="learning">
-                  <div className="space-y-4">
+                  <ErrorBoundary inline label="Learning">
                     {activeChild ? (
                       <ParentLearningPathTab child={activeChild} />
                     ) : (
@@ -160,19 +149,19 @@ export default function ParentDashboard() {
                         </CardContent>
                       </Card>
                     )}
-                  </div>
+                  </ErrorBoundary>
                 </TabsContent>
 
                 <TabsContent value="attendance">
-                  <ParentAttendanceTab child={activeChild} />
+                  <ErrorBoundary inline label="Attendance"><ParentAttendanceTab child={activeChild} /></ErrorBoundary>
                 </TabsContent>
 
                 <TabsContent value="fees">
-                  <ParentFeesTab child={activeChild} />
+                  <ErrorBoundary inline label="Fees"><ParentFeesTab child={activeChild} /></ErrorBoundary>
                 </TabsContent>
 
                 <TabsContent value="reports">
-                  <ParentReportsTab child={activeChild} />
+                  <ErrorBoundary inline label="Reports"><ParentReportsTab child={activeChild} /></ErrorBoundary>
                 </TabsContent>
               </Tabs>
             )}
