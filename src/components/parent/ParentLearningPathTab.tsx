@@ -612,7 +612,7 @@ export default function ParentLearningPathTab({ child }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-5 pt-1 shrink-0"><HeaderBar /></div>
+          <div className="px-5 pt-1 shrink-0">{HeaderBar()}</div>
 
           <ScrollArea className="flex-1 min-h-0 px-5 py-3">
             {loading && (
