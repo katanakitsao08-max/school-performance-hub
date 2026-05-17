@@ -13,6 +13,7 @@ const defaultTabs = [
 
 const parentTabs = [
   { label: "Home", icon: LayoutDashboard, to: "/parent" },
+  { label: "Learning", icon: Sparkles, to: "/parent?tab=learning" },
   { label: "Fees", icon: Wallet, to: "/parent?tab=fees" },
   { label: "Reports", icon: FileText, to: "/parent?tab=reports" },
   { label: "Menu", icon: MoreHorizontal, to: "/more" },
