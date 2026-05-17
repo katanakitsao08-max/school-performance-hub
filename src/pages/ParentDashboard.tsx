@@ -14,6 +14,7 @@ import ParentAttendanceTab from "@/components/parent/ParentAttendanceTab";
 import ParentFeesTab from "@/components/parent/ParentFeesTab";
 import ParentReportsTab from "@/components/parent/ParentReportsTab";
 import ParentLearningPathTab from "@/components/parent/ParentLearningPathTab";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function ParentDashboard() {
   const { user, profile } = useAuth();
