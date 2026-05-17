@@ -924,7 +924,7 @@ export default function ParentLearningPathTab({ child }: Props) {
 
           {/* Sticky footer — always visible action button */}
           <div className="border-t bg-background px-5 py-3 shrink-0">
-            <FooterAction />
+            {FooterAction()}
           </div>
         </DialogContent>
       </Dialog>
