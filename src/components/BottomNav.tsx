@@ -1,4 +1,4 @@
-import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, CalendarCheck, Wallet } from "lucide-react";
+import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, CalendarCheck, Wallet, Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
