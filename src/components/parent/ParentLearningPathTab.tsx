@@ -541,14 +541,17 @@ export default function ParentLearningPathTab({ child }: Props) {
     <div className="space-y-4">
       <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 flex-wrap">
             <GraduationCap className="h-5 w-5 text-primary" />
             CBC Learning Adventure for {child.full_name.split(' ')[0]}
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px]">
+              <Sparkles className="h-3 w-3 mr-1" /> AI-Powered
+            </Badge>
           </CardTitle>
           <CardDescription className="text-xs">
-            Tap a subject. {TUTOR_NAME} will first check {child.full_name.split(' ')[0]}'s level
+            Tap a subject. {TUTOR_NAME} (AI tutor) will first check {child.full_name.split(' ')[0]}'s level
             with a quick fun quiz, then unlock interactive Kenya CBC lessons with games,
-            exercises and rewards.
+            exercises and rewards — adapting to their pace.
           </CardDescription>
         </CardHeader>
       </Card>
