@@ -12,7 +12,7 @@ import { useLearningPathAccess, type LpEntitlement } from '@/hooks/use-learning-
 import { format } from 'date-fns';
 
 const PAY_NUMBER = '0701594268';
-const PRICE_PER_WEEK = 50;
+const PRICE_PER_WEEK = 15;
 
 interface Props {
   child: { id: string; full_name: string; school_id?: string | null };
