@@ -549,15 +549,22 @@ export default function ConsolidatedReportsPage() {
                     {bestStreamRows.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data for this selection.</TableCell></TableRow>
                     )}
-                    {bestStreamRows.map(r => (
-                      <TableRow key={`${r.grade}|${r.stream}`}>
-                        <TableCell className="font-bold">{r.position}</TableCell>
-                        <TableCell>{r.grade}</TableCell>
-                        <TableCell>{r.stream}</TableCell>
-                        <TableCell>{r.learners}</TableCell>
-                        <TableCell>{r.meanPoints.toFixed(2)}</TableCell>
-                        <TableCell>{r.level}</TableCell>
-                      </TableRow>
+                    {groupByBand(bestStreamRows).map(band => (
+                      <>
+                        <TableRow key={`bh-${band.order}`} className="bg-primary/10">
+                          <TableCell colSpan={6} className="font-bold text-primary uppercase text-xs tracking-wide">{band.label}</TableCell>
+                        </TableRow>
+                        {band.rows.map(r => (
+                          <TableRow key={`${r.grade}|${r.stream}`}>
+                            <TableCell className="font-bold">{r.position}</TableCell>
+                            <TableCell>{r.grade}</TableCell>
+                            <TableCell>{r.stream}</TableCell>
+                            <TableCell>{r.learners}</TableCell>
+                            <TableCell>{r.meanPoints.toFixed(2)}</TableCell>
+                            <TableCell>{r.level}</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ))}
                   </TableBody>
                 </Table>
