@@ -231,7 +231,7 @@ export default function ParentLearningPathTab({ child }: Props) {
       refetchAccess();
       toast({
         title: 'Learning Path expired',
-        description: 'Your weekly access has ended. Renew with KES 50 to continue.',
+        description: 'Your weekly access has ended. Renew with KES 15 to continue.',
       });
     }, Math.min(ms, 2_147_483_000));
     return () => clearTimeout(t);
