@@ -164,25 +164,9 @@ export default function ConsolidatedReportsPage() {
     return m;
   }, [filteredLearners]);
 
-  // groupKey: `${grade}|${stream}|${subjectId}` -> {sum, max, count}
-  const subjectStreamAgg = useMemo(() => {
-    const map = new Map<string, { sum: number; maxSum: number; count: number; grade: string; stream: string; subjectId: string; subjectName: string }>();
-    scores.forEach((s: any) => {
-      const learner = learnerById.get(s.learner_id);
-      if (!learner) return;
-      const sub = subjectById.get(s.learning_area_id);
-      if (!sub) return;
-      const key = `${learner.grade}|${learner.stream}|${s.learning_area_id}`;
-      const cur = map.get(key) || { sum: 0, maxSum: 0, count: 0, grade: learner.grade, stream: learner.stream, subjectId: s.learning_area_id, subjectName: sub.name };
-      cur.sum += Number(s.score) || 0;
-      cur.maxSum += Number(sub.max_score) || 100;
-      cur.count += 1;
-      map.set(key, cur);
-    });
-    return map;
-  }, [scores, learnerById, subjectById]);
-
-  // Per-learner total points (used for stream means)
+  // Per-learner total points (used for stream means) — built first so we can
+  // restrict subject aggregates to the SAME qualified cohort that appears on
+  // each learner's final report card.
   const learnerPoints = useMemo(() => {
     const byLearner = new Map<string, { score: number; maxScore: number }[]>();
     scores.forEach((s: any) => {
@@ -202,6 +186,29 @@ export default function ConsolidatedReportsPage() {
     });
     return out;
   }, [scores, learnerById, subjectById]);
+
+  // groupKey: `${grade}|${stream}|${subjectId}` -> {sum, max, count}
+  // Only count scores from QUALIFIED learners so the per-subject mean matches
+  // what appears on the final report cards.
+  const subjectStreamAgg = useMemo(() => {
+    const map = new Map<string, { sum: number; maxSum: number; count: number; grade: string; stream: string; subjectId: string; subjectName: string }>();
+    scores.forEach((s: any) => {
+      const learner = learnerById.get(s.learner_id);
+      if (!learner) return;
+      if (!learnerPoints.has(s.learner_id)) return; // qualified only
+      const sub = subjectById.get(s.learning_area_id);
+      if (!sub) return;
+      const sc = Number(s.score) || 0;
+      if (sc <= 0) return;
+      const key = `${learner.grade}|${learner.stream}|${s.learning_area_id}`;
+      const cur = map.get(key) || { sum: 0, maxSum: 0, count: 0, grade: learner.grade, stream: learner.stream, subjectId: s.learning_area_id, subjectName: sub.name };
+      cur.sum += sc;
+      cur.maxSum += Number(sub.max_score) || 100;
+      cur.count += 1;
+      map.set(key, cur);
+    });
+    return map;
+  }, [scores, learnerById, subjectById, learnerPoints]);
 
   // ---------------- Report 1: Best Performed Subject per (grade,stream) ----------------
   const bestSubjectRows = useMemo(() => {
