@@ -105,7 +105,13 @@ const memberMatches = (subjectName: string, memberCanonical: string) => {
   const a = canon(subjectName);
   const b = memberCanonical;
   if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a);
+  if (a === b) return true;
+  // Whole-word containment only — prevents "CRE" from matching "CREATIVE ARTS".
+  const aTokens = a.split(/\s+/).filter(Boolean);
+  const bTokens = b.split(/\s+/).filter(Boolean);
+  const containsAll = (hay: string[], needle: string[]) =>
+    needle.every(t => hay.includes(t));
+  return containsAll(aTokens, bTokens) || containsAll(bTokens, aTokens);
 };
 
 export function buildSubjectColumns<T extends { id: string; name: string; max_score: number }>(
