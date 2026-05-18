@@ -1,4 +1,4 @@
-import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, CalendarCheck, Wallet, Sparkles } from "lucide-react";
+import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, BarChart3, Wallet, Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,7 @@ const defaultTabs = [
   { label: "Classes", icon: GraduationCap, to: "/learners" },
   { label: "Marks", icon: ClipboardList, to: "/marks-entry" },
   { label: "Reports", icon: FileText, to: "/reports" },
+  { label: "Analytics", icon: BarChart3, to: "/analytics" },
   { label: "Menu", icon: MoreHorizontal, to: "/more" },
 ];
 
@@ -25,7 +26,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden no-print safe-bottom">
-      <div className="flex items-center justify-around h-16 px-1">
+      <div className="flex items-center justify-around h-16 px-0.5">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
@@ -33,7 +34,7 @@ export function BottomNav() {
             end={tab.to === "/dashboard" || tab.to === "/parent"}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[56px]",
+                "flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-xl transition-all flex-1 min-w-0",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }
