@@ -504,15 +504,22 @@ export default function ConsolidatedReportsPage() {
                     {bestSubjectRows.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data for this selection.</TableCell></TableRow>
                     )}
-                    {bestSubjectRows.map((r, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{r.grade}</TableCell>
-                        <TableCell>{r.stream}</TableCell>
-                        <TableCell className="font-medium">{r.subject}</TableCell>
-                        <TableCell>{r.meanPct.toFixed(1)}</TableCell>
-                        <TableCell>{r.level}</TableCell>
-                        <TableCell>{r.teacher}</TableCell>
-                      </TableRow>
+                    {groupByBand(bestSubjectRows).map(band => (
+                      <>
+                        <TableRow key={`bh-${band.order}`} className="bg-primary/10">
+                          <TableCell colSpan={6} className="font-bold text-primary uppercase text-xs tracking-wide">{band.label}</TableCell>
+                        </TableRow>
+                        {band.rows.map((r, i) => (
+                          <TableRow key={`${band.order}-${i}`}>
+                            <TableCell>{r.grade}</TableCell>
+                            <TableCell>{r.stream}</TableCell>
+                            <TableCell className="font-medium">{r.subject}</TableCell>
+                            <TableCell>{r.meanPct.toFixed(1)}</TableCell>
+                            <TableCell>{r.level}</TableCell>
+                            <TableCell>{r.teacher}</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ))}
                   </TableBody>
                 </Table>
