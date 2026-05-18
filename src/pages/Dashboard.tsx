@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, BookOpen, ClipboardList, TrendingUp, Calendar, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { GraduationCap, BookOpen, TrendingUp, Calendar, AlertTriangle, ArrowUpRight, ArrowDownRight, User, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +50,20 @@ export default function Dashboard() {
 
   const { data: insights, isLoading } = useSmartDashboard();
 
+  const { data: genderCounts = { male: 0, female: 0 } } = useQuery({
+    queryKey: ['learner-gender-counts', profile?.school_id],
+    queryFn: async () => {
+      const base = supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      const maleQ = profile?.school_id ? base.eq('school_id', profile.school_id).eq('gender', 'Male') : base.eq('gender', 'Male');
+      const { count: male } = await maleQ;
+      const base2 = supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      const femaleQ = profile?.school_id ? base2.eq('school_id', profile.school_id).eq('gender', 'Female') : base2.eq('gender', 'Female');
+      const { count: female } = await femaleQ;
+      return { male: male || 0, female: female || 0 };
+    },
+    enabled: !!user,
+  });
+
   const stats = [
     {
       title: 'Students',
@@ -66,16 +80,16 @@ export default function Dashboard() {
       bg: (insights?.attendanceRate ?? 0) >= 80 ? 'bg-success/10' : 'bg-warning/10',
     },
     {
-      title: 'Subjects',
-      value: insights?.totalSubjects ?? 0,
-      icon: BookOpen,
+      title: 'Male',
+      value: genderCounts.male,
+      icon: User,
       color: 'text-info',
       bg: 'bg-info/10',
     },
     {
-      title: 'Scores',
-      value: insights?.totalScores ?? 0,
-      icon: ClipboardList,
+      title: 'Female',
+      value: genderCounts.female,
+      icon: Users,
       color: 'text-accent',
       bg: 'bg-accent/10',
     },
