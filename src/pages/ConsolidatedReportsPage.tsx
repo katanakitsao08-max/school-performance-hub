@@ -577,11 +577,11 @@ export default function ConsolidatedReportsPage() {
 
           <TabsContent value="school_assessment">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">School Assessment Analysis</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 sm:p-6">
+                <CardTitle className="text-sm sm:text-base">School Assessment Analysis</CardTitle>
                 <ExportBar kind="school_assessment" />
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 p-2 sm:p-6 sm:pt-0">
                 {schoolAssessmentBlocks.length === 0 && (
                   <div className="text-center text-muted-foreground py-6">No data for this selection.</div>
                 )}
@@ -590,7 +590,8 @@ export default function ConsolidatedReportsPage() {
                     <div className="bg-primary/10 px-3 py-2 rounded font-bold text-primary uppercase text-xs tracking-wide">{band.label}</div>
                     {band.rows.map(b => (
                       <div key={`${b.grade}|${b.stream}`} className="space-y-2">
-                        <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <div className="font-semibold text-sm sm:text-base">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
