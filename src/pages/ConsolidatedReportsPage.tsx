@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,38 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 type ReportKind = 'best_subject' | 'best_stream' | 'school_assessment';
+
+// Group grades into KNEC bands: ECDE/PP, Lower Primary (1-3), Upper Primary (4-6), Junior School (7-9)
+function gradeBand(grade: string): { order: number; label: string } {
+  const g = String(grade).trim().toUpperCase();
+  if (g.startsWith('PP') || g.startsWith('ECDE') || g === 'BABY' || g === 'NURSERY') {
+    return { order: 0, label: 'ECDE / Pre-Primary' };
+  }
+  const n = parseInt(g, 10);
+  if (!isNaN(n)) {
+    if (n >= 1 && n <= 3) return { order: 1, label: 'Lower Primary (Grade 1-3)' };
+    if (n >= 4 && n <= 6) return { order: 2, label: 'Upper Primary (Grade 4-6)' };
+    if (n >= 7 && n <= 9) return { order: 3, label: 'Junior School (Grade 7-9)' };
+  }
+  return { order: 9, label: 'Other' };
+}
+function bandSort(a: { grade: string; stream: string }, b: { grade: string; stream: string }) {
+  return (
+    gradeBand(a.grade).order - gradeBand(b.grade).order ||
+    a.grade.localeCompare(b.grade, undefined, { numeric: true }) ||
+    a.stream.localeCompare(b.stream)
+  );
+}
+function groupByBand<T extends { grade: string }>(rows: T[]): { label: string; order: number; rows: T[] }[] {
+  const map = new Map<number, { label: string; order: number; rows: T[] }>();
+  rows.forEach(r => {
+    const b = gradeBand(r.grade);
+    const cur = map.get(b.order) || { label: b.label, order: b.order, rows: [] };
+    cur.rows.push(r);
+    map.set(b.order, cur);
+  });
+  return Array.from(map.values()).sort((a, b) => a.order - b.order);
+}
 
 export default function ConsolidatedReportsPage() {
   const { schoolId } = useAuth();
@@ -132,25 +164,9 @@ export default function ConsolidatedReportsPage() {
     return m;
   }, [filteredLearners]);
 
-  // groupKey: `${grade}|${stream}|${subjectId}` -> {sum, max, count}
-  const subjectStreamAgg = useMemo(() => {
-    const map = new Map<string, { sum: number; maxSum: number; count: number; grade: string; stream: string; subjectId: string; subjectName: string }>();
-    scores.forEach((s: any) => {
-      const learner = learnerById.get(s.learner_id);
-      if (!learner) return;
-      const sub = subjectById.get(s.learning_area_id);
-      if (!sub) return;
-      const key = `${learner.grade}|${learner.stream}|${s.learning_area_id}`;
-      const cur = map.get(key) || { sum: 0, maxSum: 0, count: 0, grade: learner.grade, stream: learner.stream, subjectId: s.learning_area_id, subjectName: sub.name };
-      cur.sum += Number(s.score) || 0;
-      cur.maxSum += Number(sub.max_score) || 100;
-      cur.count += 1;
-      map.set(key, cur);
-    });
-    return map;
-  }, [scores, learnerById, subjectById]);
-
-  // Per-learner total points (used for stream means)
+  // Per-learner total points (used for stream means) — built first so we can
+  // restrict subject aggregates to the SAME qualified cohort that appears on
+  // each learner's final report card.
   const learnerPoints = useMemo(() => {
     const byLearner = new Map<string, { score: number; maxScore: number }[]>();
     scores.forEach((s: any) => {
@@ -170,6 +186,29 @@ export default function ConsolidatedReportsPage() {
     });
     return out;
   }, [scores, learnerById, subjectById]);
+
+  // groupKey: `${grade}|${stream}|${subjectId}` -> {sum, max, count}
+  // Only count scores from QUALIFIED learners so the per-subject mean matches
+  // what appears on the final report cards.
+  const subjectStreamAgg = useMemo(() => {
+    const map = new Map<string, { sum: number; maxSum: number; count: number; grade: string; stream: string; subjectId: string; subjectName: string }>();
+    scores.forEach((s: any) => {
+      const learner = learnerById.get(s.learner_id);
+      if (!learner) return;
+      if (!learnerPoints.has(s.learner_id)) return; // qualified only
+      const sub = subjectById.get(s.learning_area_id);
+      if (!sub) return;
+      const sc = Number(s.score) || 0;
+      if (sc <= 0) return;
+      const key = `${learner.grade}|${learner.stream}|${s.learning_area_id}`;
+      const cur = map.get(key) || { sum: 0, maxSum: 0, count: 0, grade: learner.grade, stream: learner.stream, subjectId: s.learning_area_id, subjectName: sub.name };
+      cur.sum += sc;
+      cur.maxSum += Number(sub.max_score) || 100;
+      cur.count += 1;
+      map.set(key, cur);
+    });
+    return map;
+  }, [scores, learnerById, subjectById, learnerPoints]);
 
   // ---------------- Report 1: Best Performed Subject per (grade,stream) ----------------
   const bestSubjectRows = useMemo(() => {
@@ -202,7 +241,7 @@ export default function ConsolidatedReportsPage() {
         });
       }
     });
-    rows.sort((a, b) => a.grade.localeCompare(b.grade, undefined, { numeric: true }) || a.stream.localeCompare(b.stream));
+    rows.sort(bandSort);
     return rows;
   }, [subjectStreamAgg, teacherMap]);
 
@@ -226,7 +265,10 @@ export default function ConsolidatedReportsPage() {
       rows.push({ grade, stream, learners: v.count, meanPoints, level: meanPointsToLevel(meanPoints) });
     });
     rows.sort((a, b) => b.meanPoints - a.meanPoints);
-    return rows.map((r, i) => ({ ...r, position: i + 1 }));
+    const ranked = rows.map((r, i) => ({ ...r, position: i + 1 }));
+    // Now re-sort by band so classes appear grouped 1-3, 4-6, 7-9 (position kept)
+    ranked.sort(bandSort);
+    return ranked;
   }, [filteredLearners, learnerPoints]);
 
   // ---------------- Report 3: School Assessment Analysis (per grade+stream, per subject) ----------------
@@ -263,9 +305,7 @@ export default function ConsolidatedReportsPage() {
       block.overallLevel = cnt ? meanPointsToLevel(block.avgPoints) : '-';
       block.rows.sort((a, b) => a.subject.localeCompare(b.subject));
     });
-    return Array.from(blocksMap.values()).sort(
-      (a, b) => a.grade.localeCompare(b.grade, undefined, { numeric: true }) || a.stream.localeCompare(b.stream),
-    );
+    return Array.from(blocksMap.values()).sort(bandSort);
   }, [subjectStreamAgg, filteredLearners, learnerPoints, teacherMap]);
 
   // ---------------- Export helpers ----------------
@@ -464,15 +504,22 @@ export default function ConsolidatedReportsPage() {
                     {bestSubjectRows.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data for this selection.</TableCell></TableRow>
                     )}
-                    {bestSubjectRows.map((r, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{r.grade}</TableCell>
-                        <TableCell>{r.stream}</TableCell>
-                        <TableCell className="font-medium">{r.subject}</TableCell>
-                        <TableCell>{r.meanPct.toFixed(1)}</TableCell>
-                        <TableCell>{r.level}</TableCell>
-                        <TableCell>{r.teacher}</TableCell>
-                      </TableRow>
+                    {groupByBand(bestSubjectRows).map(band => (
+                      <Fragment key={`bsg-${band.order}`}>
+                        <TableRow className="bg-primary/10">
+                          <TableCell colSpan={6} className="font-bold text-primary uppercase text-xs tracking-wide">{band.label}</TableCell>
+                        </TableRow>
+                        {band.rows.map((r, i) => (
+                          <TableRow key={`${band.order}-${i}`}>
+                            <TableCell>{r.grade}</TableCell>
+                            <TableCell>{r.stream}</TableCell>
+                            <TableCell className="font-medium">{r.subject}</TableCell>
+                            <TableCell>{r.meanPct.toFixed(1)}</TableCell>
+                            <TableCell>{r.level}</TableCell>
+                            <TableCell>{r.teacher}</TableCell>
+                          </TableRow>
+                        ))}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -502,15 +549,22 @@ export default function ConsolidatedReportsPage() {
                     {bestStreamRows.length === 0 && (
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data for this selection.</TableCell></TableRow>
                     )}
-                    {bestStreamRows.map(r => (
-                      <TableRow key={`${r.grade}|${r.stream}`}>
-                        <TableCell className="font-bold">{r.position}</TableCell>
-                        <TableCell>{r.grade}</TableCell>
-                        <TableCell>{r.stream}</TableCell>
-                        <TableCell>{r.learners}</TableCell>
-                        <TableCell>{r.meanPoints.toFixed(2)}</TableCell>
-                        <TableCell>{r.level}</TableCell>
-                      </TableRow>
+                    {groupByBand(bestStreamRows).map(band => (
+                      <Fragment key={`bsg-${band.order}`}>
+                        <TableRow className="bg-primary/10">
+                          <TableCell colSpan={6} className="font-bold text-primary uppercase text-xs tracking-wide">{band.label}</TableCell>
+                        </TableRow>
+                        {band.rows.map(r => (
+                          <TableRow key={`${r.grade}|${r.stream}`}>
+                            <TableCell className="font-bold">{r.position}</TableCell>
+                            <TableCell>{r.grade}</TableCell>
+                            <TableCell>{r.stream}</TableCell>
+                            <TableCell>{r.learners}</TableCell>
+                            <TableCell>{r.meanPoints.toFixed(2)}</TableCell>
+                            <TableCell>{r.level}</TableCell>
+                          </TableRow>
+                        ))}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -528,35 +582,40 @@ export default function ConsolidatedReportsPage() {
                 {schoolAssessmentBlocks.length === 0 && (
                   <div className="text-center text-muted-foreground py-6">No data for this selection.</div>
                 )}
-                {schoolAssessmentBlocks.map(b => (
-                  <div key={`${b.grade}|${b.stream}`} className="space-y-2">
-                    <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Mean %</TableHead>
-                          <TableHead>Level</TableHead>
-                          <TableHead>Teacher</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {b.rows.map((r, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{r.subject}</TableCell>
-                            <TableCell>{r.meanPct.toFixed(1)}</TableCell>
-                            <TableCell>{r.level}</TableCell>
-                            <TableCell>{r.teacher}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="font-semibold bg-muted/40">
-                          <TableCell>Overall (Mean Pts)</TableCell>
-                          <TableCell>{b.totalPoints.toFixed(2)}</TableCell>
-                          <TableCell>{b.overallLevel}</TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                {groupByBand(schoolAssessmentBlocks).map(band => (
+                  <div key={`saband-${band.order}`} className="space-y-4">
+                    <div className="bg-primary/10 px-3 py-2 rounded font-bold text-primary uppercase text-xs tracking-wide">{band.label}</div>
+                    {band.rows.map(b => (
+                      <div key={`${b.grade}|${b.stream}`} className="space-y-2">
+                        <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Subject</TableHead>
+                              <TableHead>Mean %</TableHead>
+                              <TableHead>Level</TableHead>
+                              <TableHead>Teacher</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {b.rows.map((r, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{r.subject}</TableCell>
+                                <TableCell>{r.meanPct.toFixed(1)}</TableCell>
+                                <TableCell>{r.level}</TableCell>
+                                <TableCell>{r.teacher}</TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="font-semibold bg-muted/40">
+                              <TableCell>Overall (Mean Pts)</TableCell>
+                              <TableCell>{b.totalPoints.toFixed(2)}</TableCell>
+                              <TableCell>{b.overallLevel}</TableCell>
+                              <TableCell />
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </CardContent>
