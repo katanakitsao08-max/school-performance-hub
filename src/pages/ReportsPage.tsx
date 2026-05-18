@@ -1433,8 +1433,8 @@ export default function ReportsPage() {
                             </div>
                           </TableCell>
                         ))}
-                        <TableCell className="text-center font-bold">{(l as any).totalPoints ?? 0}</TableCell>
-                        <TableCell className="text-center">{((l as any).avgPoints ?? 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-center font-bold bg-muted/30">{(l as any).total ?? 0}</TableCell>
+                        <TableCell className="text-center">{((l as any).mean ?? 0).toFixed(1)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className={l.overallGrade !== '-' ? getGradeColor(l.overallGrade as any) : ''}>
                             {l.overallGrade}
