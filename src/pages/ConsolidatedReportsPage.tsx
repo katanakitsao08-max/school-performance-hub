@@ -28,6 +28,38 @@ import * as XLSX from 'xlsx';
 
 type ReportKind = 'best_subject' | 'best_stream' | 'school_assessment';
 
+// Group grades into KNEC bands: ECDE/PP, Lower Primary (1-3), Upper Primary (4-6), Junior School (7-9)
+function gradeBand(grade: string): { order: number; label: string } {
+  const g = String(grade).trim().toUpperCase();
+  if (g.startsWith('PP') || g.startsWith('ECDE') || g === 'BABY' || g === 'NURSERY') {
+    return { order: 0, label: 'ECDE / Pre-Primary' };
+  }
+  const n = parseInt(g, 10);
+  if (!isNaN(n)) {
+    if (n >= 1 && n <= 3) return { order: 1, label: 'Lower Primary (Grade 1-3)' };
+    if (n >= 4 && n <= 6) return { order: 2, label: 'Upper Primary (Grade 4-6)' };
+    if (n >= 7 && n <= 9) return { order: 3, label: 'Junior School (Grade 7-9)' };
+  }
+  return { order: 9, label: 'Other' };
+}
+function bandSort(a: { grade: string; stream: string }, b: { grade: string; stream: string }) {
+  return (
+    gradeBand(a.grade).order - gradeBand(b.grade).order ||
+    a.grade.localeCompare(b.grade, undefined, { numeric: true }) ||
+    a.stream.localeCompare(b.stream)
+  );
+}
+function groupByBand<T extends { grade: string }>(rows: T[]): { label: string; order: number; rows: T[] }[] {
+  const map = new Map<number, { label: string; order: number; rows: T[] }>();
+  rows.forEach(r => {
+    const b = gradeBand(r.grade);
+    const cur = map.get(b.order) || { label: b.label, order: b.order, rows: [] };
+    cur.rows.push(r);
+    map.set(b.order, cur);
+  });
+  return Array.from(map.values()).sort((a, b) => a.order - b.order);
+}
+
 export default function ConsolidatedReportsPage() {
   const { schoolId } = useAuth();
   const dynamicGrades = useSchoolGrades();
