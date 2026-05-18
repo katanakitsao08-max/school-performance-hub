@@ -231,7 +231,7 @@ export default function ParentLearningPathTab({ child }: Props) {
       refetchAccess();
       toast({
         title: 'Learning Path expired',
-        description: 'Your weekly access has ended. Renew with KES 50 to continue.',
+        description: 'Your weekly access has ended. Renew with KES 15 to continue.',
       });
     }, Math.min(ms, 2_147_483_000));
     return () => clearTimeout(t);
@@ -541,14 +541,17 @@ export default function ParentLearningPathTab({ child }: Props) {
     <div className="space-y-4">
       <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 flex-wrap">
             <GraduationCap className="h-5 w-5 text-primary" />
             CBC Learning Adventure for {child.full_name.split(' ')[0]}
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px]">
+              <Sparkles className="h-3 w-3 mr-1" /> AI-Powered
+            </Badge>
           </CardTitle>
           <CardDescription className="text-xs">
-            Tap a subject. {TUTOR_NAME} will first check {child.full_name.split(' ')[0]}'s level
+            Tap a subject. {TUTOR_NAME} (AI tutor) will first check {child.full_name.split(' ')[0]}'s level
             with a quick fun quiz, then unlock interactive Kenya CBC lessons with games,
-            exercises and rewards.
+            exercises and rewards — adapting to their pace.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -579,12 +582,21 @@ export default function ParentLearningPathTab({ child }: Props) {
                   <Badge className={cn('text-[10px] shrink-0', bandColor(s.avg))}>{bandLabel(s.avg)}</Badge>
                 </div>
                 {s.progress && (
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <Trophy className="h-3 w-3 text-warning" /> {s.progress.lessonsCompleted} lessons
-                    <span className="mx-1">·</span>
-                    <Star className="h-3 w-3 text-amber-500" /> {s.progress.streak} streak
-                    {s.progress.badges.length > 0 && (<><span className="mx-1">·</span><Award className="h-3 w-3 text-primary" /> {s.progress.badges.length}</>)}
-                  </div>
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>Level {s.progress.level} progress</span>
+                        <span>{s.progress.xp % 100}/100 XP</span>
+                      </div>
+                      <Progress value={s.progress.xp % 100} className="h-1.5" />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Trophy className="h-3 w-3 text-warning" /> {s.progress.lessonsCompleted} lessons
+                      <span className="mx-1">·</span>
+                      <Star className="h-3 w-3 text-amber-500" /> {s.progress.streak} streak
+                      {s.progress.badges.length > 0 && (<><span className="mx-1">·</span><Award className="h-3 w-3 text-primary" /> {s.progress.badges.length}</>)}
+                    </div>
+                  </>
                 )}
                 <Button size="sm" className="w-full" onClick={() => startAdventure(s)}>
                   {s.progress ? <><BookOpen className="h-3.5 w-3.5 mr-1" /> Continue Adventure</> : <><Brain className="h-3.5 w-3.5 mr-1" /> Start with Placement Quiz</>}
