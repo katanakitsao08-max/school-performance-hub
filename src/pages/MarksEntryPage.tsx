@@ -173,15 +173,28 @@ export default function MarksEntryPage() {
   // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
   // Persisted per (school, grade, term, year, assessment) so reports auto-apply it.
   const [mergeCombined, setMergeCombined] = useState(false);
+  const allowMerge = useMemo(() => {
+    const n = parseInt(selectedGrade, 10);
+    return n >= 1 && n <= 6;
+  }, [selectedGrade]);
   useEffect(() => {
     setMergeCombined(getMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment));
   }, [schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
+  useEffect(() => {
+    if (!allowMerge && mergeCombined) {
+      setMergeCombined(false);
+      if (schoolId && selectedGrade) {
+        setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, false);
+      }
+    }
+  }, [allowMerge, mergeCombined, schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
   const handleMergeChange = (v: boolean) => {
+    if (!allowMerge) return;
     setMergeCombined(v);
     if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, v);
   };
   const subjectColumns = useMemo(
-    () => buildSubjectColumns(subjects as any[], selectedGrade, mergeCombined),
+    () => buildSubjectColumns((subjects || []) as any[], selectedGrade || '', mergeCombined) || [],
     [subjects, selectedGrade, mergeCombined]
   );
 
