@@ -582,35 +582,40 @@ export default function ConsolidatedReportsPage() {
                 {schoolAssessmentBlocks.length === 0 && (
                   <div className="text-center text-muted-foreground py-6">No data for this selection.</div>
                 )}
-                {schoolAssessmentBlocks.map(b => (
-                  <div key={`${b.grade}|${b.stream}`} className="space-y-2">
-                    <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Mean %</TableHead>
-                          <TableHead>Level</TableHead>
-                          <TableHead>Teacher</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {b.rows.map((r, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{r.subject}</TableCell>
-                            <TableCell>{r.meanPct.toFixed(1)}</TableCell>
-                            <TableCell>{r.level}</TableCell>
-                            <TableCell>{r.teacher}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="font-semibold bg-muted/40">
-                          <TableCell>Overall (Mean Pts)</TableCell>
-                          <TableCell>{b.totalPoints.toFixed(2)}</TableCell>
-                          <TableCell>{b.overallLevel}</TableCell>
-                          <TableCell />
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                {groupByBand(schoolAssessmentBlocks).map(band => (
+                  <div key={`saband-${band.order}`} className="space-y-4">
+                    <div className="bg-primary/10 px-3 py-2 rounded font-bold text-primary uppercase text-xs tracking-wide">{band.label}</div>
+                    {band.rows.map(b => (
+                      <div key={`${b.grade}|${b.stream}`} className="space-y-2">
+                        <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Subject</TableHead>
+                              <TableHead>Mean %</TableHead>
+                              <TableHead>Level</TableHead>
+                              <TableHead>Teacher</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {b.rows.map((r, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{r.subject}</TableCell>
+                                <TableCell>{r.meanPct.toFixed(1)}</TableCell>
+                                <TableCell>{r.level}</TableCell>
+                                <TableCell>{r.teacher}</TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="font-semibold bg-muted/40">
+                              <TableCell>Overall (Mean Pts)</TableCell>
+                              <TableCell>{b.totalPoints.toFixed(2)}</TableCell>
+                              <TableCell>{b.overallLevel}</TableCell>
+                              <TableCell />
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </CardContent>
