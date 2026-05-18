@@ -437,9 +437,9 @@ export default function ReportsPage() {
       };
     })
     .filter(l => l.isQualified)
-    .sort((a, b) => b.totalPoints - a.totalPoints || b.total - a.total).map((l, i, arr) => {
+    .sort((a, b) => b.total - a.total || b.totalPoints - a.totalPoints).map((l, i, arr) => {
       let rank = i + 1;
-      if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
+      if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
       return { ...l, rank };
     });
     return mapped;
