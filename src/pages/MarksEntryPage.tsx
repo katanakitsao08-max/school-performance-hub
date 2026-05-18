@@ -563,12 +563,14 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Combined Subjects</Label>
             <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
-              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} />
+              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} disabled={!allowMerge} />
               <span className="text-xs text-muted-foreground">
                 {(() => {
                   const n = parseInt(selectedGrade, 10);
                   if (n >= 1 && n <= 3) return 'Merge RE + Env + Creative';
-                  return 'Merge SS+RE & Sci+Agri';
+                  if (n >= 4 && n <= 6) return 'Merge SS+CRE & Sci+Agri';
+                  if (n >= 7) return 'No merging in Junior School';
+                  return 'Select a grade';
                 })()}
               </span>
             </div>
