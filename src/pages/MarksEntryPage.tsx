@@ -676,7 +676,7 @@ export default function MarksEntryPage() {
                           </TableHead>
                         );
                       })}
-                      <TableHead className="text-center bg-muted font-bold text-xs">Tot</TableHead>
+                      <TableHead className="text-center bg-muted font-bold text-xs min-w-[64px]">TOTAL</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Mean</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Grd</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Rnk</TableHead>
