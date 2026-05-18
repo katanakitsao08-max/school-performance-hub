@@ -532,11 +532,11 @@ export default function ConsolidatedReportsPage() {
 
           <TabsContent value="best_stream">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Best Stream Overall (By Mean Points)</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 sm:p-6">
+                <CardTitle className="text-sm sm:text-base">Best Stream Overall (By Mean Points)</CardTitle>
                 <ExportBar kind="best_stream" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-2 sm:p-6 sm:pt-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
