@@ -173,15 +173,28 @@ export default function MarksEntryPage() {
   // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
   // Persisted per (school, grade, term, year, assessment) so reports auto-apply it.
   const [mergeCombined, setMergeCombined] = useState(false);
+  const allowMerge = useMemo(() => {
+    const n = parseInt(selectedGrade, 10);
+    return n >= 1 && n <= 6;
+  }, [selectedGrade]);
   useEffect(() => {
     setMergeCombined(getMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment));
   }, [schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
+  useEffect(() => {
+    if (!allowMerge && mergeCombined) {
+      setMergeCombined(false);
+      if (schoolId && selectedGrade) {
+        setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, false);
+      }
+    }
+  }, [allowMerge, mergeCombined, schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
   const handleMergeChange = (v: boolean) => {
+    if (!allowMerge) return;
     setMergeCombined(v);
     if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, v);
   };
   const subjectColumns = useMemo(
-    () => buildSubjectColumns(subjects as any[], selectedGrade, mergeCombined),
+    () => buildSubjectColumns((subjects || []) as any[], selectedGrade || '', mergeCombined) || [],
     [subjects, selectedGrade, mergeCombined]
   );
 
@@ -550,12 +563,14 @@ export default function MarksEntryPage() {
           <div className="space-y-1">
             <Label className="text-xs">Combined Subjects</Label>
             <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
-              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} />
+              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} disabled={!allowMerge} />
               <span className="text-xs text-muted-foreground">
                 {(() => {
                   const n = parseInt(selectedGrade, 10);
                   if (n >= 1 && n <= 3) return 'Merge RE + Env + Creative';
-                  return 'Merge SS+RE & Sci+Agri';
+                  if (n >= 4 && n <= 6) return 'Merge SS+CRE & Sci+Agri';
+                  if (n >= 7) return 'No merging in Junior School';
+                  return 'Select a grade';
                 })()}
               </span>
             </div>
@@ -661,7 +676,7 @@ export default function MarksEntryPage() {
                           </TableHead>
                         );
                       })}
-                      <TableHead className="text-center bg-muted font-bold text-xs">Tot</TableHead>
+                      <TableHead className="text-center bg-muted font-bold text-xs min-w-[64px]">TOTAL</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Mean</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Grd</TableHead>
                       <TableHead className="text-center bg-muted font-bold text-xs">Rnk</TableHead>

@@ -1411,9 +1411,9 @@ export default function ReportsPage() {
                       {!isSchoolWide && selectedGrades.length === 1 && reportDisplaySubjects.map(s => (
                         <TableHead key={s.id} className="text-center">{s.name}</TableHead>
                       ))}
-                      <TableHead className="text-center">Total Pts</TableHead>
-                      <TableHead className="text-center">Mean Pts</TableHead>
-                      <TableHead className="text-center">Level</TableHead>
+                      <TableHead className="text-center font-bold bg-muted">TOTAL</TableHead>
+                      <TableHead className="text-center">Mean</TableHead>
+                      <TableHead className="text-center">Grade</TableHead>
                       <TableHead className="text-center">Rank</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1433,8 +1433,8 @@ export default function ReportsPage() {
                             </div>
                           </TableCell>
                         ))}
-                        <TableCell className="text-center font-bold">{(l as any).totalPoints ?? 0}</TableCell>
-                        <TableCell className="text-center">{((l as any).avgPoints ?? 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-center font-bold bg-muted/30">{(l as any).total ?? 0}</TableCell>
+                        <TableCell className="text-center">{((l as any).mean ?? 0).toFixed(1)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline" className={l.overallGrade !== '-' ? getGradeColor(l.overallGrade as any) : ''}>
                             {l.overallGrade}
@@ -1459,13 +1459,14 @@ export default function ReportsPage() {
                           );
                         })}
                         {(() => {
-                          const totalPtsSum = reportData.reduce((a, l: any) => a + (l.totalPoints || 0), 0);
-                          const meanTotalPts = reportData.length ? totalPtsSum / reportData.length : 0;
+                          const totalSum = reportData.reduce((a, l: any) => a + (l.total || 0), 0);
+                          const meanTotal = reportData.length ? totalSum / reportData.length : 0;
+                          const meanOfMeans = reportData.length ? reportData.reduce((a, l: any) => a + (l.mean || 0), 0) / reportData.length : 0;
                           const levelForClass = reportData.length ? meanPointsToLevel(classMean) : '-';
                           return (
                             <>
-                              <TableCell className="text-center">{reportData.length ? meanTotalPts.toFixed(1) : '-'}</TableCell>
-                              <TableCell className="text-center">{classMean.toFixed(2)}</TableCell>
+                              <TableCell className="text-center font-bold bg-muted/30">{reportData.length ? meanTotal.toFixed(1) : '-'}</TableCell>
+                              <TableCell className="text-center">{meanOfMeans.toFixed(1)}</TableCell>
                               <TableCell className="text-center">{levelForClass}</TableCell>
                               <TableCell className="text-center">—</TableCell>
                             </>
