@@ -550,8 +550,8 @@ export default function ConsolidatedReportsPage() {
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No data for this selection.</TableCell></TableRow>
                     )}
                     {groupByBand(bestStreamRows).map(band => (
-                      <>
-                        <TableRow key={`bh-${band.order}`} className="bg-primary/10">
+                      <Fragment key={`bsg-${band.order}`}>
+                        <TableRow className="bg-primary/10">
                           <TableCell colSpan={6} className="font-bold text-primary uppercase text-xs tracking-wide">{band.label}</TableCell>
                         </TableRow>
                         {band.rows.map(r => (
@@ -564,7 +564,7 @@ export default function ConsolidatedReportsPage() {
                             <TableCell>{r.level}</TableCell>
                           </TableRow>
                         ))}
-                      </>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
