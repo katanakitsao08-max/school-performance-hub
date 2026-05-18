@@ -34,7 +34,7 @@ export function BottomNav() {
             end={tab.to === "/dashboard" || tab.to === "/parent"}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[56px]",
+                "flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-xl transition-all flex-1 min-w-0",
                 isActive ? "text-primary" : "text-muted-foreground"
               )
             }
