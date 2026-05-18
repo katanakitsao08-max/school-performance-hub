@@ -1,4 +1,4 @@
-import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, CalendarCheck, Wallet, Sparkles } from "lucide-react";
+import { LayoutDashboard, GraduationCap, ClipboardList, FileText, MoreHorizontal, BarChart3, Wallet, Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,7 @@ const defaultTabs = [
   { label: "Classes", icon: GraduationCap, to: "/learners" },
   { label: "Marks", icon: ClipboardList, to: "/marks-entry" },
   { label: "Reports", icon: FileText, to: "/reports" },
+  { label: "Analytics", icon: BarChart3, to: "/analytics" },
   { label: "Menu", icon: MoreHorizontal, to: "/more" },
 ];
 
