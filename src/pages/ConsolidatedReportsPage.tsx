@@ -241,7 +241,7 @@ export default function ConsolidatedReportsPage() {
         });
       }
     });
-    rows.sort((a, b) => a.grade.localeCompare(b.grade, undefined, { numeric: true }) || a.stream.localeCompare(b.stream));
+    rows.sort(bandSort);
     return rows;
   }, [subjectStreamAgg, teacherMap]);
 
