@@ -265,7 +265,10 @@ export default function ConsolidatedReportsPage() {
       rows.push({ grade, stream, learners: v.count, meanPoints, level: meanPointsToLevel(meanPoints) });
     });
     rows.sort((a, b) => b.meanPoints - a.meanPoints);
-    return rows.map((r, i) => ({ ...r, position: i + 1 }));
+    const ranked = rows.map((r, i) => ({ ...r, position: i + 1 }));
+    // Now re-sort by band so classes appear grouped 1-3, 4-6, 7-9 (position kept)
+    ranked.sort(bandSort);
+    return ranked;
   }, [filteredLearners, learnerPoints]);
 
   // ---------------- Report 3: School Assessment Analysis (per grade+stream, per subject) ----------------
