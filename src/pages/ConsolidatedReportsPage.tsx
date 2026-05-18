@@ -429,26 +429,26 @@ export default function ConsolidatedReportsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 sm:space-y-6 animate-fade-in pb-20 md:pb-0">
         <div className="flex items-center justify-between flex-wrap gap-4 no-print">
           <div>
-            <h1 className="text-2xl font-display font-bold">Consolidated Reports</h1>
-            <p className="text-muted-foreground">Best subject, best stream and full school assessment analysis</p>
+            <h1 className="text-xl sm:text-2xl font-display font-bold">Consolidated Reports</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Best subject, best stream and full school assessment analysis</p>
           </div>
         </div>
 
-        <div className="flex gap-3 flex-wrap no-print items-end">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 no-print sm:items-end">
           <div className="space-y-1">
             <Label className="text-xs">Term</Label>
             <Select value={String(term)} onValueChange={(v) => setTerm(Number(v))}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Year</Label>
             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {[year - 1, year, year + 1].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
@@ -457,7 +457,7 @@ export default function ConsolidatedReportsPage() {
           <div className="space-y-1">
             <Label className="text-xs">Assessment</Label>
             <Select value={assessment} onValueChange={(v) => setAssessment(v as AssessmentType)}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ASSESSMENT_TYPES.map(a => <SelectItem key={a} value={a}>{ASSESSMENT_TYPE_LABELS[a]}</SelectItem>)}
               </SelectContent>
@@ -466,7 +466,7 @@ export default function ConsolidatedReportsPage() {
           <div className="space-y-1">
             <Label className="text-xs">Grade</Label>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Grades</SelectItem>
                 {dynamicGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
@@ -476,20 +476,23 @@ export default function ConsolidatedReportsPage() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as ReportKind)}>
-          <TabsList>
-            <TabsTrigger value="best_subject">Best Subject</TabsTrigger>
-            <TabsTrigger value="best_stream">Best Stream</TabsTrigger>
-            <TabsTrigger value="school_assessment">School Assessment Analysis</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-2 px-2 no-print">
+            <TabsList className="w-max">
+              <TabsTrigger value="best_subject" className="text-xs sm:text-sm">Best Subject</TabsTrigger>
+              <TabsTrigger value="best_stream" className="text-xs sm:text-sm">Best Stream</TabsTrigger>
+              <TabsTrigger value="school_assessment" className="text-xs sm:text-sm">School Analysis</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="best_subject">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Best Performed Subject (Per Class)</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 sm:p-6">
+                <CardTitle className="text-sm sm:text-base">Best Performed Subject (Per Class)</CardTitle>
                 <ExportBar kind="best_subject" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-2 sm:p-6 sm:pt-0 overflow-x-auto">
                 <Table>
+
                   <TableHeader>
                     <TableRow>
                       <TableHead>Grade</TableHead>
@@ -529,11 +532,11 @@ export default function ConsolidatedReportsPage() {
 
           <TabsContent value="best_stream">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Best Stream Overall (By Mean Points)</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 sm:p-6">
+                <CardTitle className="text-sm sm:text-base">Best Stream Overall (By Mean Points)</CardTitle>
                 <ExportBar kind="best_stream" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-2 sm:p-6 sm:pt-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -574,11 +577,11 @@ export default function ConsolidatedReportsPage() {
 
           <TabsContent value="school_assessment">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">School Assessment Analysis</CardTitle>
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 sm:p-6">
+                <CardTitle className="text-sm sm:text-base">School Assessment Analysis</CardTitle>
                 <ExportBar kind="school_assessment" />
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 p-2 sm:p-6 sm:pt-0">
                 {schoolAssessmentBlocks.length === 0 && (
                   <div className="text-center text-muted-foreground py-6">No data for this selection.</div>
                 )}
@@ -587,7 +590,8 @@ export default function ConsolidatedReportsPage() {
                     <div className="bg-primary/10 px-3 py-2 rounded font-bold text-primary uppercase text-xs tracking-wide">{band.label}</div>
                     {band.rows.map(b => (
                       <div key={`${b.grade}|${b.stream}`} className="space-y-2">
-                        <div className="font-semibold">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <div className="font-semibold text-sm sm:text-base">Grade {b.grade}{b.stream} <span className="text-muted-foreground font-normal">· {b.learners} learner{b.learners === 1 ? '' : 's'}</span></div>
+                        <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -614,6 +618,7 @@ export default function ConsolidatedReportsPage() {
                             </TableRow>
                           </TableBody>
                         </Table>
+                        </div>
                       </div>
                     ))}
                   </div>
