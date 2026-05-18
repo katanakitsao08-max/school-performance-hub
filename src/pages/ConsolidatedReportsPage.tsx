@@ -618,6 +618,7 @@ export default function ConsolidatedReportsPage() {
                             </TableRow>
                           </TableBody>
                         </Table>
+                        </div>
                       </div>
                     ))}
                   </div>
