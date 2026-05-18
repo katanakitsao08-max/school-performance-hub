@@ -437,9 +437,9 @@ export default function ReportsPage() {
       };
     })
     .filter(l => l.isQualified)
-    .sort((a, b) => b.totalPoints - a.totalPoints || b.total - a.total).map((l, i, arr) => {
+    .sort((a, b) => b.total - a.total || b.totalPoints - a.totalPoints).map((l, i, arr) => {
       let rank = i + 1;
-      if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
+      if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
       return { ...l, rank };
     });
     return mapped;
@@ -509,9 +509,9 @@ export default function ReportsPage() {
       streamGroups[key].push(l);
     });
     Object.values(streamGroups).forEach(group => {
-      group.sort((a: any, b: any) => b.totalPoints - a.totalPoints || b.total - a.total).forEach((l: any, i, arr: any[]) => {
+      group.sort((a: any, b: any) => b.total - a.total || b.totalPoints - a.totalPoints).forEach((l: any, i, arr: any[]) => {
         let rank = i + 1;
-        if (i > 0 && arr[i - 1].totalPoints === l.totalPoints) rank = arr.findIndex(x => x.totalPoints === l.totalPoints) + 1;
+        if (i > 0 && arr[i - 1].total === l.total) rank = arr.findIndex(x => x.total === l.total) + 1;
         map[l.id] = rank;
       });
     });
