@@ -45,9 +45,9 @@ export default function TeacherAssignmentsPage() {
       const { data: roles } = await supabase
         .from('user_roles')
         .select('user_id, role');
-      // Headteachers can also be assigned subjects/classes (they often teach too)
+      // Admins and Headteachers can also be assigned subjects/classes (they often teach too)
       const teacherIds = new Set(
-        (roles || []).filter(r => r.role === 'teacher' || r.role === 'headteacher').map(r => r.user_id)
+        (roles || []).filter(r => r.role === 'teacher' || r.role === 'headteacher' || r.role === 'admin').map(r => r.user_id)
       );
       return (profiles || []).filter(p => teacherIds.has(p.user_id));
     },
