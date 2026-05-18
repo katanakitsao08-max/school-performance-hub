@@ -582,12 +582,21 @@ export default function ParentLearningPathTab({ child }: Props) {
                   <Badge className={cn('text-[10px] shrink-0', bandColor(s.avg))}>{bandLabel(s.avg)}</Badge>
                 </div>
                 {s.progress && (
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <Trophy className="h-3 w-3 text-warning" /> {s.progress.lessonsCompleted} lessons
-                    <span className="mx-1">·</span>
-                    <Star className="h-3 w-3 text-amber-500" /> {s.progress.streak} streak
-                    {s.progress.badges.length > 0 && (<><span className="mx-1">·</span><Award className="h-3 w-3 text-primary" /> {s.progress.badges.length}</>)}
-                  </div>
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>Level {s.progress.level} progress</span>
+                        <span>{s.progress.xp % 100}/100 XP</span>
+                      </div>
+                      <Progress value={s.progress.xp % 100} className="h-1.5" />
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Trophy className="h-3 w-3 text-warning" /> {s.progress.lessonsCompleted} lessons
+                      <span className="mx-1">·</span>
+                      <Star className="h-3 w-3 text-amber-500" /> {s.progress.streak} streak
+                      {s.progress.badges.length > 0 && (<><span className="mx-1">·</span><Award className="h-3 w-3 text-primary" /> {s.progress.badges.length}</>)}
+                    </div>
+                  </>
                 )}
                 <Button size="sm" className="w-full" onClick={() => startAdventure(s)}>
                   {s.progress ? <><BookOpen className="h-3.5 w-3.5 mr-1" /> Continue Adventure</> : <><Brain className="h-3.5 w-3.5 mr-1" /> Start with Placement Quiz</>}
