@@ -305,9 +305,7 @@ export default function ConsolidatedReportsPage() {
       block.overallLevel = cnt ? meanPointsToLevel(block.avgPoints) : '-';
       block.rows.sort((a, b) => a.subject.localeCompare(b.subject));
     });
-    return Array.from(blocksMap.values()).sort(
-      (a, b) => a.grade.localeCompare(b.grade, undefined, { numeric: true }) || a.stream.localeCompare(b.stream),
-    );
+    return Array.from(blocksMap.values()).sort(bandSort);
   }, [subjectStreamAgg, filteredLearners, learnerPoints, teacherMap]);
 
   // ---------------- Export helpers ----------------
