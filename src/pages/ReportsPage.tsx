@@ -1459,13 +1459,14 @@ export default function ReportsPage() {
                           );
                         })}
                         {(() => {
-                          const totalPtsSum = reportData.reduce((a, l: any) => a + (l.totalPoints || 0), 0);
-                          const meanTotalPts = reportData.length ? totalPtsSum / reportData.length : 0;
+                          const totalSum = reportData.reduce((a, l: any) => a + (l.total || 0), 0);
+                          const meanTotal = reportData.length ? totalSum / reportData.length : 0;
+                          const meanOfMeans = reportData.length ? reportData.reduce((a, l: any) => a + (l.mean || 0), 0) / reportData.length : 0;
                           const levelForClass = reportData.length ? meanPointsToLevel(classMean) : '-';
                           return (
                             <>
-                              <TableCell className="text-center">{reportData.length ? meanTotalPts.toFixed(1) : '-'}</TableCell>
-                              <TableCell className="text-center">{classMean.toFixed(2)}</TableCell>
+                              <TableCell className="text-center font-bold bg-muted/30">{reportData.length ? meanTotal.toFixed(1) : '-'}</TableCell>
+                              <TableCell className="text-center">{meanOfMeans.toFixed(1)}</TableCell>
                               <TableCell className="text-center">{levelForClass}</TableCell>
                               <TableCell className="text-center">—</TableCell>
                             </>
