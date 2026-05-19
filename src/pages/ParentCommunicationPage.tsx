@@ -117,10 +117,12 @@ export default function ParentCommunicationPage() {
           })),
         },
       });
+      setLastResponse(error ? { error: error.message } : data);
       if (error) throw error;
       toast({ title: 'Sent', description: `${(data as any)?.sent ?? 0} sent, ${(data as any)?.failed ?? 0} failed` });
       setMessage('');
     } catch (e: any) {
+      setLastResponse((prev: any) => prev ?? { error: e?.message || String(e) });
       toast({ title: 'Send failed', description: e?.message || String(e), variant: 'destructive' });
     } finally { setSending(false); }
   };
