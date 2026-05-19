@@ -40,6 +40,7 @@ export default function ParentCommunicationPage() {
   const [individual, setIndividual] = useState<string>('');
   const [sending, setSending] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [lastResponse, setLastResponse] = useState<any>(null);
 
   const { data: credits } = useQuery({
     queryKey: ['school-sms-credits', schoolId],
