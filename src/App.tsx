@@ -51,6 +51,12 @@ const CurriculumLibraryPage = lazy(() => import("./pages/CurriculumLibraryPage")
 const WhatsAppPage = lazy(() => import("./pages/WhatsAppPage"));
 const ParentPortalLinkPage = lazy(() => import("./pages/ParentPortalLinkPage"));
 const ParentCommunicationPage = lazy(() => import("./pages/ParentCommunicationPage"));
+const IndependentSignup = lazy(() => import("./pages/learn/IndependentSignup"));
+const IndependentLogin = lazy(() => import("./pages/learn/IndependentLogin"));
+const IndependentSubscribe = lazy(() => import("./pages/learn/IndependentSubscribe"));
+const IndependentPending = lazy(() => import("./pages/learn/IndependentPending"));
+const LearnPortal = lazy(() => import("./pages/learn/LearnPortal"));
+const IndependentLearnersAdmin = lazy(() => import("./pages/IndependentLearnersAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -77,6 +83,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   if (allowedRoles && !role) return <PageSpinner />;
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     if (role === 'parent') return <Navigate to="/parent" replace />;
+    if (role === 'independent_learner') return <Navigate to="/learn" replace />;
     return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
   }
   return <>{children}</>;
@@ -88,6 +95,7 @@ function SmartRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
   if (role === 'parent') return <Navigate to="/parent" replace />;
+  if (role === 'independent_learner') return <Navigate to="/learn" replace />;
   return <Dashboard />;
 }
 
@@ -146,6 +154,13 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/r/:token" element={<SharedReportPage />} />
                 <Route path="/p/:token" element={<ParentPortalLinkPage />} />
+                {/* Independent Learner (Learning Portal) routes — isolated from school system */}
+                <Route path="/learn/signup" element={<IndependentSignup />} />
+                <Route path="/learn/login" element={<IndependentLogin />} />
+                <Route path="/learn/subscribe" element={<ProtectedRoute allowedRoles={['independent_learner']}><IndependentSubscribe /></ProtectedRoute>} />
+                <Route path="/learn/pending" element={<ProtectedRoute allowedRoles={['independent_learner']}><IndependentPending /></ProtectedRoute>} />
+                <Route path="/learn" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Learning Portal"><LearnPortal /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/independent-learners" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Independent Learners"><IndependentLearnersAdmin /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
