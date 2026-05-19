@@ -83,6 +83,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   if (allowedRoles && !role) return <PageSpinner />;
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     if (role === 'parent') return <Navigate to="/parent" replace />;
+    if (role === 'independent_learner') return <Navigate to="/learn" replace />;
     return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
   }
   return <>{children}</>;
