@@ -154,6 +154,13 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/r/:token" element={<SharedReportPage />} />
                 <Route path="/p/:token" element={<ParentPortalLinkPage />} />
+                {/* Independent Learner (Learning Portal) routes — isolated from school system */}
+                <Route path="/learn/signup" element={<IndependentSignup />} />
+                <Route path="/learn/login" element={<IndependentLogin />} />
+                <Route path="/learn/subscribe" element={<ProtectedRoute allowedRoles={['independent_learner']}><IndependentSubscribe /></ProtectedRoute>} />
+                <Route path="/learn/pending" element={<ProtectedRoute allowedRoles={['independent_learner']}><IndependentPending /></ProtectedRoute>} />
+                <Route path="/learn" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Learning Portal"><LearnPortal /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/independent-learners" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Independent Learners"><IndependentLearnersAdmin /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
