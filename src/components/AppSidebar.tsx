@@ -27,6 +27,7 @@ const superAdminSections: NavSection[] = [
     label: "Management",
     items: [
       { title: "Manage Schools", url: "/manage-schools", icon: Building2 },
+      { title: "Independent Learners", url: "/independent-learners", icon: GraduationCap },
       { title: "Price Board", url: "/price-board", icon: Wallet },
     ],
   },
