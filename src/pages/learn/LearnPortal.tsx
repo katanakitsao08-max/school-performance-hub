@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, LogOut, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Sparkles, LogOut, BookOpen, Flame, GraduationCap, Clock, Award,
+  ArrowRight, CheckCircle2, Menu,
+} from "lucide-react";
+import { getSubjectsForGrade } from "./subjects";
 
-/**
- * Placeholder portal shell. Phase 2 (UI redesign per uploaded inspiration)
- * will replace the inner content with subject cards, Continue Learning,
- * XP/streaks, AI tutor, etc.
- */
 export default function LearnPortal() {
   const navigate = useNavigate();
   const { user, role, loading, signOut } = useAuth();
@@ -19,6 +20,7 @@ export default function LearnPortal() {
   const [grade, setGrade] = useState("");
   const [code, setCode] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -38,48 +40,195 @@ export default function LearnPortal() {
         return;
       }
       setExpiresAt(top!.expires_at);
+      setReady(true);
     })();
   }, [loading, user, role, navigate]);
 
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const subjects = getSubjectsForGrade(grade);
+  const firstName = learnerName.split(/\s+/)[0] || "Learner";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-primary" /> Learning Portal
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Hi {learnerName} · {grade} · <span className="font-mono">{code}</span>
-            </p>
+    <div className="min-h-screen bg-[hsl(140_30%_97%)]">
+      {/* Top bar */}
+      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-border">
+        <div className="flex items-center gap-3 px-4 py-3 max-w-6xl mx-auto">
+          <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            {firstName.charAt(0)}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => signOut().then(() => navigate("/learn/login"))}>
-            <LogOut className="w-4 h-4 mr-2" /> Sign out
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-tight truncate">{learnerName} <span className="text-muted-foreground font-normal">· {grade}</span></p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Learning Portal</p>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono">{code}</Badge>
+          <Button variant="ghost" size="icon" onClick={() => signOut().then(() => navigate("/learn/login"))} aria-label="Sign out">
+            <LogOut className="w-4 h-4" />
           </Button>
         </div>
+      </header>
 
-        <Card className="border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Subscription Active</CardTitle>
-              <Badge variant="default">Active</Badge>
+      <main className="max-w-6xl mx-auto px-4 py-5 space-y-5 pb-24">
+        <Tabs defaultValue="overview" className="space-y-5">
+          <TabsList className="w-full justify-start overflow-x-auto bg-transparent border-b rounded-none h-auto p-0">
+            {[
+              { v: "overview", l: "Overview" },
+              { v: "subjects", l: "Subjects" },
+              { v: "progress", l: "My Progress" },
+              { v: "library", l: "My Library" },
+              { v: "live", l: "Live Classes" },
+            ].map(t => (
+              <TabsTrigger
+                key={t.v}
+                value={t.v}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
+              >
+                {t.l}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {/* OVERVIEW */}
+          <TabsContent value="overview" className="space-y-5 mt-0">
+            {/* Welcome card */}
+            <Card className="border-primary/15 bg-gradient-to-br from-primary/5 to-primary/10">
+              <CardContent className="p-5 flex flex-col md:flex-row md:items-center gap-4">
+                <div className="flex-1">
+                  <h1 className="text-xl md:text-2xl font-bold mb-1">
+                    Welcome back, {firstName.toUpperCase()} <span className="inline-block">👋</span>
+                  </h1>
+                  <p className="text-sm text-muted-foreground max-w-lg">
+                    Continue your learning journey with our rich, interactive and curriculum-aligned content designed for the CBC curriculum.
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
+                  <Flame className="w-7 h-7 text-orange-500" />
+                  <div>
+                    <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Learning Streak</p>
+                    <p className="text-lg font-bold">7 days</p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardContent className="px-5 pb-5 pt-0 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatTile icon={<GraduationCap className="w-4 h-4" />} label="Subjects" value={subjects.length.toString()} />
+                <StatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Lessons Completed" value="12" />
+                <StatTile icon={<Clock className="w-4 h-4" />} label="Hours Learned" value="5h 30m" />
+                <StatTile icon={<Award className="w-4 h-4" />} label="Badges Earned" value="4" />
+              </CardContent>
+            </Card>
+
+            {/* Continue Learning */}
+            <section>
+              <div className="flex items-end justify-between mb-3">
+                <div>
+                  <h2 className="text-lg font-bold">Continue Learning</h2>
+                  <p className="text-xs text-muted-foreground">Pick up where you left off in any subject.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {subjects.map(s => (
+                  <SubjectCard key={s.slug} subject={s} />
+                ))}
+              </div>
+            </section>
+
+            {/* CBC strip */}
+            <Card className="border-primary/15">
+              <CardContent className="p-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <p className="font-semibold text-sm">CBC Curriculum Aligned</p>
+                </div>
+                <p className="text-xs text-muted-foreground flex-1 min-w-[200px]">
+                  All learning content is based on the Competency-Based Curriculum (CBC) by KICD.
+                </p>
+              </CardContent>
+            </Card>
+
+            {expiresAt && (
+              <p className="text-xs text-center text-muted-foreground">
+                Subscription valid until <span className="font-semibold text-foreground">{new Date(expiresAt).toLocaleDateString()}</span>
+              </p>
+            )}
+          </TabsContent>
+
+          {/* SUBJECTS */}
+          <TabsContent value="subjects" className="mt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {subjects.map(s => <SubjectCard key={s.slug} subject={s} />)}
             </div>
-            <CardDescription>
-              {expiresAt ? `Valid until ${new Date(expiresAt).toLocaleDateString()}` : "Active"}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+          </TabsContent>
 
-        <Card>
-          <CardContent className="py-12 text-center space-y-3">
-            <BookOpen className="w-12 h-12 mx-auto text-primary/40" />
-            <h2 className="text-lg font-semibold">Your CBC learning experience is being prepared</h2>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Subject cards, AI tutor, learning streaks and interactive lessons will appear here in the next update.
-            </p>
-          </CardContent>
-        </Card>
+          <TabsContent value="progress" className="mt-0">
+            <EmptyState icon={<Award className="w-10 h-10" />} title="Progress dashboard" body="Detailed strand mastery and weekly trends are coming soon." />
+          </TabsContent>
+          <TabsContent value="library" className="mt-0">
+            <EmptyState icon={<BookOpen className="w-10 h-10" />} title="My Library" body="Saved notes, downloads and bookmarks will appear here." />
+          </TabsContent>
+          <TabsContent value="live" className="mt-0">
+            <EmptyState icon={<Menu className="w-10 h-10" />} title="Live Classes" body="Live class schedule will appear here once available." />
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}
+
+function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-white rounded-lg px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+      <div className="w-8 h-8 rounded-md bg-primary/10 text-primary flex items-center justify-center">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground leading-tight">{label}</p>
+        <p className="text-sm font-bold leading-tight">{value}</p>
       </div>
     </div>
+  );
+}
+
+function SubjectCard({ subject }: { subject: ReturnType<typeof getSubjectsForGrade>[number] }) {
+  return (
+    <Link to={`/learn/subject/${subject.slug}`} className="block group">
+      <Card className="h-full hover:shadow-md transition-shadow border-border">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className={`w-11 h-11 rounded-full ${subject.colorVar} ${subject.textVar} flex items-center justify-center text-xl shrink-0`}>
+              {subject.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className={`font-bold ${subject.textVar} leading-tight`}>{subject.name}</h3>
+              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{subject.description}</p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>{subject.progress}% Complete</span>
+            </div>
+            <Progress value={subject.progress} className="h-1.5" />
+          </div>
+          <Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-colors">
+            Continue Learning <ArrowRight className="w-3.5 h-3.5 ml-1" />
+          </Button>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-2">
+        <div className="text-primary/40 inline-flex">{icon}</div>
+        <h2 className="text-base font-semibold">{title}</h2>
+        <p className="text-xs text-muted-foreground max-w-xs mx-auto">{body}</p>
+      </CardContent>
+    </Card>
   );
 }
