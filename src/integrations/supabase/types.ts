@@ -446,6 +446,116 @@ export type Database = {
         }
         Relationships: []
       }
+      independent_learners: {
+        Row: {
+          county: string
+          created_at: string
+          full_name: string
+          grade: string
+          id: string
+          is_active: boolean
+          learner_code: string
+          parent_name: string
+          parent_phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          county: string
+          created_at?: string
+          full_name: string
+          grade: string
+          id?: string
+          is_active?: boolean
+          learner_code: string
+          parent_name: string
+          parent_phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          county?: string
+          created_at?: string
+          full_name?: string
+          grade?: string
+          id?: string
+          is_active?: boolean
+          learner_code?: string
+          parent_name?: string
+          parent_phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      independent_subscriptions: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          amount: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          learner_id: string
+          mpesa_code: string | null
+          mpesa_phone: string | null
+          notes: string | null
+          paid_to: string
+          rejection_reason: string | null
+          status: string
+          submitted_at: string
+          updated_at: string
+          user_id: string
+          weeks: number
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          amount?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          learner_id: string
+          mpesa_code?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          paid_to?: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+          weeks?: number
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          amount?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          learner_id?: string
+          mpesa_code?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          paid_to?: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+          weeks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "independent_subscriptions_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "independent_learners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       learner_face_descriptors: {
         Row: {
           descriptor: Json
@@ -2145,10 +2255,12 @@ export type Database = {
         Args: { _amount: number; _school_id: string }
         Returns: boolean
       }
+      expire_old_independent_subscriptions: { Args: never; Returns: number }
       find_system_wa_template: {
         Args: { _name: string; _school_id: string }
         Returns: string
       }
+      generate_independent_learner_code: { Args: never; Returns: string }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_school_code: { Args: never; Returns: string }
       get_school_plan_features: { Args: { _school_id: string }; Returns: Json }
@@ -2161,6 +2273,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
+      has_active_independent_subscription: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       has_active_learning_path: {
         Args: { _learner_id: string }
         Returns: boolean
@@ -2178,7 +2294,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "teacher" | "headteacher" | "super_admin" | "parent"
+      app_role:
+        | "admin"
+        | "teacher"
+        | "headteacher"
+        | "super_admin"
+        | "parent"
+        | "independent_learner"
       curriculum_source: "manual" | "ai_pdf"
       curriculum_status: "draft" | "review" | "approved" | "active" | "archived"
       whatsapp_queue_status:
@@ -2316,7 +2438,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "teacher", "headteacher", "super_admin", "parent"],
+      app_role: [
+        "admin",
+        "teacher",
+        "headteacher",
+        "super_admin",
+        "parent",
+        "independent_learner",
+      ],
       curriculum_source: ["manual", "ai_pdf"],
       curriculum_status: ["draft", "review", "approved", "active", "archived"],
       whatsapp_queue_status: [
