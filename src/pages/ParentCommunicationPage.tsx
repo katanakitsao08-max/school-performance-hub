@@ -40,6 +40,7 @@ export default function ParentCommunicationPage() {
   const [individual, setIndividual] = useState<string>('');
   const [sending, setSending] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [lastResponse, setLastResponse] = useState<any>(null);
 
   const { data: credits } = useQuery({
     queryKey: ['school-sms-credits', schoolId],
@@ -116,10 +117,12 @@ export default function ParentCommunicationPage() {
           })),
         },
       });
+      setLastResponse(error ? { error: error.message } : data);
       if (error) throw error;
       toast({ title: 'Sent', description: `${(data as any)?.sent ?? 0} sent, ${(data as any)?.failed ?? 0} failed` });
       setMessage('');
     } catch (e: any) {
+      setLastResponse((prev: any) => prev ?? { error: e?.message || String(e) });
       toast({ title: 'Send failed', description: e?.message || String(e), variant: 'destructive' });
     } finally { setSending(false); }
   };
@@ -258,6 +261,28 @@ export default function ParentCommunicationPage() {
                   {logs.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground">No logs yet</TableCell></TableRow>}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {lastResponse && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-base">Provider API Response</CardTitle>
+                <CardDescription>Raw response from Olympus SMS gateway</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setLastResponse(null)}>Clear</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 flex-wrap mb-2 text-xs">
+                {typeof lastResponse?.sent === 'number' && <Badge variant="default">Sent: {lastResponse.sent}</Badge>}
+                {typeof lastResponse?.failed === 'number' && <Badge variant={lastResponse.failed ? 'destructive' : 'secondary'}>Failed: {lastResponse.failed}</Badge>}
+                {typeof lastResponse?.segments === 'number' && <Badge variant="outline">Segments: {lastResponse.segments}</Badge>}
+              </div>
+              <pre className="bg-muted/50 rounded-md p-3 text-xs overflow-auto max-h-96 whitespace-pre-wrap break-all">
+{JSON.stringify(lastResponse, null, 2)}
+              </pre>
             </CardContent>
           </Card>
         )}

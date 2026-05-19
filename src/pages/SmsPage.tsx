@@ -46,6 +46,7 @@ export default function SmsPage() {
   const [selectedYear] = useState(new Date().getFullYear());
   const [smsMode, setSmsMode] = useState<SmsMode>('hybrid');
   const [sending, setSending] = useState(false);
+  const [lastResponse, setLastResponse] = useState<any>(null);
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
@@ -200,11 +201,13 @@ export default function SmsPage() {
       const { data, error } = await supabase.functions.invoke('send-sms-v2', {
         body: { school_id: schoolId, type: 'RESULT', messages },
       });
+      setLastResponse(error ? { error: error.message } : data);
       if (error) throw error;
       const sent = (data as any)?.sent ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast({ title: 'Result SMS dispatched', description: `${sent} sent, ${failed} failed` });
     } catch (error: any) {
+      setLastResponse((prev: any) => prev ?? { error: error?.message || String(error) });
       toast({ title: 'SMS Error', description: error?.message || 'Failed to send.', variant: 'destructive' });
     } finally {
       setSending(false);
@@ -341,6 +344,28 @@ export default function SmsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {lastResponse && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-base">Provider API Response</CardTitle>
+                <CardDescription>Raw response from Olympus SMS gateway</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setLastResponse(null)}>Clear</Button>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 flex-wrap mb-2 text-xs">
+                {typeof lastResponse?.sent === 'number' && <Badge variant="default">Sent: {lastResponse.sent}</Badge>}
+                {typeof lastResponse?.failed === 'number' && <Badge variant={lastResponse.failed ? 'destructive' : 'secondary'}>Failed: {lastResponse.failed}</Badge>}
+                {typeof lastResponse?.segments === 'number' && <Badge variant="outline">Segments: {lastResponse.segments}</Badge>}
+              </div>
+              <pre className="bg-muted/50 rounded-md p-3 text-xs overflow-auto max-h-96 whitespace-pre-wrap break-all">
+{JSON.stringify(lastResponse, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
