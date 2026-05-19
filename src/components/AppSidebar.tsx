@@ -81,6 +81,7 @@ const adminSections: NavSection[] = [
     label: "Communication",
     items: [
       { title: "SMS", url: "/sms", icon: MessageSquare },
+      { title: "SMS Logs", url: "/sms-logs", icon: MessageSquare },
       { title: "Parent Communication", url: "/parent-communication", icon: MessageSquare },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageCircle },
     ],
