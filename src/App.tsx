@@ -51,6 +51,12 @@ const CurriculumLibraryPage = lazy(() => import("./pages/CurriculumLibraryPage")
 const WhatsAppPage = lazy(() => import("./pages/WhatsAppPage"));
 const ParentPortalLinkPage = lazy(() => import("./pages/ParentPortalLinkPage"));
 const ParentCommunicationPage = lazy(() => import("./pages/ParentCommunicationPage"));
+const IndependentSignup = lazy(() => import("./pages/learn/IndependentSignup"));
+const IndependentLogin = lazy(() => import("./pages/learn/IndependentLogin"));
+const IndependentSubscribe = lazy(() => import("./pages/learn/IndependentSubscribe"));
+const IndependentPending = lazy(() => import("./pages/learn/IndependentPending"));
+const LearnPortal = lazy(() => import("./pages/learn/LearnPortal"));
+const IndependentLearnersAdmin = lazy(() => import("./pages/IndependentLearnersAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
