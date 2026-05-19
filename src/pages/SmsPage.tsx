@@ -201,11 +201,13 @@ export default function SmsPage() {
       const { data, error } = await supabase.functions.invoke('send-sms-v2', {
         body: { school_id: schoolId, type: 'RESULT', messages },
       });
+      setLastResponse(error ? { error: error.message } : data);
       if (error) throw error;
       const sent = (data as any)?.sent ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast({ title: 'Result SMS dispatched', description: `${sent} sent, ${failed} failed` });
     } catch (error: any) {
+      setLastResponse((prev: any) => prev ?? { error: error?.message || String(error) });
       toast({ title: 'SMS Error', description: error?.message || 'Failed to send.', variant: 'destructive' });
     } finally {
       setSending(false);
