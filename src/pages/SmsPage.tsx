@@ -46,6 +46,7 @@ export default function SmsPage() {
   const [selectedYear] = useState(new Date().getFullYear());
   const [smsMode, setSmsMode] = useState<SmsMode>('hybrid');
   const [sending, setSending] = useState(false);
+  const [lastResponse, setLastResponse] = useState<any>(null);
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
