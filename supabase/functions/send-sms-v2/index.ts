@@ -1,7 +1,7 @@
-// Olympus/OTS SMS sender (Bearer token auth) with per-school metering & sender ID.
+// Olympus/OTS SMS sender (Bearer token).
 // Endpoint: https://sms.ots.co.ke/api/v3/sms/send
-// Auth: Authorization: Bearer <API_TOKEN>
 // Body: { recipient, sender_id, type, message }
+// Response on success: { status: "success", data: { queue_uid, status: "accepted", ... } }
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
@@ -10,10 +10,10 @@ const corsHeaders = {
 };
 
 function formatPhone(phone: string): string {
-  let p = (phone || '').toString().trim().replace(/\s+/g, '');
-  if (p.startsWith('+')) p = p.slice(1);
-  if (p.startsWith('0')) p = '254' + p.slice(1);
-  if (p.startsWith('7') || p.startsWith('1')) p = '254' + p;
+  let p = (phone || '').toString().trim().replace(/\D/g, '');
+  if (p.startsWith('254')) return p;
+  if (p.startsWith('0')) return '254' + p.slice(1);
+  if (p.startsWith('7') || p.startsWith('1')) return '254' + p;
   return p;
 }
 
@@ -25,31 +25,28 @@ function segmentsFor(msg: string): number {
 
 interface Msg { phone: string; message: string; learner_id?: string | null; }
 
-function providerAccepted(response: Response, data: any): boolean {
-  if (!response.ok) return false;
-  if (typeof data === 'string') {
-    const t = data.toLowerCase();
-    if (t.includes('unauthenticated') || t.includes('unauthorized') || t.includes('invalid') || t.includes('error') || t.includes('fail')) return false;
-    return true;
+// Olympus v3: success when HTTP 2xx AND (top-level status == "success" OR data.status in {accepted,queued,sent}).
+function parseResult(httpOk: boolean, data: any): { ok: boolean; messageId: string | null; errorText: string | null } {
+  if (!httpOk) {
+    const msg = typeof data === 'string' ? data : (data?.message || JSON.stringify(data));
+    return { ok: false, messageId: null, errorText: String(msg).slice(0, 500) };
   }
-  const item = data?.data ?? data?.responses?.[0] ?? data?.response?.[0] ?? data;
-  const status = String(item?.status ?? data?.status ?? '').toLowerCase();
-  const description = String(item?.message ?? data?.message ?? item?.description ?? '').toLowerCase();
-  const messageId = item?.messageid ?? item?.message_id ?? item?.id ?? data?.messageid ?? data?.message_id;
+  if (typeof data === 'string') {
+    return { ok: true, messageId: null, errorText: null };
+  }
+  const topStatus = String(data?.status || '').toLowerCase();
+  const inner = data?.data || {};
+  const innerStatus = String(inner?.status || '').toLowerCase();
+  const messageId = inner?.queue_uid || inner?.messageid || inner?.message_id || inner?.id || null;
+  const errorText = data?.message || inner?.message || null;
 
-  // Hard-fail on any explicit error indicators (status field OR message text)
-  if (status === 'error' || status === 'failed' || status === 'rejected') return false;
-  if (description.includes('unauthenticated') || description.includes('unauthorized') ||
-      description.includes('invalid') || description.includes('fail') ||
-      description.includes('error') || description.includes('insufficient') ||
-      description.includes('rejected') || description.includes('blocked')) return false;
-
-  // Explicit success
-  if (status === 'success' || status === 'ok' || status === 'sent' || status === 'queued' || status === 'submitted') return true;
-  if (messageId) return true;
-
-  // Ambiguous 2xx with no clear signal → treat as failure (safer)
-  return false;
+  if (topStatus === 'error' || topStatus === 'failed') {
+    return { ok: false, messageId: null, errorText: String(errorText || JSON.stringify(data)).slice(0, 500) };
+  }
+  if (topStatus === 'success' || ['accepted', 'queued', 'sent', 'submitted', 'ok', 'success'].includes(innerStatus) || messageId) {
+    return { ok: true, messageId, errorText: null };
+  }
+  return { ok: false, messageId: null, errorText: String(errorText || JSON.stringify(data)).slice(0, 500) };
 }
 
 Deno.serve(async (req) => {
@@ -80,31 +77,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Prefer active per-school config; otherwise fall back to global.
     const { data: schoolCfg } = await supabase.from('school_sms_config')
       .select('*').eq('school_id', school_id).eq('is_active', true).maybeSingle();
     const { data: globalCfg } = await supabase.from('global_sms_config')
       .select('*').eq('is_active', true).maybeSingle();
 
-    const cfg = schoolCfg || globalCfg;
+    const cfg: any = schoolCfg || globalCfg;
     const usedFallback = !schoolCfg && !!globalCfg;
     if (!cfg) {
-      return new Response(JSON.stringify({ error: 'No active SMS configuration' }), {
+      return new Response(JSON.stringify({ error: 'No active SMS configuration. Ask Super Admin to configure SMS.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const apiToken = (cfg as any).api_key || Deno.env.get('OTS_API_KEY') || '';
-    const senderId = ((schoolCfg as any)?.sender_id || (globalCfg as any)?.sender_id || 'PROCALL')
-      .toString().trim().slice(0, 11);
-    const endpoint = ((cfg as any).endpoint || 'https://sms.ots.co.ke/api/v3/sms/send').trim();
-    const msgType: string = ((cfg as any).body_template?.type) || 'plain';
+    const apiToken: string = (cfg.api_key || Deno.env.get('OTS_API_KEY') || '').trim();
+    const senderId: string = (cfg.sender_id || 'PROCALL').toString().trim().slice(0, 11);
+    const endpoint: string = (cfg.endpoint || 'https://sms.ots.co.ke/api/v3/sms/send').trim();
+    const msgType: string = (cfg.body_template?.type) || 'plain';
 
     if (!apiToken) {
-      return new Response(JSON.stringify({ error: 'Olympus API token missing' }), {
+      return new Response(JSON.stringify({ error: 'SMS API token not configured' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Meter credits
     const totalSegments = messages.reduce((s, m) => s + segmentsFor(m.message), 0);
     const { data: deductOk } = await supabase.rpc('deduct_sms_credits', {
       _school_id: school_id, _amount: totalSegments,
@@ -118,57 +116,48 @@ Deno.serve(async (req) => {
     const results: any[] = [];
     let sent = 0, failed = 0;
 
+    const send = async (m: Msg) => {
+      const phone = formatPhone(m.phone);
+      const payload = { recipient: phone, sender_id: senderId, type: msgType, message: m.message };
+      let httpOk = false, data: any = null;
+      try {
+        const r = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        httpOk = r.ok;
+        try { data = await r.json(); } catch { data = await r.text(); }
+      } catch (e) {
+        data = String(e);
+      }
+      const parsed = parseResult(httpOk, data);
+      await supabase.from('sms_logs').insert({
+        school_id, recipient: phone, message: m.message, sender_id: senderId,
+        provider: 'olympus_teleserve',
+        status: parsed.ok ? 'sent' : 'failed',
+        provider_message_id: parsed.messageId,
+        error: parsed.ok ? null : parsed.errorText,
+        segments: segmentsFor(m.message),
+        sent_by: userId,
+        used_global_fallback: usedFallback,
+      });
+      return { phone, ok: parsed.ok, messageId: parsed.messageId, error: parsed.errorText, response: data };
+    };
+
+    // Send in parallel batches of 10
     const BATCH = 10;
     for (let i = 0; i < messages.length; i += BATCH) {
-      const chunk = messages.slice(i, i + BATCH);
-      const settled = await Promise.all(chunk.map(async (m) => {
-        const phone = formatPhone(m.phone);
-        const payload = {
-          recipient: phone,
-          sender_id: senderId,
-          type: msgType,
-          message: m.message,
-        };
-        try {
-          const r = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${apiToken.trim()}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          });
-          let data: any = null;
-          try { data = await r.json(); } catch { data = await r.text(); }
-          const ok = providerAccepted(r, data);
-          const item = data?.data ?? data?.responses?.[0] ?? data?.response?.[0] ?? data;
-          await supabase.from('sms_logs').insert({
-            school_id, recipient: phone, message: m.message, sender_id: senderId,
-            provider: 'olympus_teleserve',
-            status: ok ? 'sent' : 'failed',
-            provider_message_id: item?.messageid || item?.message_id || item?.id || null,
-            error: ok ? null : (typeof data === 'string' ? data.slice(0, 500) : JSON.stringify(data).slice(0, 500)),
-            segments: segmentsFor(m.message),
-            sent_by: userId,
-            used_global_fallback: usedFallback,
-          });
-          return { phone, ok, data };
-        } catch (e) {
-          await supabase.from('sms_logs').insert({
-            school_id, recipient: phone, message: m.message, sender_id: senderId,
-            provider: 'olympus_teleserve', status: 'failed',
-            error: String(e).slice(0, 500), segments: segmentsFor(m.message),
-            sent_by: userId, used_global_fallback: usedFallback,
-          });
-          return { phone, ok: false, error: String(e) };
-        }
-      }));
+      const settled = await Promise.all(messages.slice(i, i + BATCH).map(send));
       for (const r of settled) { r.ok ? sent++ : failed++; results.push(r); }
     }
 
-    // Refund credits for failed segments (provider didn't accept) so school isn't billed
-    const failedSegments = results.reduce((s: number, r: any, i: number) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
+    // Refund credits for failed segments
+    const failedSegments = results.reduce((s, r, i) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
     if (failedSegments > 0) {
       const { data: cur } = await supabase.from('school_sms_credits')
         .select('balance, used').eq('school_id', school_id).maybeSingle();
@@ -179,9 +168,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, sent, failed, segments: totalSegments, results }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({
+      success: true, sent, failed, segments: totalSegments,
+      provider: 'olympus_teleserve', used_global_fallback: usedFallback,
+      results,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
