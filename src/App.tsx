@@ -28,6 +28,7 @@ const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const ConsolidatedReportsPage = lazy(() => import("./pages/ConsolidatedReportsPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const SmsPage = lazy(() => import("./pages/SmsPage"));
+const SmsLogsPage = lazy(() => import("./pages/SmsLogsPage"));
 const PromotionPage = lazy(() => import("./pages/PromotionPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const AttendancePage = lazy(() => import("./pages/AttendancePage"));
@@ -169,6 +170,7 @@ const App = () => (
                 <Route path="/consolidated-reports" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Consolidated Reports"><ConsolidatedReportsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><AnalyticsPage /></ProtectedRoute>} />
                 <Route path="/sms" element={<ProtectedRoute allowedRoles={['admin']}><SmsPage /></ProtectedRoute>} />
+                <Route path="/sms-logs" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'super_admin']}><ErrorBoundary inline label="SMS Logs"><SmsLogsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/parent-communication" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Parent Communication"><ParentCommunicationPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="WhatsApp"><WhatsAppPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/promotion" element={<ProtectedRoute allowedRoles={['admin']}><PromotionPage /></ProtectedRoute>} />
