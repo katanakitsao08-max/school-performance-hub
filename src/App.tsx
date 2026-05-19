@@ -94,6 +94,7 @@ function SmartRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
   if (role === 'parent') return <Navigate to="/parent" replace />;
+  if (role === 'independent_learner') return <Navigate to="/learn" replace />;
   return <Dashboard />;
 }
 
