@@ -12,6 +12,7 @@ import {
   ArrowRight, CheckCircle2, Menu,
 } from "lucide-react";
 import { getSubjectsForGrade } from "./subjects";
+import { getLessonsForSubject } from "./content";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
@@ -21,6 +22,8 @@ export default function LearnPortal() {
   const [code, setCode] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [progress, setProgress] = useState<Record<string, number>>({});
+  const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
     if (loading) return;
@@ -28,9 +31,10 @@ export default function LearnPortal() {
     if (role !== "independent_learner") { navigate("/", { replace: true }); return; }
     (async () => {
       await supabase.rpc("expire_old_independent_subscriptions");
-      const [{ data: l }, { data: s }] = await Promise.all([
+      const [{ data: l }, { data: s }, { data: prog }] = await Promise.all([
         supabase.from("independent_learners").select("full_name, grade, learner_code").eq("user_id", user.id).maybeSingle(),
         supabase.from("independent_subscriptions").select("status, expires_at").eq("user_id", user.id).order("submitted_at", { ascending: false }).limit(1),
+        supabase.from("learner_lesson_progress").select("subject_slug, status, seconds_spent").eq("user_id", user.id),
       ]);
       if (l) { setLearnerName(l.full_name); setGrade(l.grade); setCode(l.learner_code); }
       const top = s?.[0];
@@ -40,6 +44,17 @@ export default function LearnPortal() {
         return;
       }
       setExpiresAt(top!.expires_at);
+      const counts: Record<string, number> = {};
+      let completed = 0, seconds = 0;
+      for (const p of prog || []) {
+        seconds += p.seconds_spent || 0;
+        if (p.status === "completed") {
+          completed++;
+          counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
+        }
+      }
+      setProgress(counts);
+      setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
   }, [loading, user, role, navigate]);
@@ -117,9 +132,9 @@ export default function LearnPortal() {
               </CardContent>
               <CardContent className="px-5 pb-5 pt-0 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatTile icon={<GraduationCap className="w-4 h-4" />} label="Subjects" value={subjects.length.toString()} />
-                <StatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Lessons Completed" value="12" />
-                <StatTile icon={<Clock className="w-4 h-4" />} label="Hours Learned" value="5h 30m" />
-                <StatTile icon={<Award className="w-4 h-4" />} label="Badges Earned" value="4" />
+                <StatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Lessons Completed" value={totals.completed.toString()} />
+                <StatTile icon={<Clock className="w-4 h-4" />} label="Time Learned" value={`${Math.floor(totals.minutes / 60)}h ${totals.minutes % 60}m`} />
+                <StatTile icon={<Award className="w-4 h-4" />} label="Badges Earned" value={Math.floor(totals.completed / 5).toString()} />
               </CardContent>
             </Card>
 
@@ -133,7 +148,7 @@ export default function LearnPortal() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {subjects.map(s => (
-                  <SubjectCard key={s.slug} subject={s} />
+                  <SubjectCard key={s.slug} subject={s} done={progress[s.slug] || 0} total={getLessonsForSubject(s.slug, grade).length} />
                 ))}
               </div>
             </section>
@@ -161,7 +176,7 @@ export default function LearnPortal() {
           {/* SUBJECTS */}
           <TabsContent value="subjects" className="mt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {subjects.map(s => <SubjectCard key={s.slug} subject={s} />)}
+              {subjects.map(s => <SubjectCard key={s.slug} subject={s} done={progress[s.slug] || 0} total={getLessonsForSubject(s.slug, grade).length} />)}
             </div>
           </TabsContent>
 
@@ -192,7 +207,11 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function SubjectCard({ subject }: { subject: ReturnType<typeof getSubjectsForGrade>[number] }) {
+function SubjectCard({ subject, done, total }: {
+  subject: ReturnType<typeof getSubjectsForGrade>[number];
+  done: number; total: number;
+}) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
     <Link to={`/learn/subject/${subject.slug}`} className="block group">
       <Card className="h-full hover:shadow-md transition-shadow border-border">
@@ -208,12 +227,13 @@ function SubjectCard({ subject }: { subject: ReturnType<typeof getSubjectsForGra
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>{subject.progress}% Complete</span>
+              <span>{done} / {total} lessons</span>
+              <span>{pct}%</span>
             </div>
-            <Progress value={subject.progress} className="h-1.5" />
+            <Progress value={pct} className="h-1.5" />
           </div>
           <Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-colors">
-            Continue Learning <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            {done === 0 ? "Start Learning" : done >= total ? "Review" : "Continue Learning"} <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </CardContent>
       </Card>

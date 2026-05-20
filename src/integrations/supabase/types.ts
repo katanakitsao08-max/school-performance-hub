@@ -586,6 +586,45 @@ export type Database = {
         }
         Relationships: []
       }
+      learner_lesson_progress: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          quiz_score: number | null
+          quiz_total: number | null
+          seconds_spent: number
+          status: string
+          subject_slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          quiz_score?: number | null
+          quiz_total?: number | null
+          seconds_spent?: number
+          status?: string
+          subject_slug: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          quiz_score?: number | null
+          quiz_total?: number | null
+          seconds_spent?: number
+          status?: string
+          subject_slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       learners: {
         Row: {
           academic_year: number
