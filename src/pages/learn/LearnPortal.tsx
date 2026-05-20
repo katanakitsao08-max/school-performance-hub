@@ -132,9 +132,9 @@ export default function LearnPortal() {
               </CardContent>
               <CardContent className="px-5 pb-5 pt-0 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatTile icon={<GraduationCap className="w-4 h-4" />} label="Subjects" value={subjects.length.toString()} />
-                <StatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Lessons Completed" value="12" />
-                <StatTile icon={<Clock className="w-4 h-4" />} label="Hours Learned" value="5h 30m" />
-                <StatTile icon={<Award className="w-4 h-4" />} label="Badges Earned" value="4" />
+                <StatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Lessons Completed" value={totals.completed.toString()} />
+                <StatTile icon={<Clock className="w-4 h-4" />} label="Time Learned" value={`${Math.floor(totals.minutes / 60)}h ${totals.minutes % 60}m`} />
+                <StatTile icon={<Award className="w-4 h-4" />} label="Badges Earned" value={Math.floor(totals.completed / 5).toString()} />
               </CardContent>
             </Card>
 
@@ -148,7 +148,7 @@ export default function LearnPortal() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {subjects.map(s => (
-                  <SubjectCard key={s.slug} subject={s} />
+                  <SubjectCard key={s.slug} subject={s} done={progress[s.slug] || 0} total={getLessonsForSubject(s.slug, grade).length} />
                 ))}
               </div>
             </section>
@@ -176,7 +176,7 @@ export default function LearnPortal() {
           {/* SUBJECTS */}
           <TabsContent value="subjects" className="mt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {subjects.map(s => <SubjectCard key={s.slug} subject={s} />)}
+              {subjects.map(s => <SubjectCard key={s.slug} subject={s} done={progress[s.slug] || 0} total={getLessonsForSubject(s.slug, grade).length} />)}
             </div>
           </TabsContent>
 
