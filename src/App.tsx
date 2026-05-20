@@ -57,6 +57,7 @@ const IndependentSubscribe = lazy(() => import("./pages/learn/IndependentSubscri
 const IndependentPending = lazy(() => import("./pages/learn/IndependentPending"));
 const LearnPortal = lazy(() => import("./pages/learn/LearnPortal"));
 const SubjectDetail = lazy(() => import("./pages/learn/SubjectDetail"));
+const LessonPlayer = lazy(() => import("./pages/learn/LessonPlayer"));
 const IndependentLearnersAdmin = lazy(() => import("./pages/IndependentLearnersAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -162,6 +163,7 @@ const App = () => (
                 <Route path="/learn/pending" element={<ProtectedRoute allowedRoles={['independent_learner']}><IndependentPending /></ProtectedRoute>} />
                 <Route path="/learn" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Learning Portal"><LearnPortal /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/learn/subject/:slug" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Subject"><SubjectDetail /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/learn/subject/:slug/lesson/:lessonId" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Lesson"><LessonPlayer /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/independent-learners" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Independent Learners"><IndependentLearnersAdmin /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
