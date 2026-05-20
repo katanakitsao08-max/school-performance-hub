@@ -207,7 +207,11 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function SubjectCard({ subject }: { subject: ReturnType<typeof getSubjectsForGrade>[number] }) {
+function SubjectCard({ subject, done, total }: {
+  subject: ReturnType<typeof getSubjectsForGrade>[number];
+  done: number; total: number;
+}) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
     <Link to={`/learn/subject/${subject.slug}`} className="block group">
       <Card className="h-full hover:shadow-md transition-shadow border-border">
@@ -223,12 +227,13 @@ function SubjectCard({ subject }: { subject: ReturnType<typeof getSubjectsForGra
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>{subject.progress}% Complete</span>
+              <span>{done} / {total} lessons</span>
+              <span>{pct}%</span>
             </div>
-            <Progress value={subject.progress} className="h-1.5" />
+            <Progress value={pct} className="h-1.5" />
           </div>
           <Button variant="outline" size="sm" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-colors">
-            Continue Learning <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            {done === 0 ? "Start Learning" : done >= total ? "Review" : "Continue Learning"} <ArrowRight className="w-3.5 h-3.5 ml-1" />
           </Button>
         </CardContent>
       </Card>
