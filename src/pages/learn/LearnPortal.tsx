@@ -12,6 +12,7 @@ import {
   ArrowRight, CheckCircle2, Menu,
 } from "lucide-react";
 import { getSubjectsForGrade } from "./subjects";
+import { getLessonsForSubject } from "./content";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
@@ -21,6 +22,8 @@ export default function LearnPortal() {
   const [code, setCode] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [progress, setProgress] = useState<Record<string, number>>({});
+  const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
     if (loading) return;
@@ -28,9 +31,10 @@ export default function LearnPortal() {
     if (role !== "independent_learner") { navigate("/", { replace: true }); return; }
     (async () => {
       await supabase.rpc("expire_old_independent_subscriptions");
-      const [{ data: l }, { data: s }] = await Promise.all([
+      const [{ data: l }, { data: s }, { data: prog }] = await Promise.all([
         supabase.from("independent_learners").select("full_name, grade, learner_code").eq("user_id", user.id).maybeSingle(),
         supabase.from("independent_subscriptions").select("status, expires_at").eq("user_id", user.id).order("submitted_at", { ascending: false }).limit(1),
+        supabase.from("learner_lesson_progress").select("subject_slug, status, seconds_spent").eq("user_id", user.id),
       ]);
       if (l) { setLearnerName(l.full_name); setGrade(l.grade); setCode(l.learner_code); }
       const top = s?.[0];
@@ -40,6 +44,17 @@ export default function LearnPortal() {
         return;
       }
       setExpiresAt(top!.expires_at);
+      const counts: Record<string, number> = {};
+      let completed = 0, seconds = 0;
+      for (const p of prog || []) {
+        seconds += p.seconds_spent || 0;
+        if (p.status === "completed") {
+          completed++;
+          counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
+        }
+      }
+      setProgress(counts);
+      setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
   }, [loading, user, role, navigate]);
