@@ -47,15 +47,20 @@ export default function LearnPortal() {
       }
       setExpiresAt(top!.expires_at);
       const counts: Record<string, number> = {};
+      const bySubject: Record<string, { done: number; seconds: number }> = {};
       let completed = 0, seconds = 0;
       for (const p of prog || []) {
         seconds += p.seconds_spent || 0;
+        const slot = (bySubject[p.subject_slug] ||= { done: 0, seconds: 0 });
+        slot.seconds += p.seconds_spent || 0;
         if (p.status === "completed") {
           completed++;
+          slot.done++;
           counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
         }
       }
       setProgress(counts);
+      setPerSubject(bySubject);
       setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
