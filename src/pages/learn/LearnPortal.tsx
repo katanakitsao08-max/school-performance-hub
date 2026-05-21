@@ -24,6 +24,7 @@ export default function LearnPortal() {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [perSubject, setPerSubject] = useState<Record<string, { done: number; seconds: number }>>({});
   const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
