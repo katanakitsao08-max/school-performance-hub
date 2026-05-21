@@ -269,7 +269,9 @@ function tier(grade: string): "kpsea" | "kjsea" {
 export function getLessonsForSubject(slug: SubjectSlug, grade: string): Lesson[] {
   const t = tier(grade);
   const all = LESSONS[slug] || [];
-  return all.filter(l => l.tier === "all" || l.tier === t);
+  const matched = all.filter(l => l.tier === "all" || l.tier === t);
+  // Safety net: if no lessons match this tier, surface every lesson so the subject is never empty.
+  return matched.length > 0 ? matched : all;
 }
 
 export function getLesson(slug: SubjectSlug, id: string): Lesson | undefined {
