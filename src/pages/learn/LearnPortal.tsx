@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getSubjectsForGrade } from "./subjects";
 import { getLessonsForSubject } from "./content";
+import ProgressCharts, { buildProgressRows } from "./ProgressCharts";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
