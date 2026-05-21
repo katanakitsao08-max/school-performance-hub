@@ -77,14 +77,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Prefer active per-school config; otherwise fall back to global.
-    const { data: schoolCfg } = await supabase.from('school_sms_config')
-      .select('*').eq('school_id', school_id).eq('is_active', true).maybeSingle();
+    // Prefer the global PROCALL config (primary sender). Fall back to per-school config only if no global is active.
     const { data: globalCfg } = await supabase.from('global_sms_config')
       .select('*').eq('is_active', true).maybeSingle();
+    const { data: schoolCfg } = await supabase.from('school_sms_config')
+      .select('*').eq('school_id', school_id).eq('is_active', true).maybeSingle();
 
-    const cfg: any = schoolCfg || globalCfg;
-    const usedFallback = !schoolCfg && !!globalCfg;
+    const cfg: any = globalCfg || schoolCfg;
+    // Flag is true whenever the global (primary) sender was used, so logs stay consistent with prior data.
+    const usedFallback = !!globalCfg;
     if (!cfg) {
       return new Response(JSON.stringify({ error: 'No active SMS configuration. Ask Super Admin to configure SMS.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
