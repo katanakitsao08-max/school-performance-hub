@@ -188,7 +188,7 @@ export default function LearnPortal() {
           </TabsContent>
 
           <TabsContent value="progress" className="mt-0">
-            <EmptyState icon={<Award className="w-10 h-10" />} title="Progress dashboard" body="Detailed strand mastery and weekly trends are coming soon." />
+            <ProgressCharts rows={buildProgressRows(subjects, grade, perSubject)} />
           </TabsContent>
           <TabsContent value="library" className="mt-0">
             <EmptyState icon={<BookOpen className="w-10 h-10" />} title="My Library" body="Saved notes, downloads and bookmarks will appear here." />
