@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getSubjectsForGrade } from "./subjects";
 import { getLessonsForSubject } from "./content";
+import ProgressCharts, { buildProgressRows } from "./ProgressCharts";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function LearnPortal() {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [perSubject, setPerSubject] = useState<Record<string, { done: number; seconds: number }>>({});
   const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
@@ -45,15 +47,20 @@ export default function LearnPortal() {
       }
       setExpiresAt(top!.expires_at);
       const counts: Record<string, number> = {};
+      const bySubject: Record<string, { done: number; seconds: number }> = {};
       let completed = 0, seconds = 0;
       for (const p of prog || []) {
         seconds += p.seconds_spent || 0;
+        const slot = (bySubject[p.subject_slug] ||= { done: 0, seconds: 0 });
+        slot.seconds += p.seconds_spent || 0;
         if (p.status === "completed") {
           completed++;
+          slot.done++;
           counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
         }
       }
       setProgress(counts);
+      setPerSubject(bySubject);
       setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
@@ -181,7 +188,7 @@ export default function LearnPortal() {
           </TabsContent>
 
           <TabsContent value="progress" className="mt-0">
-            <EmptyState icon={<Award className="w-10 h-10" />} title="Progress dashboard" body="Detailed strand mastery and weekly trends are coming soon." />
+            <ProgressCharts rows={buildProgressRows(subjects, grade, perSubject)} />
           </TabsContent>
           <TabsContent value="library" className="mt-0">
             <EmptyState icon={<BookOpen className="w-10 h-10" />} title="My Library" body="Saved notes, downloads and bookmarks will appear here." />
