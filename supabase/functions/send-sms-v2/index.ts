@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     }
 
     const apiToken: string = (cfg.api_key || Deno.env.get('OTS_API_KEY') || '').trim();
-    const senderId: string = (cfg.sender_id || 'PROCALL').toString().trim().slice(0, 11);
+    const senderId: string = ((cfg.sender_id || '').toString().trim() || 'PROCALL').slice(0, 11);
     const endpoint: string = (cfg.endpoint || 'https://sms.ots.co.ke/api/v3/sms/send').trim();
     const msgType: string = (cfg.body_template?.type) || 'plain';
 
