@@ -264,7 +264,24 @@ Write a step-by-step CBC teaching guide in Markdown with:
 
     if (!r.ok) {
       const t = await r.text();
-      return jsonResponse({ error: 'AI request failed', detail: t }, r.status);
+      console.error('AI gateway error', r.status, t);
+      // Return 200 with a friendly error so supabase.functions.invoke doesn't
+      // wrap it as a generic non-2xx FunctionsHttpError on the client.
+      if (r.status === 402) {
+        return jsonResponse({
+          error: 'AI credits exhausted. Please add credits in Lovable Cloud (Settings → Workspace → Usage) and try again.',
+          code: 'payment_required',
+          fallback: true,
+        });
+      }
+      if (r.status === 429) {
+        return jsonResponse({
+          error: 'The AI tutor is busy right now. Please try again in a moment.',
+          code: 'rate_limited',
+          fallback: true,
+        });
+      }
+      return jsonResponse({ error: 'AI request failed', detail: t, fallback: true });
     }
     const data = await r.json();
     const content = data?.choices?.[0]?.message?.content || '';

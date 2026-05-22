@@ -267,6 +267,10 @@ export default function ParentLearningPathTab({ child }: Props) {
       },
     });
     if (error) throw error;
+    // Edge function returns 200 with { error, fallback } when AI is unavailable.
+    if (data && (data as any).error) {
+      throw new Error((data as any).error);
+    }
     return data;
   };
 
