@@ -1,4 +1,11 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+// Deterministic CBC / KICD-grounded lesson-notes builder.
+// NO external AI is called. Output mirrors the shape the UI expects so
+// `NotesGenerator.tsx` and the bulk PDF flow keep working unchanged.
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 interface KicdContext {
   strand?: string;
@@ -23,6 +30,273 @@ interface NotesRequest {
   mainContentOnly?: boolean;
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const upper = (s: string) => (s || '').toUpperCase();
+const uniq = <T,>(a: T[]) => Array.from(new Set(a));
+const take = <T,>(a: T[] | undefined, n: number, fallback: T[] = []) =>
+  (a && a.length ? a : fallback).slice(0, n);
+
+function objectivesFromSlos(slos: string[] | undefined, topic: string): string[] {
+  const base = (slos && slos.length ? slos : [
+    `understand the meaning and importance of ${topic}`,
+    `identify key features of ${topic}`,
+    `apply ${topic} in real life situations`,
+    `demonstrate the values learned from ${topic}`,
+  ]).slice(0, 5);
+  return base.map((s) => {
+    const cleaned = s.replace(/^the learner should be able to\s*/i, '').trim();
+    return `By the end of the lesson, the learner should be able to ${cleaned.replace(/\.$/, '')}.`;
+  });
+}
+
+function buildVocabulary(topic: string, strand?: string): { term: string; meaning: string }[] {
+  const t = topic.toLowerCase();
+  return [
+    { term: cap(topic), meaning: `the main idea studied in this lesson under ${strand || 'this strand'}.` },
+    { term: 'Strand', meaning: 'a broad area of learning in the CBC syllabus.' },
+    { term: 'Sub-strand', meaning: 'a smaller, specific topic inside a strand.' },
+    { term: 'Competency', meaning: 'the ability to use knowledge and skills in real life.' },
+    { term: 'Activity', meaning: 'a task the learner does to practise what is being learned.' },
+    { term: 'Resource', meaning: `a material used during the lesson to learn about ${t}.` },
+    { term: 'Value', meaning: 'a good attitude or behaviour developed during learning.' },
+    { term: 'Assessment', meaning: 'how the teacher checks that learning has happened.' },
+  ];
+}
+
+function buildIntroduction(grade: string, subject: string, topic: string, kicd?: KicdContext | null): string {
+  const inq = kicd?.inquiryQuestions?.[0];
+  const hook = inq ? ` Have you ever wondered: ${inq}?` : '';
+  return `Karibu (welcome) to today's ${subject} lesson for ${grade}. In this lesson we are going to learn about ${topic}.${hook} Together we shall explore what it means, look at clear examples from our day-to-day life in Kenya, and practise using it through fun activities. By the end you will be able to explain ${topic} in your own words and use it confidently.`;
+}
+
+function tickLines(items: string[]): string {
+  return items.map((i) => `✓ ${i}`).join('\n');
+}
+function dashLines(items: string[]): string {
+  return items.map((i) => `- ${i}`).join('\n');
+}
+
+function buildMainContent(grade: string, subject: string, topic: string, kicd?: KicdContext | null, difficulty: 'basic' | 'standard' | 'advanced' = 'standard'): string {
+  const strand = kicd?.strand || subject;
+  const subStrand = kicd?.subStrand || topic;
+  const slos = kicd?.slos || [];
+  const activities = kicd?.activities || [];
+  const resources = kicd?.resources || [];
+  const values = kicd?.values || [];
+  const competencies = kicd?.competencies || [];
+  const pcis = kicd?.pcis || [];
+
+  const intensifier = difficulty === 'advanced'
+    ? 'We shall go a step deeper and look at how this connects to harder, real-world problems.'
+    : difficulty === 'basic'
+    ? 'We will keep things simple and use small, easy examples first.'
+    : 'We shall move at a steady pace, with everyday examples you can relate to.';
+
+  const meaning =
+`${upper(subStrand)}
+
+Introduction to ${subStrand}
+${subStrand} — is an important sub-strand under the ${strand} strand of ${subject}. ${intensifier}
+
+Key ideas
+${tickLines([
+  `${subStrand} helps us understand part of our world.`,
+  `It is studied as part of the ${strand} strand.`,
+  `It connects to other topics already covered in ${grade}.`,
+  `It is useful in our daily life at home and in school.`,
+])}`;
+
+  const characteristics =
+`CHARACTERISTICS OF ${upper(subStrand)}
+
+Main features
+${tickLines((slos.length ? slos : [
+  `it has clear ideas that can be explained`,
+  `it can be observed or practised`,
+  `it follows a step-by-step pattern`,
+  `it links knowledge with skills and values`,
+]).slice(0, 6).map(s => s.replace(/\.$/, '')))}`;
+
+  const importance =
+`IMPORTANCE OF ${upper(subStrand)}
+
+Why we learn it
+${tickLines([
+  `It builds knowledge and skills needed in ${subject}.`,
+  `It develops the core competencies of communication, critical thinking and problem solving.`,
+  `It links learning to real-life experiences in Kenya.`,
+  `It prepares us for the next grade and for assessments such as KPSEA/KJSEA.`,
+])}`;
+
+  const activitiesBlock =
+`CLASSROOM ACTIVITIES
+
+What we shall do in class
+${dashLines((activities.length ? activities : [
+  `Listen as the teacher introduces ${subStrand} using simple examples.`,
+  `Discuss in pairs what you already know about ${subStrand}.`,
+  `Carry out a short practical task with locally available materials.`,
+  `Share findings with the rest of the class.`,
+  `Write a short summary in your exercise book.`,
+]).slice(0, 8))}`;
+
+  const safety = /chemistry|electric|fire|sharp|tool|machine|acid|poison|drug|disease/i.test(`${subject} ${subStrand}`)
+    ? `\n\nSafety precautions
+${dashLines([
+  'Wear protective clothing where necessary.',
+  'Listen carefully to instructions before starting.',
+  'Wash your hands after the activity.',
+  'Report any problem to the teacher immediately.',
+])}`
+    : '';
+
+  const resourcesBlock = resources.length
+    ? `\n\nRESOURCES WE SHALL USE
+${tickLines(resources.slice(0, 8))}`
+    : '';
+
+  const valuesBlock = (values.length || competencies.length)
+    ? `\n\nVALUES AND COMPETENCIES
+${tickLines([
+  ...competencies.slice(0, 4).map(c => `Competency: ${c}`),
+  ...values.slice(0, 4).map(v => `Value: ${v}`),
+])}`
+    : '';
+
+  const pciBlock = pcis.length
+    ? `\n\nPERTINENT & CONTEMPORARY ISSUES (PCIs)
+${tickLines(pcis.slice(0, 6))}`
+    : '';
+
+  const closing =
+`MAKING SENSE OF ${upper(subStrand)}
+
+Putting it together
+${subStrand} is not just something we read in a book. We see it around us — at home in ${['Nairobi', 'Mombasa', 'Kisumu', 'Eldoret', 'Nakuru'][topic.length % 5]}, on the way to school, in the matatu, at the shop and on the farm. When we learn it well, we are able to use it to make better choices and to help others.
+
+Quick recap
+${tickLines([
+  `${subStrand} is part of the ${strand} strand.`,
+  `We learn it through listening, doing and sharing.`,
+  `It helps us in school and in real life.`,
+  `It nurtures values such as responsibility, respect and unity.`,
+])}`;
+
+  return [meaning, characteristics, importance, activitiesBlock + safety, resourcesBlock + valuesBlock + pciBlock, closing]
+    .filter(Boolean).join('\n\n');
+}
+
+function buildWorkedExamples(subject: string, topic: string, difficulty: string): string[] {
+  const isMath = /math/i.test(subject);
+  if (isMath) {
+    const a = difficulty === 'advanced' ? 248 : difficulty === 'basic' ? 12 : 45;
+    const b = difficulty === 'advanced' ? 137 : difficulty === 'basic' ? 7 : 28;
+    return [
+      `Worked Example 1 — Adding numbers.\nStep 1: Write the numbers in columns. ${a} + ${b}.\nStep 2: Add the ones: ${a % 10} + ${b % 10} = ${(a % 10) + (b % 10)}.\nStep 3: Add the tens (and carry if needed).\nStep 4: Final answer: ${a + b}.`,
+      `Worked Example 2 — Subtraction.\nStep 1: ${a} − ${b}.\nStep 2: Subtract ones, regrouping if needed.\nStep 3: Subtract tens.\nStep 4: Final answer: ${a - b}.`,
+      `Worked Example 3 — Word problem.\nStep 1: Read carefully: A shopkeeper had ${a} mangoes and sold ${b}. How many remain?\nStep 2: Identify operation: subtraction.\nStep 3: Calculate: ${a} − ${b} = ${a - b}.\nStep 4: Answer: ${a - b} mangoes.`,
+    ];
+  }
+  return [
+    `Worked Example 1 — Explanation.\nStep 1: Read the question about ${topic}.\nStep 2: Identify the key word(s).\nStep 3: Use the definition learned to answer.\nStep 4: Write the answer in a full sentence.`,
+    `Worked Example 2 — Observation.\nStep 1: Look around the classroom or compound for an example of ${topic}.\nStep 2: Name what you see.\nStep 3: Explain why it is an example.\nStep 4: Share with your partner.`,
+    `Worked Example 3 — Application.\nStep 1: Think of how ${topic} is used at home.\nStep 2: Write down two ways.\nStep 3: Explain each one in one sentence.\nStep 4: Compare with a classmate.`,
+  ];
+}
+
+function buildActivities(activities: string[] | undefined, topic: string): string[] {
+  if (activities && activities.length) return activities.slice(0, 5);
+  return [
+    `Class discussion: in pairs, share what you already know about ${topic}.`,
+    `Group work: list 5 examples of ${topic} from your locality.`,
+    `Practical activity: draw or model one example of ${topic} using locally available materials.`,
+    `Gallery walk: display your work and learn from other groups.`,
+    `Reflection: write 2 sentences about what you learned today.`,
+  ];
+}
+
+function buildSummary(topic: string, slos: string[] | undefined): string[] {
+  const base = (slos && slos.length ? slos.slice(0, 6) : [
+    `${topic} is an important sub-strand we have learned.`,
+    `We can identify and explain ${topic} in our own words.`,
+    `${topic} is found in our day-to-day life.`,
+    `Activities help us understand ${topic} better.`,
+    `Values learned: respect, responsibility and unity.`,
+    `We shall use ${topic} in school and at home.`,
+  ]).map(s => s.replace(/^the learner should be able to\s*/i, '').replace(/\.$/, ''));
+  return base.map(cap);
+}
+
+function buildAssessmentQuestions(topic: string, subject: string, slos: string[] | undefined): { question: string; answer: string }[] {
+  const qa: { question: string; answer: string }[] = [];
+  qa.push({ question: `What is ${topic}?`, answer: `${cap(topic)} is the sub-strand we studied today; it refers to the key ideas explained in the lesson.` });
+  qa.push({ question: `State two characteristics of ${topic}.`, answer: `Any two correct features mentioned during the lesson.` });
+  qa.push({ question: `Give two ways ${topic} is useful in real life.`, answer: `Any two real-life uses (e.g. at home, in school, in the community).` });
+  qa.push({ question: `Mention one value developed when learning ${topic}.`, answer: `Examples: responsibility, respect, unity, hard work.` });
+  qa.push({ question: `Name one resource we can use to learn ${topic}.`, answer: `Examples: text book, real objects, charts, the environment.` });
+  qa.push({ question: `Describe one activity you would do to teach a friend about ${topic}.`, answer: `Any clear, age-appropriate activity (discussion, demonstration, role-play, drawing).` });
+  qa.push({ question: `How is ${topic} connected to ${subject}?`, answer: `It is one of the sub-strands of ${subject} that builds the learner's knowledge and skills.` });
+  qa.push({ question: `Give one example of ${topic} from your locality.`, answer: `Any correct, locally relevant example.` });
+  (slos || []).slice(0, 3).forEach((s, i) => {
+    qa.push({
+      question: `In your own words, explain how you will ${s.replace(/^the learner should be able to\s*/i, '').replace(/\.$/, '')}.`,
+      answer: `Learner gives a clear explanation showing they can ${s.replace(/^the learner should be able to\s*/i, '').replace(/\.$/, '')}.`,
+    });
+  });
+  while (qa.length < 8) {
+    qa.push({ question: `Write one sentence about ${topic}.`, answer: `Any correct sentence describing ${topic}.` });
+  }
+  return qa.slice(0, 12);
+}
+
+function buildHomeRevision(topic: string): string[] {
+  return [
+    `Read your notes on ${topic} again and underline the key words.`,
+    `Find two real examples of ${topic} at home and write them down.`,
+    `Teach a younger sibling or parent what you learned today.`,
+    `Draw a simple picture or chart about ${topic}.`,
+    `Answer the assessment questions in your exercise book.`,
+  ];
+}
+
+function buildTeacherTips(topic: string): string[] {
+  return [
+    `Start with a brief story or question to capture attention before introducing ${topic}.`,
+    `Use locally available materials so every learner can take part.`,
+    `Give learners chance to talk in pairs before answering the whole class.`,
+    `Pay extra attention to slow learners and pair them with stronger peers.`,
+    `End the lesson with a quick recap and a short individual check.`,
+  ];
+}
+
+function buildCompetencies(comp: string[] | undefined): string[] {
+  if (comp && comp.length) return comp.slice(0, 6);
+  return [
+    'Communication and collaboration',
+    'Critical thinking and problem solving',
+    'Creativity and imagination',
+    'Citizenship',
+    'Learning to learn',
+    'Self-efficacy',
+  ];
+}
+
+function buildResources(res: string[] | undefined, subject: string): string[] {
+  if (res && res.length) return res.slice(0, 8);
+  return [
+    `KICD-approved ${subject} Learner's Book`,
+    `${subject} Teacher's Guide`,
+    'Charts and pictures from the classroom',
+    'Locally available real objects',
+    'Exercise book and pencils',
+  ];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -30,193 +304,35 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Partial<NotesRequest>;
     const { grade, subject, topic, difficulty, kicd, mainContentOnly } = body;
     if (!grade || !subject || !topic || !difficulty) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: grade, subject, topic, difficulty' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'AI service not configured' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return json({ error: 'Missing required fields: grade, subject, topic, difficulty' }, 400);
     }
 
     const hasKicd = !!(kicd && (kicd.slos?.length || kicd.subStrand || kicd.strand));
+    const title = `${upper(grade)} — ${upper(subject)} — ${upper(topic)}`;
 
-    const kicdBlock = hasKicd ? `
-GROUND THESE NOTES STRICTLY IN THE LOADED KICD CURRICULUM DESIGN. Treat the items below as the source of truth — do NOT invent objectives or skills outside this scope.
-
-Design title: ${kicd?.designTitle ?? 'KICD Design'}
-Strand: ${kicd?.strand ?? '—'}
-Sub-Strand: ${kicd?.subStrand ?? topic}
-
-Specific Learning Outcomes (SLOs) — base your Learning Objectives on these, rephrased in learner-friendly form:
-${(kicd?.slos ?? []).map((s, i) => `${i + 1}. ${s}`).join('\n') || '(none provided)'}
-
-Suggested Learning Activities (use & expand):
-${(kicd?.activities ?? []).map((s) => `- ${s}`).join('\n') || '(none)'}
-
-Assessment Methods (use to design Assessment Questions):
-${(kicd?.assessmentMethods ?? []).map((s) => `- ${s}`).join('\n') || '(none)'}
-
-Key Inquiry Questions (weave into Introduction & Discussion):
-${(kicd?.inquiryQuestions ?? []).map((s) => `- ${s}`).join('\n') || '(none)'}
-
-Suggested Resources:
-${(kicd?.resources ?? []).map((s) => `- ${s}`).join('\n') || '(none)'}
-
-Core Competencies to develop: ${(kicd?.competencies ?? []).join(', ') || '—'}
-Values to nurture: ${(kicd?.values ?? []).join(', ') || '—'}
-Pertinent & Contemporary Issues (PCIs): ${(kicd?.pcis ?? []).join(', ') || '—'}
-` : `
-NOTE: No KICD design was loaded for this combination. Fall back to the official KICD CBC design document for ${grade} ${subject} (${topic}) and stay faithful to its scope and sequence.
-`;
-
-    const system = `You are an expert CBC (Competency-Based Curriculum) teacher in Kenya AND a writer of TEXTBOOK-STYLE revision notes that learners read on their own.
-
-Your output must read like a real Kenyan primary/JSS textbook page — NOT like a summary, NOT like an outline, NOT like an AI answer.
-
-Textbook style rules (MANDATORY for the "mainContent" field):
-- Open every major sub-topic with an ALL-CAPS sub-heading on its OWN line (e.g. "LIVING THINGS", "FUNGI", "ANIMALS").
-- Under each sub-heading, place a smaller capitalised mini-heading on its own line (e.g. "Plants", "Vertebrates", "Characteristics of mammals").
-- The FIRST time a new term is introduced, define it inline using a dash:  "Classification — is the act or the process of dividing plants in groups according to given features."
-- Use bullet markers with the ✓ tick character for lists of facts/characteristics/importance:  "✓ They have backbones"
-- Use a hyphen "- " for steps, precautions, or numbered-style points.
-- Group facts under "Characteristics of …", "Importance of …", "Safety precautions when handling …", "Functions of …", "Care for …" sub-blocks where it fits the topic.
-- Use short, declarative sentences a Grade-level learner can read aloud.
-- Include local Kenyan examples (maize, ugali, matatu, shillings, Nairobi, Mombasa) where natural.
-- Separate every sub-block with a blank line ("\\n\\n").
-- DO NOT compress everything into one prose paragraph. The page must visibly look like a textbook with many headings and tick-bulleted lists.
-
-Output ONLY valid JSON matching the requested schema. No markdown fences, no commentary, no AI mentions.`;
-
-    const user = `Generate CBC-aligned, KICD-grounded TEXTBOOK-STYLE LESSON + REVISION notes for:
-- Class: ${grade}
-- Subject: ${subject}
-- Topic / Sub-Strand: ${topic}
-- Difficulty: ${difficulty}
-
-${kicdBlock}
-
-Return JSON with this EXACT shape (all fields required, arrays must not be empty):
-{
-  "title": string,                                  // friendly topic title (e.g. "GRADE 5 — SCIENCE AND TECHNOLOGY — LIVING THINGS")
-  "objectives": string[],                           // 3-5 CBC competency-based, each starts with "By the end of the lesson, the learner should be able to..."
-  "keyVocabulary": { "term": string, "meaning": string }[],  // 6-12 key words with one-line learner-friendly meanings
-  "introduction": string,                           // 3-5 sentences hooking the learner; weave in a Key Inquiry Question if available
-  "mainContent": string,                            // FULL TEXTBOOK PAGE. MUST contain at least 4 ALL-CAPS sub-headings, multiple capitalised mini-headings, inline term-dash definitions, and ✓-bulleted lists. 600-1200 words. Use \\n for line breaks and \\n\\n between sub-blocks.
-  "workedExamples": string[],                       // 3-5 fully worked examples written step-by-step ("Step 1: ...", "Step 2: ...")
-  "classActivities": string[],                      // 3-5 hands-on, group or individual activities (CBC inquiry/practical)
-  "revisionSummary": string[],                      // 6-10 short bullet takeaways the learner can memorise
-  "assessmentQuestions": { "question": string, "answer": string }[],  // 8-12 questions of mixed type
-  "homeRevisionTasks": string[],                    // 3-5 things the learner can do at home alone
-  "teacherTips": string[],                          // 3-5 practical classroom delivery & differentiation tips
-  "competenciesDeveloped": string[],                // 3-6 CBC core competencies/values
-  "resources": string[]                             // 3-8 concrete, low-cost resources
-}
-
-EXAMPLE of the EXPECTED textbook style for "mainContent" (match the FORMAT, not the content):
-
-LIVING THINGS
-
-Plants
-
-Classification of plants — Plants are living things.
-Classification — is the act or the process of dividing plants in groups, according to the given features.
-
-In Grade 5, plants are grouped into two categories which include:
-✓ Flowering plants — these are plants that produce flowers, for example maize, pawpaw and beans.
-✓ Non-flowering plants — these are plants that do not produce flowers, for example mosses, ferns and algae.
-
-Safety precautions when handling harmful plants
-Precautions — are measures taken in advance to prevent harm to the learners when carrying out different activities. They include:
-- Wearing protective clothes
-- Washing hands after handling plants
-- Not eating, tasting or smelling poisonous plants
-
-Importance of flowering plants
-Flowering plants are very useful.
-✓ They give food
-✓ They give shelter
-✓ They give medicine
-✓ They add beauty to the environment
-
-FUNGI
-✓ They are neither plants nor animals
-✓ They grow on dead and decaying matter and obtain their food from them
-✓ They include bread mould, yeast and mushroom
-
-Difficulty depth:
-- basic     → very simple vocabulary, smaller numbers, more scaffolding.
-- standard  → grade-level pace; balanced reasoning; standard CBC depth.
-- advanced  → extension content, higher-order questions, light enrichment.
-
-CRITICAL:
-- Stay 100% within the KICD scope above when provided.
-- The "mainContent" MUST visibly look like a textbook page with multiple ALL-CAPS sections, mini-headings, dash-definitions and ✓ bullet lists. A flat prose paragraph is REJECTED.
-- Do NOT include disclaimers, AI mentions, or apologies. JSON only.`;
-
-    const mainOnlyUser = `Generate ONLY a textbook-style "mainContent" page (no objectives, no introduction, no questions, no activities) for:
-- Class: ${grade}
-- Subject: ${subject}
-- Topic / Sub-Strand: ${topic}
-- Difficulty: ${difficulty}
-
-${kicdBlock}
-
-Return JSON:
-{
-  "title": string,            // friendly heading e.g. "${topic.toUpperCase()}"
-  "mainContent": string       // FULL textbook page, 600-1200 words, multiple ALL-CAPS sub-headings, mini-headings, dash-definitions, ✓ bullet lists. Use \\n and \\n\\n for layout.
-}
-
-CRITICAL: Output JSON only. mainContent must visibly look like a textbook page.`;
-
-    const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [{ role: 'system', content: system }, { role: 'user', content: mainContentOnly ? mainOnlyUser : user }],
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const text = await aiRes.text();
-      if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds to continue.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(JSON.stringify({ error: `AI gateway error: ${text}` }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (mainContentOnly) {
+      const mainContent = buildMainContent(grade, subject, topic, kicd, difficulty);
+      return json({ success: true, notes: { title, mainContent }, groundedInKicd: hasKicd });
     }
 
-    const data = await aiRes.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-    let parsed: any;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      return new Response(JSON.stringify({ error: 'AI returned invalid JSON', raw: content }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const notes = {
+      title,
+      objectives: objectivesFromSlos(kicd?.slos, topic),
+      keyVocabulary: buildVocabulary(topic, kicd?.strand),
+      introduction: buildIntroduction(grade, subject, topic, kicd),
+      mainContent: buildMainContent(grade, subject, topic, kicd, difficulty),
+      workedExamples: buildWorkedExamples(subject, topic, difficulty),
+      classActivities: buildActivities(kicd?.activities, topic),
+      revisionSummary: buildSummary(topic, kicd?.slos),
+      assessmentQuestions: buildAssessmentQuestions(topic, subject, kicd?.slos),
+      homeRevisionTasks: buildHomeRevision(topic),
+      teacherTips: buildTeacherTips(topic),
+      competenciesDeveloped: buildCompetencies(kicd?.competencies),
+      resources: buildResources(kicd?.resources, subject),
+    };
 
-    return new Response(JSON.stringify({ success: true, notes: parsed, groundedInKicd: hasKicd }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ success: true, notes, groundedInKicd: hasKicd });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
