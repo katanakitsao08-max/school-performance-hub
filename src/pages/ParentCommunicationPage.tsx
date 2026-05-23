@@ -54,7 +54,7 @@ export default function ParentCommunicationPage() {
   const { data: learners = [] } = useQuery({
     queryKey: ['comm-learners', schoolId, mode, grade, stream, selectedGrades.join(',')],
     queryFn: async () => {
-      let q = supabase.from('learners').select('id, full_name, parent_phone, parent_name, grade, stream, admission_number')
+      let q = supabase.from('learners').select('id, full_name, parent_phone, parent_phone_2, parent_name, grade, stream, admission_number')
         .eq('school_id', schoolId!).eq('is_active', true);
       if (mode === 'class' && grade && stream) q = q.eq('grade', grade).eq('stream', stream);
       else if (mode === 'multi_class' && selectedGrades.length > 0) q = q.in('grade', selectedGrades);
@@ -74,13 +74,15 @@ export default function ParentCommunicationPage() {
     enabled: !!schoolId && logsOpen,
   });
 
+  const hasAnyPhone = (l: any) => !!(l.parent_phone || l.parent_phone_2);
+
   const recipients = useMemo(() => {
     if (mode === 'individual') {
       const l = learners.find(x => x.id === individual);
-      return l && l.parent_phone ? [l] : [];
+      return l && hasAnyPhone(l) ? [l] : [];
     }
-    if (mode === 'whole_school') return learners.filter(l => l.parent_phone);
-    return learners.filter(l => l.parent_phone);
+    if (mode === 'whole_school') return learners.filter(hasAnyPhone);
+    return learners.filter(hasAnyPhone);
   }, [learners, mode, individual]);
 
   const segments = segmentsFor(message);
@@ -90,7 +92,7 @@ export default function ParentCommunicationPage() {
   const blocked = !enabled || totalSegments > balance;
 
   const filteredIndividual = useMemo(() =>
-    learners.filter(l => l.parent_phone && (
+    learners.filter(l => hasAnyPhone(l) && (
       l.full_name.toLowerCase().includes(search.toLowerCase()) ||
       (l.admission_number || '').toLowerCase().includes(search.toLowerCase())
     )).slice(0, 30),
@@ -110,8 +112,9 @@ export default function ParentCommunicationPage() {
       const { data, error } = await supabase.functions.invoke('send-sms-v2', {
         body: {
           school_id: schoolId, type: 'CUSTOM',
-          messages: recipients.map(l => ({
-            phone: l.parent_phone!,
+          messages: recipients.map((l: any) => ({
+            phone: l.parent_phone || l.parent_phone_2 || '',
+            phone_alt: l.parent_phone_2 || null,
             message: message.replace('{name}', l.full_name).replace('{parent}', l.parent_name || 'Parent'),
             learner_id: l.id,
           })),

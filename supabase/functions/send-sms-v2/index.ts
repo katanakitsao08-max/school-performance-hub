@@ -17,13 +17,34 @@ function formatPhone(phone: string): string {
   return p;
 }
 
+function isValidPhone(raw?: string | null): boolean {
+  if (!raw) return false;
+  const p = formatPhone(String(raw));
+  return /^254[71]\d{8}$/.test(p);
+}
+
+// Pick preferred (parent_phone) when valid; otherwise fall back to secondary (parent_phone_2).
+function resolvePhone(
+  phone?: string | null,
+  phone_alt?: string | null,
+): { phone: string | null; source: 'preferred' | 'secondary' | 'direct' | null } {
+  if (isValidPhone(phone)) return { phone: formatPhone(phone!), source: phone_alt === undefined ? 'direct' : 'preferred' };
+  if (isValidPhone(phone_alt)) return { phone: formatPhone(phone_alt!), source: 'secondary' };
+  return { phone: null, source: null };
+}
+
 function segmentsFor(msg: string): number {
   const len = (msg || '').length;
   if (len === 0) return 1;
   return len <= 160 ? 1 : Math.ceil(len / 153);
 }
 
-interface Msg { phone: string; message: string; learner_id?: string | null; }
+interface Msg {
+  phone: string;
+  phone_alt?: string | null;
+  message: string;
+  learner_id?: string | null;
+}
 
 // Olympus v3: success when HTTP 2xx AND (top-level status == "success" OR data.status in {accepted,queued,sent}).
 function parseResult(httpOk: boolean, data: any): { ok: boolean; messageId: string | null; errorText: string | null } {
@@ -118,7 +139,23 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0;
 
     const send = async (m: Msg) => {
-      const phone = formatPhone(m.phone);
+      const resolved = resolvePhone(m.phone, m.phone_alt);
+      if (!resolved.phone) {
+        await supabase.from('sms_logs').insert({
+          school_id, recipient: String(m.phone || ''), message: m.message, sender_id: senderId,
+          provider: 'olympus_teleserve',
+          status: 'failed',
+          provider_message_id: null,
+          error: 'No valid phone (preferred & secondary both missing/invalid)',
+          segments: segmentsFor(m.message),
+          sent_by: userId,
+          used_global_fallback: usedFallback,
+          phone_source: null,
+        });
+        return { phone: m.phone, ok: false, messageId: null, error: 'invalid phone', phone_source: null, response: null };
+      }
+      const phone = resolved.phone;
+      const phoneSource = resolved.source;
       const payload = { recipient: phone, sender_id: senderId, type: msgType, message: m.message };
       let httpOk = false, data: any = null;
       try {
@@ -146,8 +183,9 @@ Deno.serve(async (req) => {
         segments: segmentsFor(m.message),
         sent_by: userId,
         used_global_fallback: usedFallback,
+        phone_source: phoneSource,
       });
-      return { phone, ok: parsed.ok, messageId: parsed.messageId, error: parsed.errorText, response: data };
+      return { phone, ok: parsed.ok, messageId: parsed.messageId, error: parsed.errorText, phone_source: phoneSource, response: data };
     };
 
     // Send in parallel batches of 10

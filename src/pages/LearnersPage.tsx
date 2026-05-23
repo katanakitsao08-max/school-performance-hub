@@ -39,7 +39,7 @@ export default function LearnersPage() {
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
     admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
+    parent_name: '', parent_phone: '', parent_phone_2: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
   const { data: school } = useQuery({
@@ -220,7 +220,7 @@ export default function LearnersPage() {
 
   const resetForm = () => setForm({
     admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
+    parent_name: '', parent_phone: '', parent_phone_2: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 
   const handleEdit = (l: any) => {
@@ -230,7 +230,7 @@ export default function LearnersPage() {
       assessment_number: l.assessment_number || '',
       full_name: l.full_name,
       grade: l.grade, stream: l.stream,
-      parent_name: l.parent_name || '', parent_phone: l.parent_phone || '',
+      parent_name: l.parent_name || '', parent_phone: l.parent_phone || '', parent_phone_2: l.parent_phone_2 || '',
       academic_year: l.academic_year, gender: l.gender || 'Male',
     });
     setOpen(true);
@@ -299,10 +299,14 @@ export default function LearnersPage() {
                      <Label>Parent Name</Label>
                      <Input value={form.parent_name} onChange={e => setForm(f => ({ ...f, parent_name: e.target.value }))} />
                    </div>
-                   <div className="space-y-2">
-                     <Label>Parent Phone</Label>
-                     <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254..." />
-                   </div>
+                    <div className="space-y-2">
+                      <Label>Preferred Parent Phone</Label>
+                      <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254... (primary)" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Secondary Parent Phone <span className="text-xs text-muted-foreground">(fallback)</span></Label>
+                      <Input value={form.parent_phone_2} onChange={e => setForm(f => ({ ...f, parent_phone_2: e.target.value }))} placeholder="+254... (optional)" />
+                    </div>
                  </div>
                  <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
               </form>
