@@ -92,7 +92,7 @@ export default function ParentCommunicationPage() {
   const blocked = !enabled || totalSegments > balance;
 
   const filteredIndividual = useMemo(() =>
-    learners.filter(l => l.parent_phone && (
+    learners.filter(l => hasAnyPhone(l) && (
       l.full_name.toLowerCase().includes(search.toLowerCase()) ||
       (l.admission_number || '').toLowerCase().includes(search.toLowerCase())
     )).slice(0, 30),
@@ -112,8 +112,9 @@ export default function ParentCommunicationPage() {
       const { data, error } = await supabase.functions.invoke('send-sms-v2', {
         body: {
           school_id: schoolId, type: 'CUSTOM',
-          messages: recipients.map(l => ({
-            phone: l.parent_phone!,
+          messages: recipients.map((l: any) => ({
+            phone: l.parent_phone || l.parent_phone_2 || '',
+            phone_alt: l.parent_phone_2 || null,
             message: message.replace('{name}', l.full_name).replace('{parent}', l.parent_name || 'Parent'),
             learner_id: l.id,
           })),
