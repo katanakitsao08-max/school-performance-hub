@@ -139,7 +139,23 @@ Deno.serve(async (req) => {
     let sent = 0, failed = 0;
 
     const send = async (m: Msg) => {
-      const phone = formatPhone(m.phone);
+      const resolved = resolvePhone(m.phone, m.phone_alt);
+      if (!resolved.phone) {
+        await supabase.from('sms_logs').insert({
+          school_id, recipient: String(m.phone || ''), message: m.message, sender_id: senderId,
+          provider: 'olympus_teleserve',
+          status: 'failed',
+          provider_message_id: null,
+          error: 'No valid phone (preferred & secondary both missing/invalid)',
+          segments: segmentsFor(m.message),
+          sent_by: userId,
+          used_global_fallback: usedFallback,
+          phone_source: null,
+        });
+        return { phone: m.phone, ok: false, messageId: null, error: 'invalid phone', phone_source: null, response: null };
+      }
+      const phone = resolved.phone;
+      const phoneSource = resolved.source;
       const payload = { recipient: phone, sender_id: senderId, type: msgType, message: m.message };
       let httpOk = false, data: any = null;
       try {
@@ -167,8 +183,9 @@ Deno.serve(async (req) => {
         segments: segmentsFor(m.message),
         sent_by: userId,
         used_global_fallback: usedFallback,
+        phone_source: phoneSource,
       });
-      return { phone, ok: parsed.ok, messageId: parsed.messageId, error: parsed.errorText, response: data };
+      return { phone, ok: parsed.ok, messageId: parsed.messageId, error: parsed.errorText, phone_source: phoneSource, response: data };
     };
 
     // Send in parallel batches of 10
