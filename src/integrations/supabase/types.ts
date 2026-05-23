@@ -638,6 +638,7 @@ export type Database = {
           is_active: boolean
           parent_name: string | null
           parent_phone: string | null
+          parent_phone_2: string | null
           school_id: string | null
           stream: string
           updated_at: string
@@ -654,6 +655,7 @@ export type Database = {
           is_active?: boolean
           parent_name?: string | null
           parent_phone?: string | null
+          parent_phone_2?: string | null
           school_id?: string | null
           stream?: string
           updated_at?: string
@@ -670,6 +672,7 @@ export type Database = {
           is_active?: boolean
           parent_name?: string | null
           parent_phone?: string | null
+          parent_phone_2?: string | null
           school_id?: string | null
           stream?: string
           updated_at?: string
@@ -1498,6 +1501,7 @@ export type Database = {
           error: string | null
           id: string
           message: string
+          phone_source: string | null
           provider: string | null
           provider_message_id: string | null
           recipient: string
@@ -1513,6 +1517,7 @@ export type Database = {
           error?: string | null
           id?: string
           message: string
+          phone_source?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient: string
@@ -1528,6 +1533,7 @@ export type Database = {
           error?: string | null
           id?: string
           message?: string
+          phone_source?: string | null
           provider?: string | null
           provider_message_id?: string | null
           recipient?: string
