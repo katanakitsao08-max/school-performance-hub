@@ -153,7 +153,7 @@ export default function SmsPage() {
     return `${l.full_name}: AVG ${l.mean.toFixed(1)} GRADE ${l.grade} (${points}pts). Full results:\n${url}\n- ${schoolMeta?.school_name || 'School'}`;
   };
 
-  const learnersWithPhone = smsData.filter(l => l.parent_phone);
+  const learnersWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
   const balance = credits?.balance ?? 0;
   const enabled = credits?.enabled ?? true;
 
@@ -171,11 +171,13 @@ export default function SmsPage() {
     setSending(true);
     try {
       // For modes that need a portal link, generate one per learner first
-      let messages: { phone: string; message: string; learner_id: string }[] = [];
+      let messages: { phone: string; phone_alt?: string | null; message: string; learner_id: string }[] = [];
 
       if (smsMode === 'detailed') {
         messages = learnersWithPhone.map(l => ({
-          phone: l.parent_phone!, message: buildDetailedMessage(l), learner_id: l.id,
+          phone: l.parent_phone || (l as any).parent_phone_2 || '',
+          phone_alt: (l as any).parent_phone_2 || null,
+          message: buildDetailedMessage(l), learner_id: l.id,
         }));
       } else {
         // generate portal_links rows in bulk
@@ -194,7 +196,11 @@ export default function SmsPage() {
           const token = tokenMap[l.id];
           const url = `${origin}/p/${token}`;
           const msg = smsMode === 'hybrid' ? buildHybridMessage(l, url) : buildShortLinkMessage(l, url);
-          return { phone: l.parent_phone!, message: msg, learner_id: l.id };
+          return {
+            phone: l.parent_phone || (l as any).parent_phone_2 || '',
+            phone_alt: (l as any).parent_phone_2 || null,
+            message: msg, learner_id: l.id,
+          };
         });
       }
 
