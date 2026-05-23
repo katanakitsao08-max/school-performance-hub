@@ -39,7 +39,7 @@ export default function LearnersPage() {
   const [filterStream, setFilterStream] = useState(role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : 'all');
   const [form, setForm] = useState({
     admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: (role === 'teacher' && assignedStreams.length > 0 ? assignedStreams[0] : ''),
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
+    parent_name: '', parent_phone: '', parent_phone_2: '', academic_year: new Date().getFullYear(), gender: 'Male' as string,
   });
 
   const { data: school } = useQuery({
