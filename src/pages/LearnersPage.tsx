@@ -299,10 +299,14 @@ export default function LearnersPage() {
                      <Label>Parent Name</Label>
                      <Input value={form.parent_name} onChange={e => setForm(f => ({ ...f, parent_name: e.target.value }))} />
                    </div>
-                   <div className="space-y-2">
-                     <Label>Parent Phone</Label>
-                     <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254..." />
-                   </div>
+                    <div className="space-y-2">
+                      <Label>Preferred Parent Phone</Label>
+                      <Input value={form.parent_phone} onChange={e => setForm(f => ({ ...f, parent_phone: e.target.value }))} placeholder="+254... (primary)" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Secondary Parent Phone <span className="text-xs text-muted-foreground">(fallback)</span></Label>
+                      <Input value={form.parent_phone_2} onChange={e => setForm(f => ({ ...f, parent_phone_2: e.target.value }))} placeholder="+254... (optional)" />
+                    </div>
                  </div>
                  <Button type="submit" className="w-full">{editing ? 'Update' : 'Create'}</Button>
               </form>
