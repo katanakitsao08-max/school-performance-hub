@@ -220,7 +220,7 @@ export default function LearnersPage() {
 
   const resetForm = () => setForm({
     admission_number: '', assessment_number: '', full_name: '', grade: availableGrades[0] || '', stream: availableStreams[0] || '',
-    parent_name: '', parent_phone: '', academic_year: new Date().getFullYear(), gender: 'Male',
+    parent_name: '', parent_phone: '', parent_phone_2: '', academic_year: new Date().getFullYear(), gender: 'Male',
   });
 
   const handleEdit = (l: any) => {
@@ -230,7 +230,7 @@ export default function LearnersPage() {
       assessment_number: l.assessment_number || '',
       full_name: l.full_name,
       grade: l.grade, stream: l.stream,
-      parent_name: l.parent_name || '', parent_phone: l.parent_phone || '',
+      parent_name: l.parent_name || '', parent_phone: l.parent_phone || '', parent_phone_2: l.parent_phone_2 || '',
       academic_year: l.academic_year, gender: l.gender || 'Male',
     });
     setOpen(true);
