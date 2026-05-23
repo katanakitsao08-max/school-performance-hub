@@ -17,13 +17,34 @@ function formatPhone(phone: string): string {
   return p;
 }
 
+function isValidPhone(raw?: string | null): boolean {
+  if (!raw) return false;
+  const p = formatPhone(String(raw));
+  return /^254[71]\d{8}$/.test(p);
+}
+
+// Pick preferred (parent_phone) when valid; otherwise fall back to secondary (parent_phone_2).
+function resolvePhone(
+  phone?: string | null,
+  phone_alt?: string | null,
+): { phone: string | null; source: 'preferred' | 'secondary' | 'direct' | null } {
+  if (isValidPhone(phone)) return { phone: formatPhone(phone!), source: phone_alt === undefined ? 'direct' : 'preferred' };
+  if (isValidPhone(phone_alt)) return { phone: formatPhone(phone_alt!), source: 'secondary' };
+  return { phone: null, source: null };
+}
+
 function segmentsFor(msg: string): number {
   const len = (msg || '').length;
   if (len === 0) return 1;
   return len <= 160 ? 1 : Math.ceil(len / 153);
 }
 
-interface Msg { phone: string; message: string; learner_id?: string | null; }
+interface Msg {
+  phone: string;
+  phone_alt?: string | null;
+  message: string;
+  learner_id?: string | null;
+}
 
 // Olympus v3: success when HTTP 2xx AND (top-level status == "success" OR data.status in {accepted,queued,sent}).
 function parseResult(httpOk: boolean, data: any): { ok: boolean; messageId: string | null; errorText: string | null } {
