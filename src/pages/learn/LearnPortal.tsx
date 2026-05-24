@@ -14,6 +14,7 @@ import {
 import { getSubjectsForGrade } from "./subjects";
 import { getLessonsForSubject } from "./content";
 import ProgressCharts, { buildProgressRows } from "./ProgressCharts";
+import LearningPath from "./LearningPath";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function LearnPortal() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [perSubject, setPerSubject] = useState<Record<string, { done: number; seconds: number }>>({});
+  const [completedIds, setCompletedIds] = useState<Record<string, Set<string>>>({});
   const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function LearnPortal() {
       const [{ data: l }, { data: s }, { data: prog }] = await Promise.all([
         supabase.from("independent_learners").select("full_name, grade, learner_code").eq("user_id", user.id).maybeSingle(),
         supabase.from("independent_subscriptions").select("status, expires_at").eq("user_id", user.id).order("submitted_at", { ascending: false }).limit(1),
-        supabase.from("learner_lesson_progress").select("subject_slug, status, seconds_spent").eq("user_id", user.id),
+        supabase.from("learner_lesson_progress").select("subject_slug, lesson_id, status, seconds_spent").eq("user_id", user.id),
       ]);
       if (l) { setLearnerName(l.full_name); setGrade(l.grade); setCode(l.learner_code); }
       const top = s?.[0];
@@ -48,6 +50,7 @@ export default function LearnPortal() {
       setExpiresAt(top!.expires_at);
       const counts: Record<string, number> = {};
       const bySubject: Record<string, { done: number; seconds: number }> = {};
+      const ids: Record<string, Set<string>> = {};
       let completed = 0, seconds = 0;
       for (const p of prog || []) {
         seconds += p.seconds_spent || 0;
@@ -57,10 +60,12 @@ export default function LearnPortal() {
           completed++;
           slot.done++;
           counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
+          (ids[p.subject_slug] ||= new Set()).add(p.lesson_id);
         }
       }
       setProgress(counts);
       setPerSubject(bySubject);
+      setCompletedIds(ids);
       setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
@@ -102,8 +107,8 @@ export default function LearnPortal() {
             {[
               { v: "overview", l: "Overview" },
               { v: "subjects", l: "Subjects" },
+              { v: "path", l: "Learning Path" },
               { v: "progress", l: "My Progress" },
-              { v: "library", l: "My Library" },
               { v: "live", l: "Live Classes" },
             ].map(t => (
               <TabsTrigger
@@ -187,11 +192,11 @@ export default function LearnPortal() {
             </div>
           </TabsContent>
 
+          <TabsContent value="path" className="mt-0">
+            <LearningPath subjects={subjects} grade={grade} perSubject={perSubject} completedIds={completedIds} />
+          </TabsContent>
           <TabsContent value="progress" className="mt-0">
             <ProgressCharts rows={buildProgressRows(subjects, grade, perSubject)} />
-          </TabsContent>
-          <TabsContent value="library" className="mt-0">
-            <EmptyState icon={<BookOpen className="w-10 h-10" />} title="My Library" body="Saved notes, downloads and bookmarks will appear here." />
           </TabsContent>
           <TabsContent value="live" className="mt-0">
             <EmptyState icon={<Menu className="w-10 h-10" />} title="Live Classes" body="Live class schedule will appear here once available." />
