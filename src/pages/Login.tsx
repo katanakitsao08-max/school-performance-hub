@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield, GraduationCap, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -155,7 +155,27 @@ export default function Login() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
+          {/* Independent Learner signup CTA */}
+          <Link
+            to="/learn/signup"
+            className="mt-4 block rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors p-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-foreground">New learner? Join the CBC Learning Portal</p>
+                <p className="text-xs text-muted-foreground">Free signup · KPSEA & KJSEA lessons, quizzes and AI tutor.</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+            </div>
+          </Link>
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Already an independent learner? <Link to="/learn/login" className="text-primary font-medium hover:underline">Learner sign in</Link>
+          </p>
+          <p className="text-center text-xs text-muted-foreground mt-2">
             CBC Smart School System &copy; {new Date().getFullYear()}
           </p>
         </div>
