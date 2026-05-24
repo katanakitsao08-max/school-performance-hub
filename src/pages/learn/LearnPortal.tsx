@@ -14,6 +14,7 @@ import {
 import { getSubjectsForGrade } from "./subjects";
 import { getLessonsForSubject } from "./content";
 import ProgressCharts, { buildProgressRows } from "./ProgressCharts";
+import LearningPath from "./LearningPath";
 
 export default function LearnPortal() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function LearnPortal() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [perSubject, setPerSubject] = useState<Record<string, { done: number; seconds: number }>>({});
+  const [completedIds, setCompletedIds] = useState<Record<string, Set<string>>>({});
   const [totals, setTotals] = useState({ completed: 0, minutes: 0 });
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function LearnPortal() {
       setExpiresAt(top!.expires_at);
       const counts: Record<string, number> = {};
       const bySubject: Record<string, { done: number; seconds: number }> = {};
+      const ids: Record<string, Set<string>> = {};
       let completed = 0, seconds = 0;
       for (const p of prog || []) {
         seconds += p.seconds_spent || 0;
@@ -57,10 +60,12 @@ export default function LearnPortal() {
           completed++;
           slot.done++;
           counts[p.subject_slug] = (counts[p.subject_slug] || 0) + 1;
+          (ids[p.subject_slug] ||= new Set()).add(p.lesson_id);
         }
       }
       setProgress(counts);
       setPerSubject(bySubject);
+      setCompletedIds(ids);
       setTotals({ completed, minutes: Math.round(seconds / 60) });
       setReady(true);
     })();
