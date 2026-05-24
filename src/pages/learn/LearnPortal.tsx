@@ -38,7 +38,7 @@ export default function LearnPortal() {
       const [{ data: l }, { data: s }, { data: prog }] = await Promise.all([
         supabase.from("independent_learners").select("full_name, grade, learner_code").eq("user_id", user.id).maybeSingle(),
         supabase.from("independent_subscriptions").select("status, expires_at").eq("user_id", user.id).order("submitted_at", { ascending: false }).limit(1),
-        supabase.from("learner_lesson_progress").select("subject_slug, status, seconds_spent").eq("user_id", user.id),
+        supabase.from("learner_lesson_progress").select("subject_slug, lesson_id, status, seconds_spent").eq("user_id", user.id),
       ]);
       if (l) { setLearnerName(l.full_name); setGrade(l.grade); setCode(l.learner_code); }
       const top = s?.[0];
