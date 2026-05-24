@@ -107,8 +107,8 @@ export default function LearnPortal() {
             {[
               { v: "overview", l: "Overview" },
               { v: "subjects", l: "Subjects" },
+              { v: "path", l: "Learning Path" },
               { v: "progress", l: "My Progress" },
-              { v: "library", l: "My Library" },
               { v: "live", l: "Live Classes" },
             ].map(t => (
               <TabsTrigger
@@ -192,11 +192,11 @@ export default function LearnPortal() {
             </div>
           </TabsContent>
 
+          <TabsContent value="path" className="mt-0">
+            <LearningPath subjects={subjects} grade={grade} perSubject={perSubject} completedIds={completedIds} />
+          </TabsContent>
           <TabsContent value="progress" className="mt-0">
             <ProgressCharts rows={buildProgressRows(subjects, grade, perSubject)} />
-          </TabsContent>
-          <TabsContent value="library" className="mt-0">
-            <EmptyState icon={<BookOpen className="w-10 h-10" />} title="My Library" body="Saved notes, downloads and bookmarks will appear here." />
           </TabsContent>
           <TabsContent value="live" className="mt-0">
             <EmptyState icon={<Menu className="w-10 h-10" />} title="Live Classes" body="Live class schedule will appear here once available." />
