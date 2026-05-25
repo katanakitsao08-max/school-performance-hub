@@ -1472,6 +1472,11 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
         <div>
           <h1 className="text-3xl font-bold">My Timetable</h1>
           <p className="text-muted-foreground text-sm">{schoolName} — read only</p>
+          {adminLabel && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Prepared by: <span className="font-medium text-foreground">{adminLabel}</span> (Administrator)
+            </p>
+          )}
         </div>
 
         {role === 'teacher' && personalGrid && (
