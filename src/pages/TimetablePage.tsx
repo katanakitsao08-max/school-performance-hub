@@ -63,7 +63,8 @@ function defaultPeriodTimes(): PeriodTime[] {
 }
 
 export default function TimetablePage() {
-  const { schoolId, user, role } = useAuth();
+  const { schoolId, user, role, profile } = useAuth();
+  const adminName = profile?.full_name || '';
   const isAdmin = role === 'admin' || role === 'super_admin';
   const grades = useSchoolGrades();
   const streams = useSchoolStreams();
@@ -613,7 +614,7 @@ export default function TimetablePage() {
       title: `Class Timetable — ${grade} ${stream}`,
       days: scheduleDays, periodsPerDay, breakPeriods,
       grid: result.grids[`${grade}|${stream}`],
-      showTeacher: true,
+      showTeacher: true, preparedBy: adminName,
     });
   };
 
@@ -636,6 +637,7 @@ export default function TimetablePage() {
       title: `Teacher Timetable — ${t.teacherName}`,
       days: scheduleDays, periodsPerDay, breakPeriods,
       grid: t.grid,
+      preparedBy: adminName,
     });
   };
 
@@ -647,7 +649,7 @@ export default function TimetablePage() {
         title: `${c.grade} ${c.stream}`,
         days: scheduleDays, periodsPerDay, breakPeriods,
         grid: result.grids[`${c.grade}|${c.stream}`],
-        showTeacher: true,
+        showTeacher: true, preparedBy: adminName,
       },
     })));
   };
@@ -1235,7 +1237,7 @@ export default function TimetablePage() {
                           schoolName,
                           title: `Class Timetable — ${c.grade} ${c.stream}`,
                           days: scheduleDays, periodsPerDay, breakPeriods,
-                          grid: g, showTeacher: true,
+                          grid: g, showTeacher: true, preparedBy: adminName,
                         })}>
                           <Download className="h-3 w-3 mr-1" /> PDF
                         </Button>
@@ -1398,6 +1400,8 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
   const [personalGrid, setPersonalGrid] = useState<TimetableSlot[][] | null>(null);
   const [periodsPerDay, setPeriodsPerDay] = useState(8);
   const [breakPeriods, setBreakPeriods] = useState<number[]>([]);
+  const [adminNames, setAdminNames] = useState<Record<string, string>>({});
+  const adminLabel = Object.values(adminNames)[0] || '';
 
   useEffect(() => {
     (async () => {
@@ -1412,6 +1416,17 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
       if (list.length > 0) {
         setPeriodsPerDay(list[0].periods_per_day || 8);
         setBreakPeriods(list[0].break_period ? [list[0].break_period] : []);
+      }
+      // Load admin (generator) names
+      const ids = Array.from(new Set(list.map(t => t.generated_by).filter(Boolean)));
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', ids);
+        const map: Record<string, string> = {};
+        (profs || []).forEach((p: any) => { map[p.user_id] = p.full_name; });
+        setAdminNames(map);
       }
 
       if (role === 'teacher' && list.length > 0) {
@@ -1457,6 +1472,11 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
         <div>
           <h1 className="text-3xl font-bold">My Timetable</h1>
           <p className="text-muted-foreground text-sm">{schoolName} — read only</p>
+          {adminLabel && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Prepared by: <span className="font-medium text-foreground">{adminLabel}</span> (Administrator)
+            </p>
+          )}
         </div>
 
         {role === 'teacher' && personalGrid && (
@@ -1471,6 +1491,7 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
                 title: 'My Personal Timetable',
                 days: DAYS, periodsPerDay, breakPeriods,
                 grid: personalGrid,
+                preparedBy: adminLabel,
               })}>
                 <Download className="h-3 w-3 mr-1" /> PDF
               </Button>
@@ -1494,7 +1515,7 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
                   periodsPerDay: tt.periods_per_day || 8,
                   breakPeriods: tt.break_period ? [tt.break_period] : [],
                   grid: tt.data as TimetableSlot[][],
-                  showTeacher: true,
+                  showTeacher: true, preparedBy: adminLabel,
                 })}>
                   <Download className="h-3 w-3 mr-1" /> PDF
                 </Button>

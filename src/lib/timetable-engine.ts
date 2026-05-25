@@ -259,6 +259,100 @@ export function generateTimetable(opts: GenerateOptions): GenerationResult {
     }
   }
 
+  // ── Backfill pass: fill any remaining empty teaching slots ───────────────
+  // For each empty (non-break, non-locked, empty) cell in every class,
+  // try ANY subject from that class's requirements whose teacher is free.
+  // This guarantees no gaps while still preventing teacher double-booking.
+  const unavailableSetGlobal = new Set<string>();
+  (opts.teacherUnavailable || []).forEach(u => {
+    const dayList = u.day === '*' ? days : [u.day];
+    dayList.forEach(d => unavailableSetGlobal.add(`${u.teacher_id}::${d}:${u.period}`));
+  });
+  for (const ck of Object.keys(grids)) {
+    const grid = grids[ck];
+    const reqs = requirementsByClass[ck] || [];
+    const maxPeriodCap = opts.maxPeriodByClass?.[ck] ?? periodsPerDay;
+    for (let d = 0; d < days.length; d++) {
+      for (let p = 0; p < periodsPerDay; p++) {
+        if (p + 1 > maxPeriodCap) break;
+        const slot = grid[d][p];
+        if (slot.isBreak || slot.isLocked || slot.learningAreaId) continue;
+        // Find a subject + free teacher
+        const shuffled = [...reqs].sort(() => Math.random() - 0.5);
+        let filled = false;
+        for (const r of shuffled) {
+          const fullPool = teacherPool[`${ck}::${r.learningAreaId}`] || [];
+          const pool = r.preferredTeacherId
+            ? fullPool.filter(t => t.teacher_id === r.preferredTeacherId)
+            : fullPool;
+          if (pool.length === 0) continue;
+          // Avoid back-to-back same subject (visual spread)
+          const prev = p > 0 ? grid[d][p - 1] : null;
+          const next = p < periodsPerDay - 1 ? grid[d][p + 1] : null;
+          if (prev?.learningAreaId === r.learningAreaId || next?.learningAreaId === r.learningAreaId) continue;
+          const sortedPool = [...pool].sort(
+            (x, y) => (teacherLoad[x.teacher_id] || 0) - (teacherLoad[y.teacher_id] || 0),
+          );
+          const teacher = sortedPool.find(t => {
+            const sk = `${days[d]}:${p + 1}`;
+            if (teacherBusy[t.teacher_id]?.has(sk)) return false;
+            if (unavailableSetGlobal.has(`${t.teacher_id}::${sk}`)) return false;
+            return true;
+          });
+          if (!teacher) continue;
+          grid[d][p] = {
+            day: days[d],
+            period: p + 1,
+            learningAreaId: r.learningAreaId,
+            learningAreaName: r.classroom ? `${r.learningAreaName} [${r.classroom}]` : r.learningAreaName,
+            teacherId: teacher.teacher_id,
+            teacherName: teacher.teacher_name,
+          };
+          const slotKey = `${days[d]}:${p + 1}`;
+          if (!teacherBusy[teacher.teacher_id]) teacherBusy[teacher.teacher_id] = new Set();
+          teacherBusy[teacher.teacher_id].add(slotKey);
+          teacherLoad[teacher.teacher_id] = (teacherLoad[teacher.teacher_id] || 0) + 1;
+          filled = true;
+          break;
+        }
+        // If still empty after trying same-class requirements, allow any subject
+        // for which the class has a teacher assignment at all (relaxed: drop back-to-back rule)
+        if (!filled) {
+          for (const r of shuffled) {
+            const fullPool = teacherPool[`${ck}::${r.learningAreaId}`] || [];
+            const pool = r.preferredTeacherId
+              ? fullPool.filter(t => t.teacher_id === r.preferredTeacherId)
+              : fullPool;
+            if (pool.length === 0) continue;
+            const sortedPool = [...pool].sort(
+              (x, y) => (teacherLoad[x.teacher_id] || 0) - (teacherLoad[y.teacher_id] || 0),
+            );
+            const teacher = sortedPool.find(t => {
+              const sk = `${days[d]}:${p + 1}`;
+              if (teacherBusy[t.teacher_id]?.has(sk)) return false;
+              if (unavailableSetGlobal.has(`${t.teacher_id}::${sk}`)) return false;
+              return true;
+            });
+            if (!teacher) continue;
+            grid[d][p] = {
+              day: days[d],
+              period: p + 1,
+              learningAreaId: r.learningAreaId,
+              learningAreaName: r.classroom ? `${r.learningAreaName} [${r.classroom}]` : r.learningAreaName,
+              teacherId: teacher.teacher_id,
+              teacherName: teacher.teacher_name,
+            };
+            const slotKey = `${days[d]}:${p + 1}`;
+            if (!teacherBusy[teacher.teacher_id]) teacherBusy[teacher.teacher_id] = new Set();
+            teacherBusy[teacher.teacher_id].add(slotKey);
+            teacherLoad[teacher.teacher_id] = (teacherLoad[teacher.teacher_id] || 0) + 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   // Build per-teacher grids
   const teacherGrids: Record<string, { teacherName: string; grid: TimetableSlot[][]; lessonCount: number }> = {};
   for (const k of Object.keys(grids)) {
