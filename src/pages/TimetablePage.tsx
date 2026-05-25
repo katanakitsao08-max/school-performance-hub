@@ -1400,6 +1400,8 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
   const [personalGrid, setPersonalGrid] = useState<TimetableSlot[][] | null>(null);
   const [periodsPerDay, setPeriodsPerDay] = useState(8);
   const [breakPeriods, setBreakPeriods] = useState<number[]>([]);
+  const [adminNames, setAdminNames] = useState<Record<string, string>>({});
+  const adminLabel = Object.values(adminNames)[0] || '';
 
   useEffect(() => {
     (async () => {
