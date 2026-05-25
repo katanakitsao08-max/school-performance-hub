@@ -1417,6 +1417,17 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
         setPeriodsPerDay(list[0].periods_per_day || 8);
         setBreakPeriods(list[0].break_period ? [list[0].break_period] : []);
       }
+      // Load admin (generator) names
+      const ids = Array.from(new Set(list.map(t => t.generated_by).filter(Boolean)));
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', ids);
+        const map: Record<string, string> = {};
+        (profs || []).forEach((p: any) => { map[p.user_id] = p.full_name; });
+        setAdminNames(map);
+      }
 
       if (role === 'teacher' && list.length > 0) {
         const ppd = list[0].periods_per_day || 8;
