@@ -13,6 +13,7 @@ interface PdfOpts {
   grid: TimetableSlot[][];
   showTeacher?: boolean;
   showClass?: boolean;
+  preparedBy?: string;
 }
 
 // Build column header definitions with BREAK columns labeled clearly.
