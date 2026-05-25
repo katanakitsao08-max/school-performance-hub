@@ -148,8 +148,11 @@ function LessonRow({ lesson, slug, done, accent }: {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm leading-tight">{lesson.title}</p>
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
             <Clock className="w-3 h-3" /> {lesson.duration} · {lesson.strand}
+            <span className="inline-flex items-center gap-0.5 ml-1">
+              <ListChecks className="w-3 h-3" /> {lesson.quiz.length} {lesson.quiz.length === 1 ? "question" : "questions"}
+            </span>
             {done && <span className="ml-1 text-primary font-medium">· Completed</span>}
           </p>
         </div>
