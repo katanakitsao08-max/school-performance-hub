@@ -118,6 +118,7 @@ export default function SubjectDetail() {
               <p><span className="font-semibold">Tier:</span> {grade?.match(/\d+/) && parseInt(grade.match(/\d+/)![0]) >= 7 ? "KJSEA (Junior Secondary)" : "KPSEA (Primary)"}</p>
               <p><span className="font-semibold">Strands:</span> {Object.keys(grouped).join(", ") || "—"}</p>
               <p><span className="font-semibold">Total lessons:</span> {lessons.length}</p>
+              <p><span className="font-semibold">Total quiz questions:</span> {lessons.reduce((s, l) => s + l.quiz.length, 0)}</p>
               <p className="text-muted-foreground text-xs pt-2">
                 Every lesson includes notes, an AI tutor and a short quiz aligned to the CBC.
               </p>
