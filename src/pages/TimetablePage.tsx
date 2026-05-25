@@ -1475,6 +1475,7 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
                 title: 'My Personal Timetable',
                 days: DAYS, periodsPerDay, breakPeriods,
                 grid: personalGrid,
+                preparedBy: adminLabel,
               })}>
                 <Download className="h-3 w-3 mr-1" /> PDF
               </Button>
