@@ -118,6 +118,7 @@ export default function SubjectDetail() {
               <p><span className="font-semibold">Tier:</span> {grade?.match(/\d+/) && parseInt(grade.match(/\d+/)![0]) >= 7 ? "KJSEA (Junior Secondary)" : "KPSEA (Primary)"}</p>
               <p><span className="font-semibold">Strands:</span> {Object.keys(grouped).join(", ") || "—"}</p>
               <p><span className="font-semibold">Total lessons:</span> {lessons.length}</p>
+              <p><span className="font-semibold">Total quiz questions:</span> {lessons.reduce((s, l) => s + l.quiz.length, 0)}</p>
               <p className="text-muted-foreground text-xs pt-2">
                 Every lesson includes notes, an AI tutor and a short quiz aligned to the CBC.
               </p>
@@ -148,8 +149,11 @@ function LessonRow({ lesson, slug, done, accent }: {
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm leading-tight">{lesson.title}</p>
-          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5 flex-wrap">
             <Clock className="w-3 h-3" /> {lesson.duration} · {lesson.strand}
+            <span className="inline-flex items-center gap-0.5 ml-1">
+              <ListChecks className="w-3 h-3" /> {lesson.quiz.length} {lesson.quiz.length === 1 ? "question" : "questions"}
+            </span>
             {done && <span className="ml-1 text-primary font-medium">· Completed</span>}
           </p>
         </div>
