@@ -625,7 +625,7 @@ export default function TimetablePage() {
       title: `Class Timetable — ${grade} ${stream}`,
       days: scheduleDays, periodsPerDay, breakPeriods,
       grid: result.grids[`${grade}|${stream}`],
-      showTeacher: true, preparedBy: adminName,
+      showTeacher: true,
     });
   };
 
@@ -1245,7 +1245,7 @@ export default function TimetablePage() {
                           schoolName,
                           title: `Class Timetable — ${c.grade} ${c.stream}`,
                           days: scheduleDays, periodsPerDay, breakPeriods,
-                          grid: g, showTeacher: true, preparedBy: adminName,
+                          grid: g, showTeacher: true,
                         })}>
                           <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
                         </Button>
@@ -1498,7 +1498,7 @@ function TeacherTimetableView({ schoolId, userId, schoolName, role }: {
                   periodsPerDay: tt.periods_per_day || 8,
                   breakPeriods: tt.break_period ? [tt.break_period] : [],
                   grid: tt.data as TimetableSlot[][],
-                  showTeacher: true, preparedBy: adminName,
+                  showTeacher: true, preparedBy: adminLabel,
                 })}>
                   <Download className="h-3 w-3 mr-1" /> PDF
                 </Button>
