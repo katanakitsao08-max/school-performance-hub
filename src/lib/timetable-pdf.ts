@@ -154,8 +154,11 @@ export function exportTimetablePdf(opts: PdfOpts) {
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
   doc.setTextColor(110);
+  const leftFooter = opts.preparedBy
+    ? `Prepared by: ${opts.preparedBy} (Administrator)  ·  ${new Date().toLocaleDateString()}`
+    : `Generated ${new Date().toLocaleDateString()}`;
   doc.text(
-    `Generated ${new Date().toLocaleDateString()}`,
+    leftFooter,
     10,
     Math.min(finalY + 6, pageH - 8),
   );
