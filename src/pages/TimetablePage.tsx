@@ -63,7 +63,8 @@ function defaultPeriodTimes(): PeriodTime[] {
 }
 
 export default function TimetablePage() {
-  const { schoolId, user, role } = useAuth();
+  const { schoolId, user, role, profile } = useAuth();
+  const adminName = profile?.full_name || '';
   const isAdmin = role === 'admin' || role === 'super_admin';
   const grades = useSchoolGrades();
   const streams = useSchoolStreams();
