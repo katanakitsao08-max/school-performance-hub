@@ -637,6 +637,7 @@ export default function TimetablePage() {
       title: `Teacher Timetable — ${t.teacherName}`,
       days: scheduleDays, periodsPerDay, breakPeriods,
       grid: t.grid,
+      preparedBy: adminName,
     });
   };
 
