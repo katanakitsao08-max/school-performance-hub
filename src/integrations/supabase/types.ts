@@ -1034,6 +1034,47 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_schools: {
+        Row: {
+          county: string
+          created_at: string
+          id: string
+          linked_school_id: string | null
+          normalized_name: string
+          onboarding_status: string
+          school_name: string
+          updated_at: string
+        }
+        Insert: {
+          county?: string
+          created_at?: string
+          id?: string
+          linked_school_id?: string | null
+          normalized_name: string
+          onboarding_status?: string
+          school_name: string
+          updated_at?: string
+        }
+        Update: {
+          county?: string
+          created_at?: string
+          id?: string
+          linked_school_id?: string | null
+          normalized_name?: string
+          onboarding_status?: string
+          school_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_schools_linked_school_id_fkey"
+            columns: ["linked_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           assigned_grades: string[] | null
@@ -1804,6 +1845,192 @@ export type Database = {
           },
         ]
       }
+      teacher_classes: {
+        Row: {
+          class_name: string
+          created_at: string
+          id: string
+          linked_school_id: string | null
+          pending_school_id: string | null
+          stream: string
+          teacher_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_name: string
+          created_at?: string
+          id?: string
+          linked_school_id?: string | null
+          pending_school_id?: string | null
+          stream?: string
+          teacher_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          id?: string
+          linked_school_id?: string | null
+          pending_school_id?: string | null
+          stream?: string
+          teacher_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_classes_linked_school_id_fkey"
+            columns: ["linked_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_classes_pending_school_id_fkey"
+            columns: ["pending_school_id"]
+            isOneToOne: false
+            referencedRelation: "pending_schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_learners: {
+        Row: {
+          admission_number: string
+          class_id: string
+          created_at: string
+          full_name: string
+          gender: string
+          id: string
+          is_active: boolean
+          migrated_learner_id: string | null
+          parent_name: string | null
+          parent_phone: string | null
+          teacher_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          admission_number: string
+          class_id: string
+          created_at?: string
+          full_name: string
+          gender?: string
+          id?: string
+          is_active?: boolean
+          migrated_learner_id?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          teacher_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          admission_number?: string
+          class_id?: string
+          created_at?: string
+          full_name?: string
+          gender?: string
+          id?: string
+          is_active?: boolean
+          migrated_learner_id?: string | null
+          parent_name?: string | null
+          parent_phone?: string | null
+          teacher_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_learners_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_learners_migrated_learner_id_fkey"
+            columns: ["migrated_learner_id"]
+            isOneToOne: false
+            referencedRelation: "learners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_registrations: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          class_name: string
+          county: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          linked_school_id: string | null
+          pending_school_id: string | null
+          phone: string
+          rejection_reason: string | null
+          school_name_raw: string
+          stream: string
+          tsc_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          class_name: string
+          county?: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          linked_school_id?: string | null
+          pending_school_id?: string | null
+          phone: string
+          rejection_reason?: string | null
+          school_name_raw: string
+          stream?: string
+          tsc_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          class_name?: string
+          county?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          linked_school_id?: string | null
+          pending_school_id?: string | null
+          phone?: string
+          rejection_reason?: string | null
+          school_name_raw?: string
+          stream?: string
+          tsc_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_registrations_linked_school_id_fkey"
+            columns: ["linked_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_registrations_pending_school_id_fkey"
+            columns: ["pending_school_id"]
+            isOneToOne: false
+            referencedRelation: "pending_schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timetable_activation_keys: {
         Row: {
           activated_at: string | null
@@ -2333,6 +2560,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      link_pending_school_to_school: {
+        Args: { _pending_school_id: string; _school_id: string }
+        Returns: undefined
+      }
       seed_whatsapp_defaults_for_school: {
         Args: { _school_id: string }
         Returns: undefined
@@ -2346,6 +2577,7 @@ export type Database = {
         | "super_admin"
         | "parent"
         | "independent_learner"
+        | "pending_teacher"
       curriculum_source: "manual" | "ai_pdf"
       curriculum_status: "draft" | "review" | "approved" | "active" | "archived"
       whatsapp_queue_status:
@@ -2490,6 +2722,7 @@ export const Constants = {
         "super_admin",
         "parent",
         "independent_learner",
+        "pending_teacher",
       ],
       curriculum_source: ["manual", "ai_pdf"],
       curriculum_status: ["draft", "review", "approved", "active", "archived"],

@@ -59,6 +59,10 @@ const LearnPortal = lazy(() => import("./pages/learn/LearnPortal"));
 const SubjectDetail = lazy(() => import("./pages/learn/SubjectDetail"));
 const LessonPlayer = lazy(() => import("./pages/learn/LessonPlayer"));
 const IndependentLearnersAdmin = lazy(() => import("./pages/IndependentLearnersAdmin"));
+const TeacherSignup = lazy(() => import("./pages/teacher/TeacherSignup"));
+const TeacherPending = lazy(() => import("./pages/teacher/TeacherPending"));
+const TeacherStandaloneDashboard = lazy(() => import("./pages/teacher/TeacherStandaloneDashboard"));
+const TeacherApprovalsPage = lazy(() => import("./pages/TeacherApprovalsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -86,18 +90,21 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     if (role === 'parent') return <Navigate to="/parent" replace />;
     if (role === 'independent_learner') return <Navigate to="/learn" replace />;
+    if (role === 'pending_teacher') return <Navigate to="/teacher/pending" replace />;
     return <Navigate to={role === 'super_admin' ? '/super-admin' : '/dashboard'} replace />;
   }
   return <>{children}</>;
 }
 
 function SmartRedirect() {
-  const { user, role, loading } = useAuth();
+  const { user, role, profile, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
   if (role === 'parent') return <Navigate to="/parent" replace />;
   if (role === 'independent_learner') return <Navigate to="/learn" replace />;
+  if (role === 'pending_teacher') return <Navigate to="/teacher/pending" replace />;
+  if (role === 'teacher' && !profile?.school_id) return <Navigate to="/teacher" replace />;
   return <Dashboard />;
 }
 
@@ -165,6 +172,11 @@ const App = () => (
                 <Route path="/learn/subject/:slug" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Subject"><SubjectDetail /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/learn/subject/:slug/lesson/:lessonId" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Lesson"><LessonPlayer /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/independent-learners" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Independent Learners"><IndependentLearnersAdmin /></ErrorBoundary></ProtectedRoute>} />
+                {/* Teacher-First registration routes */}
+                <Route path="/teacher/signup" element={<TeacherSignup />} />
+                <Route path="/teacher/pending" element={<ProtectedRoute allowedRoles={['pending_teacher','teacher']}><TeacherPending /></ProtectedRoute>} />
+                <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><ErrorBoundary inline label="Teacher Dashboard"><TeacherStandaloneDashboard /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/teacher-approvals" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Teacher Approvals"><TeacherApprovalsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
