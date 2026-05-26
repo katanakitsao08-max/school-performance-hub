@@ -59,6 +59,10 @@ const LearnPortal = lazy(() => import("./pages/learn/LearnPortal"));
 const SubjectDetail = lazy(() => import("./pages/learn/SubjectDetail"));
 const LessonPlayer = lazy(() => import("./pages/learn/LessonPlayer"));
 const IndependentLearnersAdmin = lazy(() => import("./pages/IndependentLearnersAdmin"));
+const TeacherSignup = lazy(() => import("./pages/teacher/TeacherSignup"));
+const TeacherPending = lazy(() => import("./pages/teacher/TeacherPending"));
+const TeacherStandaloneDashboard = lazy(() => import("./pages/teacher/TeacherStandaloneDashboard"));
+const TeacherApprovalsPage = lazy(() => import("./pages/TeacherApprovalsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
