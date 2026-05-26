@@ -97,12 +97,14 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 }
 
 function SmartRedirect() {
-  const { user, role, loading } = useAuth();
+  const { user, role, profile, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
   if (role === 'parent') return <Navigate to="/parent" replace />;
   if (role === 'independent_learner') return <Navigate to="/learn" replace />;
+  if (role === 'pending_teacher') return <Navigate to="/teacher/pending" replace />;
+  if (role === 'teacher' && !profile?.school_id) return <Navigate to="/teacher" replace />;
   return <Dashboard />;
 }
 
