@@ -172,6 +172,11 @@ const App = () => (
                 <Route path="/learn/subject/:slug" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Subject"><SubjectDetail /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/learn/subject/:slug/lesson/:lessonId" element={<ProtectedRoute allowedRoles={['independent_learner']}><ErrorBoundary inline label="Lesson"><LessonPlayer /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/independent-learners" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Independent Learners"><IndependentLearnersAdmin /></ErrorBoundary></ProtectedRoute>} />
+                {/* Teacher-First registration routes */}
+                <Route path="/teacher/signup" element={<TeacherSignup />} />
+                <Route path="/teacher/pending" element={<ProtectedRoute allowedRoles={['pending_teacher','teacher']}><TeacherPending /></ProtectedRoute>} />
+                <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><ErrorBoundary inline label="Teacher Dashboard"><TeacherStandaloneDashboard /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/teacher-approvals" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Teacher Approvals"><TeacherApprovalsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/" element={<SmartRedirect />} />
                 {/* Super Admin routes */}
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
