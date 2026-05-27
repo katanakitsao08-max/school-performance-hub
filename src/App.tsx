@@ -63,6 +63,7 @@ const TeacherSignup = lazy(() => import("./pages/teacher/TeacherSignup"));
 const TeacherPending = lazy(() => import("./pages/teacher/TeacherPending"));
 const TeacherStandaloneDashboard = lazy(() => import("./pages/teacher/TeacherStandaloneDashboard"));
 const TeacherApprovalsPage = lazy(() => import("./pages/TeacherApprovalsPage"));
+const DocumentsPage = lazy(() => import("./pages/DocumentsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -213,6 +214,7 @@ const App = () => (
                 <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin']}><SettingsPage /></ProtectedRoute>} />
                 <Route path="/fees" element={<ProtectedRoute allowedRoles={['admin']}><FeesPage /></ProtectedRoute>} />
                 <Route path="/content-generation" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><ContentGenerationPage /></ProtectedRoute>} />
+                <Route path="/documents" element={<ProtectedRoute allowedRoles={['admin']}><ErrorBoundary inline label="Documents"><DocumentsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
                 {/* Parent routes */}
                 <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
