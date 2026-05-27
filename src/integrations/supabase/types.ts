@@ -245,6 +245,87 @@ export type Database = {
           },
         ]
       }
+      document_templates: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          is_global: boolean
+          school_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_global?: boolean
+          school_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_global?: boolean
+          school_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          language: string
+          prompt: string | null
+          recipient_name: string | null
+          recipient_type: string
+          school_id: string
+          title: string
+          tone: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          language?: string
+          prompt?: string | null
+          recipient_name?: string | null
+          recipient_type?: string
+          school_id: string
+          title: string
+          tone?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          language?: string
+          prompt?: string | null
+          recipient_name?: string | null
+          recipient_type?: string
+          school_id?: string
+          title?: string
+          tone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fee_records: {
         Row: {
           amount_charged: number
