@@ -72,12 +72,24 @@ export default function TeacherApprovalsPage() {
                   <TableRow key={r.id}>
                     <TableCell>
                       <div className="font-medium">{r.full_name}</div>
-                      <div className="text-xs text-muted-foreground">{r.email} · {r.phone}</div>
+                      <div className="text-xs text-muted-foreground">{r.email}</div>
                     </TableCell>
                     <TableCell>{r.school_name_raw}</TableCell>
                     <TableCell>{r.county}</TableCell>
                     <TableCell>{r.class_name} {r.stream}</TableCell>
-                    <TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {r.phone ? (
+                        <a
+                          href={`tel:${r.phone}`}
+                          className="inline-flex items-center gap-1.5 text-primary hover:underline font-medium"
+                          title={`Call ${r.full_name}`}
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          {r.phone}
+                        </a>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
+                    <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                     <TableCell><Badge variant={r.approval_status === "approved" ? "default" : "secondary"}>{r.approval_status}</Badge></TableCell>
                     <TableCell className="space-x-1">
                       {r.approval_status !== "approved" && <Button size="sm" disabled={busy === r.id} onClick={() => act(r.id, "approve")}>Approve</Button>}
