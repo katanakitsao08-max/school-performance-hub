@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -61,22 +62,35 @@ export default function TeacherApprovalsPage() {
                 <option value="all">All</option>
               </select>
             </div>
+            <div className="overflow-x-auto -mx-3 sm:mx-0">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Teacher</TableHead><TableHead>School</TableHead><TableHead>County</TableHead>
-                <TableHead>Class</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
+                <TableHead>Class</TableHead><TableHead>Phone</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filtered.map(r => (
                   <TableRow key={r.id}>
                     <TableCell>
                       <div className="font-medium">{r.full_name}</div>
-                      <div className="text-xs text-muted-foreground">{r.email} · {r.phone}</div>
+                      <div className="text-xs text-muted-foreground">{r.email}</div>
                     </TableCell>
                     <TableCell>{r.school_name_raw}</TableCell>
                     <TableCell>{r.county}</TableCell>
                     <TableCell>{r.class_name} {r.stream}</TableCell>
-                    <TableCell>{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {r.phone ? (
+                        <a
+                          href={`tel:${r.phone}`}
+                          className="inline-flex items-center gap-1.5 text-primary hover:underline font-medium"
+                          title={`Call ${r.full_name}`}
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          {r.phone}
+                        </a>
+                      ) : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
+                    <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                     <TableCell><Badge variant={r.approval_status === "approved" ? "default" : "secondary"}>{r.approval_status}</Badge></TableCell>
                     <TableCell className="space-x-1">
                       {r.approval_status !== "approved" && <Button size="sm" disabled={busy === r.id} onClick={() => act(r.id, "approve")}>Approve</Button>}
@@ -86,10 +100,11 @@ export default function TeacherApprovalsPage() {
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No registrations.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No registrations.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -20,6 +20,11 @@ export default function TeacherSignup() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const phoneClean = form.phone.replace(/\s+/g, "");
+    if (!/^\+?[0-9]{9,15}$/.test(phoneClean)) {
+      toast({ title: "Invalid phone number", description: "Use 9–15 digits, optional +", variant: "destructive" });
+      return;
+    }
     if (form.password.length < 8) { toast({ title: "Password too short", description: "Use at least 8 characters", variant: "destructive" }); return; }
     if (form.password !== form.confirm) { toast({ title: "Passwords do not match", variant: "destructive" }); return; }
     setLoading(true);
