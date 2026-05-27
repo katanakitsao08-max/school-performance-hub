@@ -104,6 +104,7 @@ export default function TeacherApprovalsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
