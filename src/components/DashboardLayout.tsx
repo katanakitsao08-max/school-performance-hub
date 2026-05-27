@@ -42,11 +42,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        {!isMobile && <AppSidebar />}
+        <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b border-border/60 bg-card/70 backdrop-blur-xl px-4 no-print sticky top-0 z-30 supports-[backdrop-filter]:bg-card/60">
             <div className="flex items-center gap-3 min-w-0">
-              {!isMobile && <SidebarTrigger className="mr-1 hover:bg-accent/50 rounded-lg" />}
+              <SidebarTrigger className="mr-1 hover:bg-accent/50 rounded-lg h-9 w-9 md:h-8 md:w-8" />
               <div className="min-w-0">
                 <h2 className="text-sm font-display font-bold text-foreground truncate tracking-tight">
                   {isMobile ? 'PerformTrack' : (profile?.full_name || 'Dashboard')}
