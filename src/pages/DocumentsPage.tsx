@@ -112,8 +112,8 @@ export default function DocumentsPage() {
   const insertMerge = (field: string) => exec("insertText", `{{${field}}}`);
 
   const applyMergeFields = (html: string) => html
-    .replaceAll("{{school_name}}", letterhead.schoolName || "")
-    .replaceAll("{{date}}", new Date().toLocaleDateString());
+    .split("{{school_name}}").join(letterhead.schoolName || "")
+    .split("{{date}}").join(new Date().toLocaleDateString());
 
   const handleDownload = async () => {
     if (!content.trim()) { toast({ title: "Nothing to export", variant: "destructive" }); return; }
