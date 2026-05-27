@@ -62,6 +62,7 @@ export default function TeacherApprovalsPage() {
                 <option value="all">All</option>
               </select>
             </div>
+            <div className="overflow-x-auto -mx-3 sm:mx-0">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Teacher</TableHead><TableHead>School</TableHead><TableHead>County</TableHead>
