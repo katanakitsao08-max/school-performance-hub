@@ -65,7 +65,7 @@ export default function TeacherApprovalsPage() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Teacher</TableHead><TableHead>School</TableHead><TableHead>County</TableHead>
-                <TableHead>Class</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
+                <TableHead>Class</TableHead><TableHead>Phone</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filtered.map(r => (
