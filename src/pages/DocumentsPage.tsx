@@ -187,99 +187,81 @@ export default function DocumentsPage() {
           </TabsList>
 
           <TabsContent value="new" className="space-y-4">
-            <div className="grid lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Compose</CardTitle>
-                  <CardDescription>Describe the letter — AI will draft it for you.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">Compose Letter</CardTitle>
+                    <CardDescription>Type your letter manually. The school letterhead, signature and stamp are added automatically on export.</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={handleSave} disabled={saving}>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={saveAsTemplate}>Save as Template</Button>
+                    <Button size="sm" onClick={handleDownload}><Download className="h-4 w-4" /> Download PDF</Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Title</Label>
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Sponsorship Request to Safaricom" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Recipient Type</Label>
-                      <Select value={recipientType} onValueChange={setRecipientType}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{RECIPIENTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Recipient Name</Label>
-                      <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. Safaricom CSR Manager" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Tone</Label>
-                      <Select value={tone} onValueChange={setTone}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{TONES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Language</Label>
-                      <Select value={language} onValueChange={setLanguage}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="sw">Kiswahili</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label>Recipient Name</Label>
+                    <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. CSR Manager, Safaricom" />
                   </div>
                   <div>
-                    <Label>Prompt</Label>
-                    <Textarea rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="e.g. Write a sponsorship request to Safaricom for ICT lab equipment for 60 learners" />
-                  </div>
-                  <Button onClick={generate} disabled={generating} className="w-full">
-                    {generating ? <Loader2 className="animate-spin" /> : <Sparkles />} Generate Letter
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Editor & Preview</CardTitle>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={handleSave} disabled={saving}><Save className="h-4 w-4" /> Save</Button>
-                      <Button size="sm" variant="outline" onClick={saveAsTemplate}>Save as Template</Button>
-                      <Button size="sm" onClick={handleDownload}><Download className="h-4 w-4" /> PDF</Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex flex-wrap gap-1 border rounded-md p-1 bg-muted/30">
-                    <Button size="icon" variant="ghost" onClick={() => exec("bold")}><Bold className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("italic")}><Italic className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("formatBlock", "<h2>")}><Heading2 className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("insertUnorderedList")}><List className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("insertOrderedList")}><ListOrdered className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("justifyLeft")}><AlignLeft className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("justifyCenter")}><AlignCenter className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => exec("justifyRight")}><AlignRight className="h-4 w-4" /></Button>
-                    <Select onValueChange={insertMerge}>
-                      <SelectTrigger className="h-8 w-[140px]"><SelectValue placeholder="Insert field" /></SelectTrigger>
-                      <SelectContent>{MERGE_FIELDS.map(f => <SelectItem key={f} value={f}>{`{{${f}}}`}</SelectItem>)}</SelectContent>
+                    <Label>Recipient Type</Label>
+                    <Select value={recipientType} onValueChange={setRecipientType}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{RECIPIENTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="border rounded-md p-4 bg-background min-h-[400px]">
-                    <LetterheadPreview lh={letterhead} />
-                    <div
-                      ref={editorRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onInput={(e) => setContent((e.target as HTMLDivElement).innerHTML)}
-                      className="prose prose-sm max-w-none mt-3 outline-none min-h-[260px] [&_h2]:text-lg [&_h3]:text-base [&_p]:my-2"
-                    />
+                  <div>
+                    <Label>Tone (for your reference)</Label>
+                    <Select value={tone} onValueChange={setTone}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{TONES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1 border rounded-md p-1 bg-muted/30">
+                  <Button size="icon" variant="ghost" onClick={() => exec("bold")}><Bold className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("italic")}><Italic className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("formatBlock", "<h2>")}><Heading2 className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("insertUnorderedList")}><List className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("insertOrderedList")}><ListOrdered className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("justifyLeft")}><AlignLeft className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("justifyCenter")}><AlignCenter className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => exec("justifyRight")}><AlignRight className="h-4 w-4" /></Button>
+                  <Select onValueChange={insertMerge}>
+                    <SelectTrigger className="h-8 w-[140px]"><SelectValue placeholder="Insert field" /></SelectTrigger>
+                    <SelectContent>{MERGE_FIELDS.map(f => <SelectItem key={f} value={f}>{`{{${f}}}`}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+
+                <div className="border rounded-md p-4 bg-background">
+                  <LetterheadPreview lh={letterhead} />
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => setContent((e.target as HTMLDivElement).innerHTML)}
+                    className="prose prose-sm max-w-none mt-3 outline-none min-h-[360px] focus:ring-2 focus:ring-primary/20 rounded p-2 [&_h2]:text-lg [&_h3]:text-base [&_p]:my-2"
+                    data-placeholder="Start typing your letter here…"
+                  />
+                  {!content && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Tip: Click inside the box above and start typing. Use the toolbar for formatting.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="templates" className="space-y-3">
