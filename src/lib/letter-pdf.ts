@@ -27,29 +27,59 @@ async function fetchAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
-// Convert HTML to plain structured lines for jsPDF
+// Convert HTML (or plain text) to structured lines for jsPDF.
+// Handles text nodes, <br>, block elements, and falls back to plain text when no HTML tags exist.
 function htmlToBlocks(html: string): Array<{ text: string; bold?: boolean; size?: number; spaceAfter?: number }> {
-  const div = document.createElement("div");
-  div.innerHTML = html;
   const blocks: Array<{ text: string; bold?: boolean; size?: number; spaceAfter?: number }> = [];
-  const walk = (node: Node) => {
+  const raw = (html || "").trim();
+  if (!raw) return blocks;
+
+  // Plain-text fallback (no tags at all)
+  if (!/<[a-z][\s\S]*>/i.test(raw)) {
+    raw.split(/\r?\n/).forEach(line => {
+      blocks.push({ text: line, size: 11, spaceAfter: 3 });
+    });
+    return blocks;
+  }
+
+  const div = document.createElement("div");
+  div.innerHTML = raw;
+
+  const BLOCK_TAGS = new Set(["p", "div", "section", "article", "header", "footer", "li", "h1", "h2", "h3", "h4", "blockquote"]);
+  const flushInline = (buf: { text: string }) => {
+    const t = buf.text.replace(/\s+/g, " ").trim();
+    if (t) blocks.push({ text: t, size: 11, spaceAfter: 3 });
+    buf.text = "";
+  };
+
+  const walk = (node: Node, buf: { text: string }) => {
     node.childNodes.forEach((n) => {
-      if (n.nodeType === 1) {
-        const el = n as HTMLElement;
-        const tag = el.tagName.toLowerCase();
-        const txt = el.textContent?.trim() || "";
-        if (!txt && tag !== "br") return;
-        if (tag === "h2") blocks.push({ text: txt, bold: true, size: 14, spaceAfter: 4 });
-        else if (tag === "h3") blocks.push({ text: txt, bold: true, size: 12, spaceAfter: 3 });
-        else if (tag === "li") blocks.push({ text: "• " + txt, size: 11, spaceAfter: 2 });
-        else if (tag === "p") blocks.push({ text: txt, size: 11, spaceAfter: 4 });
-        else if (tag === "br") blocks.push({ text: "", size: 11, spaceAfter: 2 });
-        else if (["ul", "ol", "div", "section"].includes(tag)) walk(el);
-        else blocks.push({ text: txt, size: 11, spaceAfter: 2 });
+      if (n.nodeType === 3) {
+        buf.text += (n.textContent || "");
+        return;
       }
+      if (n.nodeType !== 1) return;
+      const el = n as HTMLElement;
+      const tag = el.tagName.toLowerCase();
+      if (tag === "br") { flushInline(buf); return; }
+      const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (tag === "h1" || tag === "h2") { flushInline(buf); if (txt) blocks.push({ text: txt, bold: true, size: 14, spaceAfter: 5 }); return; }
+      if (tag === "h3" || tag === "h4") { flushInline(buf); if (txt) blocks.push({ text: txt, bold: true, size: 12, spaceAfter: 4 }); return; }
+      if (tag === "li") { flushInline(buf); if (txt) blocks.push({ text: "• " + txt, size: 11, spaceAfter: 2 }); return; }
+      if (tag === "strong" || tag === "b") { buf.text += " " + txt + " "; return; }
+      if (BLOCK_TAGS.has(tag)) {
+        flushInline(buf);
+        const inner = { text: "" };
+        walk(el, inner);
+        flushInline(inner);
+        return;
+      }
+      walk(el, buf);
     });
   };
-  walk(div);
+  const buf = { text: "" };
+  walk(div, buf);
+  flushInline(buf);
   return blocks;
 }
 

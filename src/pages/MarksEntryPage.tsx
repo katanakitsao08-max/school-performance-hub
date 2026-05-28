@@ -285,24 +285,24 @@ export default function MarksEntryPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // Calculations — exclude blank/zero scores so they don't dilute the mean
-  const getEnteredSubjects = (learnerId: string) => {
+  // Calculations — respect merged columns: a merged column counts as ONE subject.
+  // Value comes from the primary member; other members are ignored (not duplicated).
+  const getColumnValue = (learnerId: string, col: typeof subjectColumns[number]) => {
     const s = scores[learnerId] || {};
-    return subjects.filter(sub => {
-      const v = s[sub.id];
-      return v !== undefined && v !== '' && Number(v) > 0;
-    });
+    if (col.kind === 'single') return Number(s[col.subject.id]) || 0;
+    return Number(s[col.members[0].id]) || 0;
   };
-  const getTotal = (learnerId: string) => {
-    const s = scores[learnerId] || {};
-    return getEnteredSubjects(learnerId).reduce((sum, sub) => sum + (Number(s[sub.id]) || 0), 0);
-  };
+  const getEnteredColumns = (learnerId: string) =>
+    subjectColumns.filter(col => getColumnValue(learnerId, col) > 0);
+  const getTotal = (learnerId: string) =>
+    getEnteredColumns(learnerId).reduce((sum, col) => sum + getColumnValue(learnerId, col), 0);
   const getMean = (learnerId: string) => {
-    const entered = getEnteredSubjects(learnerId);
+    const entered = getEnteredColumns(learnerId);
     if (entered.length === 0) return 0;
     return getTotal(learnerId) / entered.length;
   };
-  const getTotalMaxScore = () => subjects.reduce((sum, s) => sum + s.max_score, 0);
+  const getTotalMaxScore = () =>
+    subjectColumns.reduce((sum, col) => sum + (col.kind === 'single' ? col.subject.max_score : col.max_score), 0);
 
   const rankings = useMemo(() => {
     const totals = learners.map(l => ({ id: l.id, total: getTotal(l.id) }));
@@ -312,7 +312,7 @@ export default function MarksEntryPage() {
       if (t.total !== prevTotal) { rank = i + 1; prevTotal = t.total; }
       return { id: t.id, rank };
     });
-  }, [learners, scores, subjects]);
+  }, [learners, scores, subjectColumns]);
 
   const getRank = (id: string) => rankings.find(r => r.id === id)?.rank || '-';
 
@@ -328,8 +328,8 @@ export default function MarksEntryPage() {
 
   // Class summary — only includes learners that have at least one non-zero score
   const classSummary = useMemo(() => {
-    if (learners.length === 0 || subjects.length === 0) return null;
-    const maxPerSubject = getTotalMaxScore() / subjects.length;
+    if (learners.length === 0 || subjectColumns.length === 0) return null;
+    const maxPerSubject = getTotalMaxScore() / subjectColumns.length;
     const scoringLearners = learners.filter(l => getMean(l.id) > 0);
     const grades = scoringLearners.map(l => getGradeForLevel(getMean(l.id), maxPerSubject, selectedGrade));
     const isKJSEA = isKJSEAGradeLevel(selectedGrade);
@@ -343,7 +343,7 @@ export default function MarksEntryPage() {
       be: grades.filter(g => isKJSEA ? (g === 'BE1' || g === 'BE2') : g === 'BE').length,
       classMean: meanVal.toFixed(1),
     };
-  }, [learners, scores, subjects]);
+  }, [learners, scores, subjectColumns]);
 
   // Auto-save: debounced flush of dirty cells (works online & queues offline)
   useEffect(() => {
@@ -686,8 +686,8 @@ export default function MarksEntryPage() {
                     {filteredLearners.map((learner, idx) => {
                       const total = getTotal(learner.id);
                       const mean = getMean(learner.id);
-                      const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
-                      const grade = subjects.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
+                      const maxPerSubject = subjectColumns.length > 0 ? getTotalMaxScore() / subjectColumns.length : 100;
+                      const grade = subjectColumns.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
                       const rank = getRank(learner.id);
                       return (
                         <TableRow key={learner.id} className="hover:bg-muted/30">
@@ -712,8 +712,14 @@ export default function MarksEntryPage() {
                               else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
                             }
                             const onChange = (v: string) => {
-                              if (col.kind === 'single') handleScoreChange(learner.id, col.subject.id, v);
-                              else col.members.forEach(m => handleScoreChange(learner.id, m.id, v));
+                              if (col.kind === 'single') {
+                                handleScoreChange(learner.id, col.subject.id, v);
+                              } else {
+                                // Merged column: store value only on the primary member;
+                                // explicitly clear other members so totals/mean count it ONCE.
+                                handleScoreChange(learner.id, col.members[0].id, v);
+                                col.members.slice(1).forEach(m => handleScoreChange(learner.id, m.id, ''));
+                              }
                             };
                             const key = col.kind === 'single' ? col.subject.id : col.label;
                             return (
