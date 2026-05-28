@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { exportLetterPDF, type Letterhead } from "@/lib/letter-pdf";
-import { Sparkles, Download, Save, Loader2, FileText, Bold, Italic, List, ListOrdered, Heading2, AlignLeft, AlignCenter, AlignRight, Upload, Trash2 } from "lucide-react";
+import { Download, Save, Loader2, FileText, Bold, Italic, List, ListOrdered, Heading2, AlignLeft, AlignCenter, AlignRight, Upload } from "lucide-react";
 
 const TONES = ["Formal", "Official", "Friendly", "Strict", "Appreciative"];
 const RECIPIENTS = [
