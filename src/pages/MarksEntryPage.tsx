@@ -328,8 +328,8 @@ export default function MarksEntryPage() {
 
   // Class summary — only includes learners that have at least one non-zero score
   const classSummary = useMemo(() => {
-    if (learners.length === 0 || subjects.length === 0) return null;
-    const maxPerSubject = getTotalMaxScore() / subjects.length;
+    if (learners.length === 0 || subjectColumns.length === 0) return null;
+    const maxPerSubject = getTotalMaxScore() / subjectColumns.length;
     const scoringLearners = learners.filter(l => getMean(l.id) > 0);
     const grades = scoringLearners.map(l => getGradeForLevel(getMean(l.id), maxPerSubject, selectedGrade));
     const isKJSEA = isKJSEAGradeLevel(selectedGrade);
@@ -343,7 +343,7 @@ export default function MarksEntryPage() {
       be: grades.filter(g => isKJSEA ? (g === 'BE1' || g === 'BE2') : g === 'BE').length,
       classMean: meanVal.toFixed(1),
     };
-  }, [learners, scores, subjects]);
+  }, [learners, scores, subjectColumns]);
 
   // Auto-save: debounced flush of dirty cells (works online & queues offline)
   useEffect(() => {
