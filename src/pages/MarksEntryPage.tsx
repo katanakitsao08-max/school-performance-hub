@@ -686,8 +686,8 @@ export default function MarksEntryPage() {
                     {filteredLearners.map((learner, idx) => {
                       const total = getTotal(learner.id);
                       const mean = getMean(learner.id);
-                      const maxPerSubject = subjects.length > 0 ? getTotalMaxScore() / subjects.length : 100;
-                      const grade = subjects.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
+                      const maxPerSubject = subjectColumns.length > 0 ? getTotalMaxScore() / subjectColumns.length : 100;
+                      const grade = subjectColumns.length > 0 ? getGradeForLevel(mean, maxPerSubject, selectedGrade) : '-';
                       const rank = getRank(learner.id);
                       return (
                         <TableRow key={learner.id} className="hover:bg-muted/30">
