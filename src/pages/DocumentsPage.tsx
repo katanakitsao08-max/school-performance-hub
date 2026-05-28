@@ -84,25 +84,7 @@ export default function DocumentsPage() {
     if (editorRef.current) editorRef.current.innerHTML = html;
   };
 
-  const generate = async () => {
-    if (!prompt.trim()) { toast({ title: "Enter a prompt first", variant: "destructive" }); return; }
-    setGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-letter", {
-        body: {
-          prompt, tone, language, recipientType, recipientName,
-          schoolContext: { name: letterhead.schoolName, motto: letterhead.motto, address: letterhead.address },
-        },
-      });
-      if (error) throw error;
-      const html = (data as any)?.html || "";
-      setEditorHTML(html);
-      if (!title) setTitle(prompt.slice(0, 60));
-      toast({ title: "Letter generated" });
-    } catch (e: any) {
-      toast({ title: "Generation failed", description: e?.message || String(e), variant: "destructive" });
-    } finally { setGenerating(false); }
-  };
+  // AI generation removed — admins compose letters manually.
 
   const exec = (cmd: string, val?: string) => {
     document.execCommand(cmd, false, val);
