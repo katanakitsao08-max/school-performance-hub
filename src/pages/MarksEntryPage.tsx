@@ -712,8 +712,14 @@ export default function MarksEntryPage() {
                               else inputBorder = 'border-red-400 bg-red-50/50 dark:bg-red-950/20';
                             }
                             const onChange = (v: string) => {
-                              if (col.kind === 'single') handleScoreChange(learner.id, col.subject.id, v);
-                              else col.members.forEach(m => handleScoreChange(learner.id, m.id, v));
+                              if (col.kind === 'single') {
+                                handleScoreChange(learner.id, col.subject.id, v);
+                              } else {
+                                // Merged column: store value only on the primary member;
+                                // explicitly clear other members so totals/mean count it ONCE.
+                                handleScoreChange(learner.id, col.members[0].id, v);
+                                col.members.slice(1).forEach(m => handleScoreChange(learner.id, m.id, ''));
+                              }
                             };
                             const key = col.kind === 'single' ? col.subject.id : col.label;
                             return (
