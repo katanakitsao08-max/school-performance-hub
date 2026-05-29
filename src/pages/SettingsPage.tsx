@@ -8,8 +8,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle } from 'lucide-react';
+import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle, MessageSquareText, Plus, X, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { DEFAULT_PRINCIPAL_COMMENT_BANDS, type PrincipalCommentBand } from '@/lib/principal-comments';
 
 
 const SETTING_KEYS = [
