@@ -153,6 +153,82 @@ export default function SettingsPage() {
   };
 
   const canUploadLogo = role === 'admin' || role === 'super_admin';
+  const canEditBands = role === 'admin' || role === 'super_admin';
+
+  // -------- Principal Comment Bands (rule-based, editable) --------
+  const { data: bandsRaw } = useQuery({
+    queryKey: ['principal-comment-bands', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase
+        .from('principal_comment_bands' as any)
+        .select('id, min_score, max_score, comment, sort_order')
+        .eq('school_id', schoolId)
+        .order('sort_order', { ascending: true });
+      return (data || []) as any[];
+    },
+    enabled: !!schoolId && canEditBands,
+  });
+
+  const [bands, setBands] = useState<PrincipalCommentBand[]>(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+  const [savingBands, setSavingBands] = useState(false);
+
+  useEffect(() => {
+    if (bandsRaw && bandsRaw.length > 0) {
+      setBands(bandsRaw.map(r => ({
+        id: r.id,
+        min_score: Number(r.min_score),
+        max_score: Number(r.max_score),
+        comment: r.comment || '',
+        sort_order: r.sort_order ?? 0,
+      })));
+    } else if (bandsRaw && bandsRaw.length === 0) {
+      setBands(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+    }
+  }, [bandsRaw]);
+
+  const updateBand = (idx: number, patch: Partial<PrincipalCommentBand>) =>
+    setBands(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b));
+  const addBand = () =>
+    setBands(prev => [...prev, { min_score: 0, max_score: 0, comment: '', sort_order: prev.length + 1 }]);
+  const removeBand = (idx: number) =>
+    setBands(prev => prev.filter((_, i) => i !== idx));
+  const resetBands = () => setBands(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+
+  const saveBands = async () => {
+    if (!schoolId) return;
+    // Basic validation
+    for (const b of bands) {
+      if (b.min_score < 0 || b.max_score > 100 || b.min_score > b.max_score) {
+        toast({ title: 'Invalid band', description: 'Each band must have 0 ≤ min ≤ max ≤ 100.', variant: 'destructive' });
+        return;
+      }
+      if (!b.comment.trim()) {
+        toast({ title: 'Missing comment', description: 'Every band needs a comment.', variant: 'destructive' });
+        return;
+      }
+    }
+    setSavingBands(true);
+    try {
+      // Replace all bands for this school
+      await supabase.from('principal_comment_bands' as any).delete().eq('school_id', schoolId);
+      const rows = bands.map((b, i) => ({
+        school_id: schoolId,
+        min_score: b.min_score,
+        max_score: b.max_score,
+        comment: b.comment.trim(),
+        sort_order: i + 1,
+      }));
+      const { error } = await supabase.from('principal_comment_bands' as any).insert(rows as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['principal-comment-bands', schoolId] });
+      toast({ title: 'Principal comment bands saved' });
+    } catch (err: any) {
+      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingBands(false);
+    }
+  };
 
   return (
     <DashboardLayout>
