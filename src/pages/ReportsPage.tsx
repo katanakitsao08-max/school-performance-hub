@@ -1317,20 +1317,15 @@ export default function ReportsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => generatePrincipalRemark(selectedLearnerData)}
-                        disabled={generatingPrincipalRemark === selectedLearnerData.id}
+                        onClick={() => applyPrincipalComment(selectedLearnerData)}
                       >
-                        {generatingPrincipalRemark === selectedLearnerData.id ? (
-                          <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</>
-                        ) : (
-                          <><Sparkles className="h-3 w-3 mr-1" /> AI Generate</>
-                        )}
+                        <Wand2 className="h-3 w-3 mr-1" /> Auto-Apply
                       </Button>
                     </div>
                     <Textarea
                       value={principalComments[selectedLearnerData.id] || ''}
                       onChange={e => setPrincipalComments(prev => ({ ...prev, [selectedLearnerData.id]: e.target.value }))}
-                      placeholder="Enter principal's comment or click AI Generate..."
+                      placeholder="Enter principal's comment or click Auto-Apply to use the school's comment bands..."
                       rows={2}
                     />
                   </div>
