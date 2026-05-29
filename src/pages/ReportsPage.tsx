@@ -1065,11 +1065,11 @@ export default function ReportsPage() {
                 >
                   <MessageCircle className="mr-2 h-4 w-4" /> Send via WhatsApp
                 </Button>
-                <Button variant="secondary" onClick={batchGeneratePrincipalRemarks} disabled={batchGeneratingRemarks || reportData.length === 0}>
-                  {batchGeneratingRemarks ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Remarks...</>
+                <Button variant="secondary" onClick={applyAllPrincipalComments} disabled={applyingRemarks || reportData.length === 0}>
+                  {applyingRemarks ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...</>
                   ) : (
-                    <><Sparkles className="mr-2 h-4 w-4" /> AI Principal Remarks</>
+                    <><Wand2 className="mr-2 h-4 w-4" /> Apply Principal Comments</>
                   )}
                 </Button>
               </>
