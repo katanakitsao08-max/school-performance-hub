@@ -86,8 +86,7 @@ export default function ReportsPage() {
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
-  const [generatingPrincipalRemark, setGeneratingPrincipalRemark] = useState<string | null>(null);
-  const [batchGeneratingRemarks, setBatchGeneratingRemarks] = useState(false);
+  const [applyingRemarks, setApplyingRemarks] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
   const [waRecipients, setWaRecipients] = useState<WhatsAppRecipient[]>([]);
   const [waTitle, setWaTitle] = useState<string>('Send Reports via WhatsApp');
