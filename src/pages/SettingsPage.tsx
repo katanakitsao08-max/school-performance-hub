@@ -361,6 +361,81 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Principal Comment Bands — rule-based, editable */}
+        {canEditBands && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquareText className="h-5 w-5 text-primary" />
+                Report Comments — Principal's Comment Bands
+              </CardTitle>
+              <CardDescription>
+                Comments are auto-applied on report cards based on each learner's mean score (%).
+                You can edit, add, or remove bands. Ranges are inclusive (e.g. 80–100).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {bands.map((b, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-start rounded-lg border border-border p-3 bg-muted/20">
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <Label className="text-xs">Min %</Label>
+                      <Input
+                        type="number" min={0} max={100} inputMode="numeric"
+                        value={b.min_score}
+                        onChange={e => updateBand(idx, { min_score: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <Label className="text-xs">Max %</Label>
+                      <Input
+                        type="number" min={0} max={100} inputMode="numeric"
+                        value={b.max_score}
+                        onChange={e => updateBand(idx, { max_score: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-7 space-y-1">
+                      <Label className="text-xs">Comment</Label>
+                      <Textarea
+                        rows={2}
+                        value={b.comment}
+                        onChange={e => updateBand(idx, { comment: e.target.value })}
+                        placeholder="e.g. Excellent performance. Keep up the good work."
+                      />
+                    </div>
+                    <div className="col-span-1 flex items-end justify-end pt-5">
+                      <Button
+                        variant="ghost" size="icon"
+                        onClick={() => removeBand(idx)}
+                        className="text-destructive hover:text-destructive"
+                        aria-label="Remove band"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={addBand}>
+                  <Plus className="mr-2 h-4 w-4" /> Add band
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetBands}>
+                  <RotateCcw className="mr-2 h-4 w-4" /> Reset to defaults
+                </Button>
+                <Button onClick={saveBands} disabled={savingBands} className="ml-auto">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingBands ? 'Saving…' : 'Save comment bands'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tip: cover 0–100 with no gaps so every learner gets a comment. If a mean falls outside
+                all bands, the lowest band is used.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
       </div>
     </DashboardLayout>
   );
