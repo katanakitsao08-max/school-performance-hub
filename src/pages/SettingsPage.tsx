@@ -8,8 +8,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle } from 'lucide-react';
+import { Save, School, Phone, MapPin, Mail, Upload, ImageIcon, Trash2, MessageCircle, MessageSquareText, Plus, X, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { DEFAULT_PRINCIPAL_COMMENT_BANDS, type PrincipalCommentBand } from '@/lib/principal-comments';
 
 
 const SETTING_KEYS = [
@@ -152,6 +153,82 @@ export default function SettingsPage() {
   };
 
   const canUploadLogo = role === 'admin' || role === 'super_admin';
+  const canEditBands = role === 'admin' || role === 'super_admin';
+
+  // -------- Principal Comment Bands (rule-based, editable) --------
+  const { data: bandsRaw } = useQuery({
+    queryKey: ['principal-comment-bands', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase
+        .from('principal_comment_bands' as any)
+        .select('id, min_score, max_score, comment, sort_order')
+        .eq('school_id', schoolId)
+        .order('sort_order', { ascending: true });
+      return (data || []) as any[];
+    },
+    enabled: !!schoolId && canEditBands,
+  });
+
+  const [bands, setBands] = useState<PrincipalCommentBand[]>(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+  const [savingBands, setSavingBands] = useState(false);
+
+  useEffect(() => {
+    if (bandsRaw && bandsRaw.length > 0) {
+      setBands(bandsRaw.map(r => ({
+        id: r.id,
+        min_score: Number(r.min_score),
+        max_score: Number(r.max_score),
+        comment: r.comment || '',
+        sort_order: r.sort_order ?? 0,
+      })));
+    } else if (bandsRaw && bandsRaw.length === 0) {
+      setBands(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+    }
+  }, [bandsRaw]);
+
+  const updateBand = (idx: number, patch: Partial<PrincipalCommentBand>) =>
+    setBands(prev => prev.map((b, i) => i === idx ? { ...b, ...patch } : b));
+  const addBand = () =>
+    setBands(prev => [...prev, { min_score: 0, max_score: 0, comment: '', sort_order: prev.length + 1 }]);
+  const removeBand = (idx: number) =>
+    setBands(prev => prev.filter((_, i) => i !== idx));
+  const resetBands = () => setBands(DEFAULT_PRINCIPAL_COMMENT_BANDS);
+
+  const saveBands = async () => {
+    if (!schoolId) return;
+    // Basic validation
+    for (const b of bands) {
+      if (b.min_score < 0 || b.max_score > 100 || b.min_score > b.max_score) {
+        toast({ title: 'Invalid band', description: 'Each band must have 0 ≤ min ≤ max ≤ 100.', variant: 'destructive' });
+        return;
+      }
+      if (!b.comment.trim()) {
+        toast({ title: 'Missing comment', description: 'Every band needs a comment.', variant: 'destructive' });
+        return;
+      }
+    }
+    setSavingBands(true);
+    try {
+      // Replace all bands for this school
+      await supabase.from('principal_comment_bands' as any).delete().eq('school_id', schoolId);
+      const rows = bands.map((b, i) => ({
+        school_id: schoolId,
+        min_score: b.min_score,
+        max_score: b.max_score,
+        comment: b.comment.trim(),
+        sort_order: i + 1,
+      }));
+      const { error } = await supabase.from('principal_comment_bands' as any).insert(rows as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['principal-comment-bands', schoolId] });
+      toast({ title: 'Principal comment bands saved' });
+    } catch (err: any) {
+      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingBands(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -283,6 +360,81 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Principal Comment Bands — rule-based, editable */}
+        {canEditBands && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquareText className="h-5 w-5 text-primary" />
+                Report Comments — Principal's Comment Bands
+              </CardTitle>
+              <CardDescription>
+                Comments are auto-applied on report cards based on each learner's mean score (%).
+                You can edit, add, or remove bands. Ranges are inclusive (e.g. 80–100).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {bands.map((b, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-start rounded-lg border border-border p-3 bg-muted/20">
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <Label className="text-xs">Min %</Label>
+                      <Input
+                        type="number" min={0} max={100} inputMode="numeric"
+                        value={b.min_score}
+                        onChange={e => updateBand(idx, { min_score: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <Label className="text-xs">Max %</Label>
+                      <Input
+                        type="number" min={0} max={100} inputMode="numeric"
+                        value={b.max_score}
+                        onChange={e => updateBand(idx, { max_score: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-7 space-y-1">
+                      <Label className="text-xs">Comment</Label>
+                      <Textarea
+                        rows={2}
+                        value={b.comment}
+                        onChange={e => updateBand(idx, { comment: e.target.value })}
+                        placeholder="e.g. Excellent performance. Keep up the good work."
+                      />
+                    </div>
+                    <div className="col-span-1 flex items-end justify-end pt-5">
+                      <Button
+                        variant="ghost" size="icon"
+                        onClick={() => removeBand(idx)}
+                        className="text-destructive hover:text-destructive"
+                        aria-label="Remove band"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={addBand}>
+                  <Plus className="mr-2 h-4 w-4" /> Add band
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetBands}>
+                  <RotateCcw className="mr-2 h-4 w-4" /> Reset to defaults
+                </Button>
+                <Button onClick={saveBands} disabled={savingBands} className="ml-auto">
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingBands ? 'Saving…' : 'Save comment bands'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tip: cover 0–100 with no gaps so every learner gets a comment. If a mean falls outside
+                all bands, the lowest band is used.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       </div>
     </DashboardLayout>
