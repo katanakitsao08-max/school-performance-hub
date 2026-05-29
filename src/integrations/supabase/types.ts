@@ -1156,6 +1156,39 @@ export type Database = {
           },
         ]
       }
+      principal_comment_bands: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          max_score: number
+          min_score: number
+          school_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          id?: string
+          max_score?: number
+          min_score?: number
+          school_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          max_score?: number
+          min_score?: number
+          school_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           assigned_grades: string[] | null
