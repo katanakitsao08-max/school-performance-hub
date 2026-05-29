@@ -562,98 +562,67 @@ export default function ReportsPage() {
     setComments(prev => ({ ...prev, [learner.id]: comment }));
   };
 
-  const generatePrincipalRemark = async (learner: any) => {
-    if (generatingPrincipalRemark) return;
-    setGeneratingPrincipalRemark(learner.id);
-    try {
-      const maxTotal = learner.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
-      const meanPct = maxTotal > 0 ? (learner.total / maxTotal) * 100 : learner.mean;
+  // Load editable principal-comment bands for this school. Falls back to defaults.
+  const { data: commentBands = DEFAULT_PRINCIPAL_COMMENT_BANDS } = useQuery({
+    queryKey: ['principal-comment-bands', schoolId],
+    queryFn: async (): Promise<PrincipalCommentBand[]> => {
+      if (!schoolId) return DEFAULT_PRINCIPAL_COMMENT_BANDS;
+      const { data } = await supabase
+        .from('principal_comment_bands' as any)
+        .select('id, min_score, max_score, comment, sort_order')
+        .eq('school_id', schoolId)
+        .order('sort_order', { ascending: true });
+      const rows = (data || []) as any as PrincipalCommentBand[];
+      return rows.length > 0 ? rows : DEFAULT_PRINCIPAL_COMMENT_BANDS;
+    },
+    enabled: !!schoolId,
+  });
 
-      const { data, error } = await supabase.functions.invoke('generate-principal-remark', {
-        body: {
-          studentName: learner.full_name,
-          grade: learner.grade,
-          stream: learner.stream,
-          mean: meanPct,
-          overallGrade: learner.overallGrade,
-          totalSubjects: learner.subjectData.length,
-          rank: learner.rank,
-          totalStudents: reportData.length,
-          subjectData: learner.subjectData.map((s: any) => ({
-            name: s.name, score: s.score, maxScore: s.maxScore,
-          })),
-          schoolName,
-        },
+  const computeMeanPct = (learner: any): number => {
+    const maxTotal = learner.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
+    return maxTotal > 0 ? (learner.total / maxTotal) * 100 : learner.mean;
+  };
+
+  const applyPrincipalComment = (learner: any) => {
+    const meanPct = computeMeanPct(learner);
+    const remark = getPrincipalComment(meanPct, commentBands);
+    setPrincipalComments(prev => ({ ...prev, [learner.id]: remark }));
+    toast.success('Principal comment applied');
+  };
+
+  const applyAllPrincipalComments = () => {
+    if (reportData.length === 0 || applyingRemarks) return;
+    setApplyingRemarks(true);
+    try {
+      const next: Record<string, string> = { ...principalComments };
+      reportData.forEach((ld: any) => {
+        next[ld.id] = getPrincipalComment(computeMeanPct(ld), commentBands);
       });
-
-      if (error) throw error;
-      if (data?.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      setPrincipalComments(prev => ({ ...prev, [learner.id]: data.remark }));
-      toast.success('Principal remark generated');
-    } catch (err: any) {
-      console.error('Failed to generate principal remark:', err);
-      toast.error('Failed to generate remark. Please try again.');
+      setPrincipalComments(next);
+      toast.success(`Applied principal comments to ${reportData.length} learner${reportData.length === 1 ? '' : 's'}`);
     } finally {
-      setGeneratingPrincipalRemark(null);
+      setApplyingRemarks(false);
     }
   };
 
-  const batchGeneratePrincipalRemarks = async () => {
-    if (reportData.length === 0 || batchGeneratingRemarks) return;
-    setBatchGeneratingRemarks(true);
-    try {
-      // Process in chunks of 20 to avoid token limits
-      const chunkSize = 20;
-      const allResults: { id: string; remark: string }[] = [];
-
-      for (let i = 0; i < reportData.length; i += chunkSize) {
-        const chunk = reportData.slice(i, i + chunkSize);
-        const students = chunk.map(ld => {
-          const maxTotal = ld.subjectData.reduce((s: number, d: any) => s + d.maxScore, 0);
-          const meanPct = maxTotal > 0 ? (ld.total / maxTotal) * 100 : ld.mean;
-          return {
-            id: ld.id,
-            studentName: ld.full_name,
-            grade: ld.grade,
-            stream: ld.stream,
-            mean: meanPct,
-            overallGrade: ld.overallGrade,
-            rank: ld.rank,
-            totalStudents: reportData.length,
-            subjectData: ld.subjectData.map((s: any) => ({
-              name: s.name, score: s.score, maxScore: s.maxScore,
-            })),
-          };
-        });
-
-        const { data, error } = await supabase.functions.invoke('batch-principal-remarks', {
-          body: { students, schoolName },
-        });
-
-        if (error) throw error;
-        if (data?.error) {
-          toast.error(data.error);
-          break;
+  // Auto-fill principal comments for any learner that doesn't yet have one,
+  // so report PDFs always include a rule-based comment.
+  useEffect(() => {
+    if (!reportData || reportData.length === 0) return;
+    setPrincipalComments(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const ld of reportData) {
+        if (!next[(ld as any).id]) {
+          next[(ld as any).id] = getPrincipalComment(computeMeanPct(ld), commentBands);
+          changed = true;
         }
-
-        allResults.push(...(data.results || []));
       }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportData, commentBands]);
 
-      const newComments: Record<string, string> = { ...principalComments };
-      allResults.forEach(r => { newComments[r.id] = r.remark; });
-      setPrincipalComments(newComments);
-      toast.success(`Generated ${allResults.length} principal remarks`);
-    } catch (err: any) {
-      console.error('Batch principal remarks failed:', err);
-      toast.error('Failed to generate batch remarks. Please try again.');
-    } finally {
-      setBatchGeneratingRemarks(false);
-    }
-  };
 
   const handlePrint = () => window.print();
 
