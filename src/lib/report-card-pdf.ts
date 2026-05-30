@@ -531,7 +531,9 @@ export async function generatePremiumReportCard(data: ReportCardData): Promise<j
       });
     }
 
-    y += graphSectionH + (isKJSEAOnePage ? 1 : 3);
+    // +4mm extra below graphSectionH accounts for legend row that sits below graphH
+    // (legend bottom = graphH + 9). Adds clear gap before REMARKS section.
+    y += graphSectionH + (isKJSEAOnePage ? 6 : 10);
   }
 
   // ═══════════════════════════════════════════════════
