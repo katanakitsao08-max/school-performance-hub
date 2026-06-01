@@ -111,7 +111,9 @@ const teacherSections: NavSection[] = [
   {
     label: "Teaching",
     items: [
+      { title: "My Class", url: "/my-class", icon: Users },
       { title: "Learners", url: "/learners", icon: GraduationCap },
+
       { title: "Marks Entry", url: "/marks-entry", icon: ClipboardList },
       { title: "Attendance", url: "/attendance", icon: CalendarCheck },
       { title: "Content Generation", url: "/content-generation", icon: NotebookPen },
