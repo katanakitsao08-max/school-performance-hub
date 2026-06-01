@@ -39,7 +39,7 @@ export default function TopicPlayer() {
       setTopic((t.data || null) as LearningTopic | null);
       setVideos((v.data || []) as LearningVideo[]);
       setNotes((n.data || []) as LearningNote[]);
-      setQuestions((q.data || []) as LearningQuestion[]);
+      setQuestions((q.data || []) as unknown as LearningQuestion[]);
       setMastery((m.data || null) as LearnerTopicMastery | null);
     })();
   }, [topicId, user?.id]);
