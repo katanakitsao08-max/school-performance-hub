@@ -45,7 +45,7 @@ export default function AssessmentRunner({ practice = false }: { practice?: bool
         ]);
         if (!t.data) return;
         setMode({ kind: "practice", topic: t.data as LearningTopic });
-        setQuestions((q.data || []) as LearningQuestion[]);
+        setQuestions((q.data || []) as unknown as LearningQuestion[]);
       } else {
         const a = await supabase.from("learning_assessments").select("*").eq("id", id).maybeSingle();
         if (!a.data) return;
@@ -55,8 +55,8 @@ export default function AssessmentRunner({ practice = false }: { practice?: bool
         if (ids.length) {
           const q = await supabase.from("learning_questions").select("*").in("id", ids);
           // Preserve admin-chosen order:
-          const byId = new Map(((q.data || []) as LearningQuestion[]).map(x => [x.id, x]));
-          setQuestions(ids.map(qid => byId.get(qid)).filter(Boolean) as LearningQuestion[]);
+          const byId = new Map(((q.data || []) as unknown as LearningQuestion[]).map(x => [x.id, x]));
+          setQuestions(ids.map(qid => byId.get(qid)).filter(Boolean) as unknown as LearningQuestion[]);
         }
         setSecondsLeft(assessment.duration_minutes * 60);
       }

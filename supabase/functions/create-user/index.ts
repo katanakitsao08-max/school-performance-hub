@@ -12,7 +12,13 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, full_name, role, school_id } = await req.json();
+    const raw = await req.json();
+    const email = String(raw.email || '').trim().toLowerCase();
+    const password = String(raw.password || '');
+    const full_name = String(raw.full_name || '').trim();
+    const role = raw.role;
+    const school_id = raw.school_id;
+
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -90,7 +96,7 @@ serve(async (req) => {
 
     await supabaseAdmin.from('profiles').update(profileUpdate).eq('user_id', authData.user.id);
 
-    return new Response(JSON.stringify({ success: true, user_id: authData.user.id }), {
+    return new Response(JSON.stringify({ success: true, user_id: authData.user.id, login_email: email }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: any) {

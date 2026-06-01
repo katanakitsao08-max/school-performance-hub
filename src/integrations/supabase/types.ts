@@ -1971,54 +1971,6 @@ export type Database = {
           },
         ]
       }
-      school_sms_config: {
-        Row: {
-          api_key: string
-          body_template: Json
-          created_at: string
-          endpoint: string
-          headers_json: Json
-          id: string
-          is_active: boolean
-          notes: string | null
-          partner_id: string | null
-          provider: string
-          school_id: string
-          sender_id: string
-          updated_at: string
-        }
-        Insert: {
-          api_key?: string
-          body_template?: Json
-          created_at?: string
-          endpoint?: string
-          headers_json?: Json
-          id?: string
-          is_active?: boolean
-          notes?: string | null
-          partner_id?: string | null
-          provider?: string
-          school_id: string
-          sender_id?: string
-          updated_at?: string
-        }
-        Update: {
-          api_key?: string
-          body_template?: Json
-          created_at?: string
-          endpoint?: string
-          headers_json?: Json
-          id?: string
-          is_active?: boolean
-          notes?: string | null
-          partner_id?: string | null
-          provider?: string
-          school_id?: string
-          sender_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       school_sms_credits: {
         Row: {
           balance: number

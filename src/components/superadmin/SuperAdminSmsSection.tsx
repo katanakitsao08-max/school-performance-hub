@@ -10,6 +10,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Plus, Minus, Power } from 'lucide-react';
+import GlobalSmsConfigCard from './GlobalSmsConfigCard';
+
+
 
 export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
   const { toast } = useToast();
@@ -72,6 +75,8 @@ export default function SuperAdminSmsSection({ schools }: { schools: any[] }) {
 
   return (
     <div className="space-y-4">
+      <GlobalSmsConfigCard />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><MessageSquare className="h-5 w-5 text-primary" /> SMS Credits & Per-School Activity</CardTitle>

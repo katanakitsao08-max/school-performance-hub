@@ -62,7 +62,7 @@ export default function LearningCmsPage() {
       ]);
       setVideos((v.data || []) as LearningVideo[]);
       setNotes((n.data || []) as LearningNote[]);
-      setQuestions((q.data || []) as LearningQuestion[]);
+      setQuestions((q.data || []) as unknown as LearningQuestion[]);
     })();
   }, [activeTopic]);
 
@@ -154,7 +154,7 @@ export default function LearningCmsPage() {
                 <QuestionsPanel
                   topic={activeTopic} items={questions}
                   isSuper={isSuper} schoolId={schoolId}
-                  onChanged={async () => activeTopic && setQuestions((((await supabase.from("learning_questions").select("*").eq("topic_id", activeTopic.id).order("created_at")).data) || []) as LearningQuestion[])}
+                  onChanged={async () => activeTopic && setQuestions((((await supabase.from("learning_questions").select("*").eq("topic_id", activeTopic.id).order("created_at")).data) || []) as unknown as LearningQuestion[])}
                 />
               </TabsContent>
               <TabsContent value="assessments">

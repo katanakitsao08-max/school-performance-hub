@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown } from 'lucide-react';
+import CredentialsRevealDialog from '@/components/CredentialsRevealDialog';
+
 
 export default function ManageSchoolsPage() {
   const { toast } = useToast();
@@ -44,6 +46,10 @@ export default function ManageSchoolsPage() {
   const [planDialog, setPlanDialog] = useState(false);
   const [planTarget, setPlanTarget] = useState<any>(null);
   const [planForm, setPlanForm] = useState<{ plan_id: string; plan_expires_at: string }>({ plan_id: '', plan_expires_at: '' });
+
+  // Credentials reveal dialog (after creating an admin)
+  const [credsReveal, setCredsReveal] = useState<null | { loginEmail: string; username: string; password: string; fullName: string }>(null);
+
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans'],
@@ -150,10 +156,13 @@ export default function ManageSchoolsPage() {
   const createSchool = useMutation({
     mutationFn: async () => {
       let adminEmail = '';
-      if (showAdminForm && adminForm.username && adminForm.password && adminForm.full_name) {
+      let normalizedUsername = '';
+      const adminPassword = (adminForm.password || '').trim();
+      if (showAdminForm && adminForm.username && adminPassword && adminForm.full_name) {
+        normalizedUsername = adminForm.username.trim().toLowerCase().replace(/\s+/g, '');
         adminEmail = adminForm.username.includes('@')
-          ? adminForm.username
-          : `${adminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+          ? adminForm.username.trim().toLowerCase()
+          : `${normalizedUsername}@school.local`;
       }
       const { data: codeData, error: codeError } = await supabase.rpc('generate_school_code');
       if (codeError) throw codeError;
@@ -169,26 +178,29 @@ export default function ManageSchoolsPage() {
       if (error) throw error;
       if (adminEmail) {
         const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
-          body: { email: adminEmail, password: adminForm.password, full_name: adminForm.full_name, role: 'admin', school_id: school.id },
+          body: { email: adminEmail, password: adminPassword, full_name: adminForm.full_name.trim(), role: 'admin', school_id: school.id },
         });
         if (userError || !userData?.success) {
           const errMsg = userData?.error || userError?.message || 'Failed to create admin';
           await supabase.from('schools').delete().eq('id', school.id);
           throw new Error(`School admin error: ${errMsg}`);
         }
+        return { school, creds: { loginEmail: userData.login_email || adminEmail, username: normalizedUsername || adminEmail, password: adminPassword, fullName: adminForm.full_name.trim() } };
       }
-      return school;
+      return { school, creds: null as any };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       toast({ title: 'School created successfully' });
       setOpen(false);
       resetForm();
+      if (res?.creds) setCredsReveal(res.creds);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   const updateSchool = useMutation({
     mutationFn: async () => {
@@ -239,18 +251,21 @@ export default function ManageSchoolsPage() {
       }
 
       // Create new user
+      const adminPassword = (assignAdminForm.password || '').trim();
+      const normalizedUsername = assignAdminForm.username.trim().toLowerCase().replace(/\s+/g, '');
       const email = assignAdminForm.username.includes('@')
-        ? assignAdminForm.username
-        : `${assignAdminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+        ? assignAdminForm.username.trim().toLowerCase()
+        : `${normalizedUsername}@school.local`;
 
       const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
-        body: { email, password: assignAdminForm.password, full_name: assignAdminForm.full_name, role: 'admin', school_id: adminTarget.id },
+        body: { email, password: adminPassword, full_name: assignAdminForm.full_name.trim(), role: 'admin', school_id: adminTarget.id },
       });
       if (userError || !userData?.success) {
         throw new Error(userData?.error || userError?.message || 'Failed to create admin');
       }
+      return { creds: { loginEmail: userData.login_email || email, username: normalizedUsername || email, password: adminPassword, fullName: assignAdminForm.full_name.trim() } };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['all-users-for-assign'] });
@@ -260,9 +275,11 @@ export default function ManageSchoolsPage() {
       setAssignAdminForm({ username: '', password: '', full_name: '' });
       setSelectedExistingUser('');
       setAdminMode('new');
+      if (res?.creds) setCredsReveal(res.creds);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   // Regenerate school code
   const regenerateCode = useMutation({
@@ -695,6 +712,17 @@ export default function ManageSchoolsPage() {
           </CardContent>
         </Card>
       </div>
+      {credsReveal && (
+        <CredentialsRevealDialog
+          open={!!credsReveal}
+          onClose={() => setCredsReveal(null)}
+          loginEmail={credsReveal.loginEmail}
+          username={credsReveal.username}
+          password={credsReveal.password}
+          fullName={credsReveal.fullName}
+        />
+      )}
     </DashboardLayout>
+
   );
 }
