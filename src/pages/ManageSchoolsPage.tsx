@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown } from 'lucide-react';
+import CredentialsRevealDialog from '@/components/CredentialsRevealDialog';
+
 
 export default function ManageSchoolsPage() {
   const { toast } = useToast();
@@ -44,6 +46,10 @@ export default function ManageSchoolsPage() {
   const [planDialog, setPlanDialog] = useState(false);
   const [planTarget, setPlanTarget] = useState<any>(null);
   const [planForm, setPlanForm] = useState<{ plan_id: string; plan_expires_at: string }>({ plan_id: '', plan_expires_at: '' });
+
+  // Credentials reveal dialog (after creating an admin)
+  const [credsReveal, setCredsReveal] = useState<null | { loginEmail: string; username: string; password: string; fullName: string }>(null);
+
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans'],
