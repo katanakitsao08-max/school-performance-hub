@@ -156,10 +156,13 @@ export default function ManageSchoolsPage() {
   const createSchool = useMutation({
     mutationFn: async () => {
       let adminEmail = '';
-      if (showAdminForm && adminForm.username && adminForm.password && adminForm.full_name) {
+      let normalizedUsername = '';
+      const adminPassword = (adminForm.password || '').trim();
+      if (showAdminForm && adminForm.username && adminPassword && adminForm.full_name) {
+        normalizedUsername = adminForm.username.trim().toLowerCase().replace(/\s+/g, '');
         adminEmail = adminForm.username.includes('@')
-          ? adminForm.username
-          : `${adminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+          ? adminForm.username.trim().toLowerCase()
+          : `${normalizedUsername}@school.local`;
       }
       const { data: codeData, error: codeError } = await supabase.rpc('generate_school_code');
       if (codeError) throw codeError;
@@ -175,26 +178,29 @@ export default function ManageSchoolsPage() {
       if (error) throw error;
       if (adminEmail) {
         const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
-          body: { email: adminEmail, password: adminForm.password, full_name: adminForm.full_name, role: 'admin', school_id: school.id },
+          body: { email: adminEmail, password: adminPassword, full_name: adminForm.full_name.trim(), role: 'admin', school_id: school.id },
         });
         if (userError || !userData?.success) {
           const errMsg = userData?.error || userError?.message || 'Failed to create admin';
           await supabase.from('schools').delete().eq('id', school.id);
           throw new Error(`School admin error: ${errMsg}`);
         }
+        return { school, creds: { loginEmail: userData.login_email || adminEmail, username: normalizedUsername || adminEmail, password: adminPassword, fullName: adminForm.full_name.trim() } };
       }
-      return school;
+      return { school, creds: null as any };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       toast({ title: 'School created successfully' });
       setOpen(false);
       resetForm();
+      if (res?.creds) setCredsReveal(res.creds);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   const updateSchool = useMutation({
     mutationFn: async () => {
