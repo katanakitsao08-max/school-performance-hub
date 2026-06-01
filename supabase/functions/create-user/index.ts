@@ -96,7 +96,7 @@ serve(async (req) => {
 
     await supabaseAdmin.from('profiles').update(profileUpdate).eq('user_id', authData.user.id);
 
-    return new Response(JSON.stringify({ success: true, user_id: authData.user.id }), {
+    return new Response(JSON.stringify({ success: true, user_id: authData.user.id, login_email: email }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
