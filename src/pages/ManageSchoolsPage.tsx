@@ -251,18 +251,21 @@ export default function ManageSchoolsPage() {
       }
 
       // Create new user
+      const adminPassword = (assignAdminForm.password || '').trim();
+      const normalizedUsername = assignAdminForm.username.trim().toLowerCase().replace(/\s+/g, '');
       const email = assignAdminForm.username.includes('@')
-        ? assignAdminForm.username
-        : `${assignAdminForm.username.toLowerCase().replace(/\s+/g, '')}@school.local`;
+        ? assignAdminForm.username.trim().toLowerCase()
+        : `${normalizedUsername}@school.local`;
 
       const { data: userData, error: userError } = await supabase.functions.invoke('create-user', {
-        body: { email, password: assignAdminForm.password, full_name: assignAdminForm.full_name, role: 'admin', school_id: adminTarget.id },
+        body: { email, password: adminPassword, full_name: assignAdminForm.full_name.trim(), role: 'admin', school_id: adminTarget.id },
       });
       if (userError || !userData?.success) {
         throw new Error(userData?.error || userError?.message || 'Failed to create admin');
       }
+      return { creds: { loginEmail: userData.login_email || email, username: normalizedUsername || email, password: adminPassword, fullName: assignAdminForm.full_name.trim() } };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['all-users-for-assign'] });
@@ -272,9 +275,11 @@ export default function ManageSchoolsPage() {
       setAssignAdminForm({ username: '', password: '', full_name: '' });
       setSelectedExistingUser('');
       setAdminMode('new');
+      if (res?.creds) setCredsReveal(res.creds);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   // Regenerate school code
   const regenerateCode = useMutation({
