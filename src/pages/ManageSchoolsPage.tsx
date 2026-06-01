@@ -707,6 +707,17 @@ export default function ManageSchoolsPage() {
           </CardContent>
         </Card>
       </div>
+      {credsReveal && (
+        <CredentialsRevealDialog
+          open={!!credsReveal}
+          onClose={() => setCredsReveal(null)}
+          loginEmail={credsReveal.loginEmail}
+          username={credsReveal.username}
+          password={credsReveal.password}
+          fullName={credsReveal.fullName}
+        />
+      )}
     </DashboardLayout>
+
   );
 }
