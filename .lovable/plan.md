@@ -1,68 +1,67 @@
-# Smart Document & Communication Center
+# Build Plan
 
-A new admin module to generate, edit, save, and export branded letters/documents using AI, with school letterhead, templates, and history. Fully additive — no changes to existing tables or workflows.
+## 1. SMS — collapse to a single global provider
 
-## Scope
+**Remove (UI & data):**
+- `SchoolSmsConfigCard.tsx` — drop entirely. Schools no longer configure their own provider/endpoint/API key/sender ID/template.
+- Per-school config row in Settings page.
+- `school_sms_config` table (DB) — drop. Migrate any active row into the existing `global_sms_config` (super admin reviews).
 
-- New route `/documents` (admin-only), added to sidebar under existing Communication group.
-- Uses existing `school_settings` for letterhead (logo, motto, address, phone, email, signature, stamp). No edits to `schools` table.
-- AI generation via Lovable AI Gateway (`google/gemini-2.5-flash`) through a new edge function.
-- PDF export via existing `jspdf` + `jspdf-autotable` already in the project.
+**Keep & simplify:**
+- `global_sms_config` (Super Admin only) — single source of truth for endpoint, API key, sender, body template.
+- `school_sms_credits` — still per-school: `balance`, `used`, `enabled`. Super Admin allocates / toggles.
+- `sms_logs` — still per-school for monitoring.
+- `send-sms-v2` edge function — rewrite to always read `global_sms_config`, deduct from caller school's `school_sms_credits`, log per school. Hard-block if `enabled=false` or `balance < count`.
 
-## Database (new tables only)
+**Super Admin UI (`SuperAdminSmsSection.tsx`):**
+- Top card: edit the single global provider (endpoint, API key, sender ID, body template, partner ID) — fields previously in the school card.
+- Existing per-school table: allocate credits, enable/disable, view sent/failed/last sent.
 
-`documents`
-- school_id, title, recipient_type, recipient_name, tone, language, prompt, content (HTML), created_by, created_at, updated_at
+## 2. Fix "invalid credentials" after Super Admin creates a school admin
 
-`document_templates`
-- school_id (nullable for global), title, category, content (HTML), is_global, created_by, created_at
+Investigate `create-user` edge function + login flow. Likely root causes:
+- Username passed contains spaces/case mix → stored email differs from what admin shares.
+- `email_confirm: true` works, but maybe `user_metadata.full_name` collides with later profile upsert; or `username@school.local` synthetic email isn't what the create dialog displays.
+- Display the **exact** synthetic email + password in a one-time credential modal after creation, with copy buttons, and normalize username (lowercase, strip spaces) on both create and login sides.
 
-`school_branding` (extends letterhead — keys stored as rows in existing `school_settings`, no new table needed for that). Signature + stamp uploaded to new Storage bucket `school-branding` (private, school-scoped path).
+Patches:
+- `create-user/index.ts`: normalize username, return `{ login_email, password }`.
+- Frontend create-user dialog: show credentials modal with the same normalized values, copy-to-clipboard.
+- `Login.tsx`: lowercase + trim username before mapping to `@school.local`.
 
-RLS:
-- `documents`: admin/HT view+manage within their school_id; super_admin full.
-- `document_templates`: read = same school OR is_global=true; insert/update/delete = admin own school OR super_admin for global.
-- Storage `school-branding`: admin upload/read own school folder; super_admin full.
+## 3. Class Teacher Portal (full)
 
-GRANTs included for authenticated + service_role.
+New route `/class-teacher` (auto-redirect for users in `class_teachers` table, when not also a subject teacher with assignments elsewhere). Tabs:
 
-## Edge function
+**A. My Class — Roster & Attendance**
+- Lists learners in teacher's `grade + stream`.
+- Daily attendance grid (present/absent/late) with one-tap bulk mark.
+- Weekly attendance % per learner; flag <70%.
 
-`generate-letter` (verify_jwt=false, validates JWT in code)
-- Input: `{ prompt, tone, language, recipientType, recipientName, schoolContext }`
-- Calls Lovable AI Gateway, returns HTML letter body.
-- Handles 429/402 with clear errors.
+**B. Marks & Reports**
+- Read-only marks matrix across all learning areas for the class (Opener/Mid/End-Term).
+- Generate individual report cards (reuses `report-card-pdf.ts`).
+- Batch ZIP export for whole class (reuses `jszip` flow).
 
-## Frontend
+**C. Parent Communication**
+- Per-learner row → "Message Parent" → choose template (Attendance Alert, Fee Reminder if balance, Custom) → send via:
+  - SMS (uses rebuilt global SMS, deducts from school credits)
+  - WhatsApp wa.me deep link (no credits)
+- Bulk send to all parents in class.
 
-New files:
-- `src/pages/DocumentsPage.tsx` — tabs: New Letter | Templates | History.
-- `src/components/documents/LetterEditor.tsx` — prompt box, tone/language/recipient selectors, AI generate button, contentEditable rich editor (bold/headings/lists/align), merge field inserter.
-- `src/components/documents/LetterPreview.tsx` — A4 live preview with letterhead, body, signature/stamp footer.
-- `src/components/documents/TemplatesPanel.tsx` — list, create, apply.
-- `src/components/documents/HistoryPanel.tsx` — search/filter by date/recipient/type, view/regenerate/download.
-- `src/components/documents/BrandingUploader.tsx` — upload signature + stamp to Storage, save URLs to `school_settings`.
-- `src/lib/letter-pdf.ts` — jsPDF A4 export with letterhead + HTML body + signature/stamp.
+**RLS additions:**
+- `class_teachers` already has `Teacher view own class_teacher`. Add helper `get_user_class_assignments()` and policies allowing class teacher SELECT on `learners`, `attendance`, `scores`, `fee_records` for their `(grade, stream)` even without being subject teacher.
 
-Routing: add `/documents` to `App.tsx` (admin only) + sidebar entry in `AppSidebar.tsx`.
+## Technical notes
 
-## Tone, recipients, languages
+- New file: `src/pages/ClassTeacherPortal.tsx` with three tabs.
+- New hook: `useClassTeacherAssignment()` → returns first row from `class_teachers` for current user.
+- New migration: drop `school_sms_config`, add `get_user_class_assignments()` SECURITY DEFINER fn, RLS policies.
+- Reuse existing components: `BiometricAttendance` block, report PDF helpers, `WhatsAppSendDialog`.
+- Update `App.tsx` routing + `AppSidebar` to surface "My Class" entry when `class_teachers` row exists.
 
-- Tones: Formal, Official, Friendly, Strict, Appreciative.
-- Recipients: combobox with presets (Students, Parents, Teachers, BOM/PTA, Staff, MoE, TSC, County, NGO, Sponsor, Supplier, Bank, Other School, Community) + free text.
-- Languages: English, Kiswahili (passed to AI prompt).
+## Out of scope (this pass)
+- Discipline / class notes module (can ship next).
+- Migrating existing per-school SMS API keys (super admin pastes once into global config).
 
-## Merge fields
-
-`{{student_name}}, {{parent_name}}, {{class}}, {{balance}}, {{school_name}}, {{date}}` — replaced at PDF export time when context is available; otherwise left for manual fill.
-
-## Out of scope (won't touch)
-
-- Existing `schools` table, grading, reports, fees, SMS, WhatsApp, teacher-first, learner portal.
-
-## Deliverable order
-
-1. Migration (tables + RLS + GRANTs + storage bucket + policies).
-2. Edge function `generate-letter`.
-3. Frontend components + page + route + sidebar.
-4. PDF exporter.
+Approve to start building. I'll ship in one pass, in this order: migration → SMS rewrite → login fix → class teacher portal.
