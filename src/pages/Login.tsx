@@ -35,17 +35,19 @@ export default function Login() {
   const schoolMotto = settings?.school_motto || 'Excellence in Competency Based Education';
 
   const resolveEmail = (input: string) => {
-    if (input.includes('@')) return input;
-    return `${input.toLowerCase().replace(/\s+/g, '')}@school.local`;
+    const trimmed = (input || '').trim();
+    if (trimmed.includes('@')) return trimmed.toLowerCase();
+    return `${trimmed.toLowerCase().replace(/\s+/g, '')}@school.local`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(resolveEmail(username), password);
-      // Role-based redirect will be handled by SmartRedirect at "/"
+      // Trim password — copy/paste from WhatsApp often adds invisible whitespace
+      await signIn(resolveEmail(username), (password || '').trim());
       navigate('/');
+
     } catch (error: any) {
       toast({
         title: 'Login Failed',
