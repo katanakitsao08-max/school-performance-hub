@@ -2423,6 +2423,57 @@ export type Database = {
           },
         ]
       }
+      teacher_attendance: {
+        Row: {
+          class_id: string
+          created_at: string
+          date: string
+          id: string
+          learner_id: string
+          remarks: string | null
+          status: string
+          teacher_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          learner_id: string
+          remarks?: string | null
+          status?: string
+          teacher_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          learner_id?: string
+          remarks?: string | null
+          status?: string
+          teacher_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_attendance_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_learners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_classes: {
         Row: {
           class_name: string
@@ -2605,6 +2656,117 @@ export type Database = {
             columns: ["pending_school_id"]
             isOneToOne: false
             referencedRelation: "pending_schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_scores: {
+        Row: {
+          class_id: string
+          created_at: string
+          exam_type: string
+          id: string
+          learner_id: string
+          max_score: number
+          score: number
+          subject_id: string
+          teacher_user_id: string
+          term: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          exam_type?: string
+          id?: string
+          learner_id: string
+          max_score?: number
+          score?: number
+          subject_id: string
+          teacher_user_id: string
+          term: number
+          updated_at?: string
+          year?: number
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          exam_type?: string
+          id?: string
+          learner_id?: string
+          max_score?: number
+          score?: number
+          subject_id?: string
+          teacher_user_id?: string
+          term?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_scores_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_scores_learner_id_fkey"
+            columns: ["learner_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_learners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_scores_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_subjects: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          max_score: number
+          name: string
+          sort_order: number
+          teacher_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          name: string
+          sort_order?: number
+          teacher_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          name?: string
+          sort_order?: number
+          teacher_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "teacher_classes"
             referencedColumns: ["id"]
           },
         ]
