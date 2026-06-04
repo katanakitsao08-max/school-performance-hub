@@ -142,7 +142,11 @@ export default function SmsPage() {
     return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${schoolMeta?.school_name || 'School'}`;
   };
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  // Always use production domain in SMS links (avoid lovableproject.com previews leaking to parents)
+  const rawOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const origin = /lovableproject\.com|lovable\.app|localhost|127\.0\.0\.1/i.test(rawOrigin)
+    ? 'https://www.performtrack.co.ke'
+    : rawOrigin;
 
   const buildShortLinkMessage = (l: any, url: string): string => {
     return `Hello, view results for ${l.full_name}:\n${url}\n- ${schoolMeta?.school_name || 'School'}`;
