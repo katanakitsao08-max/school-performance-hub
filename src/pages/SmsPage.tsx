@@ -125,6 +125,9 @@ export default function SmsPage() {
     return results.map((l, i) => ({ ...l, position: i + 1 }));
   }, [learners, dedupedScores, subjects, selectedGrade]);
 
+  const schoolName = schoolMeta?.school_name || 'School';
+  const footer = `Ref: ${schoolName} | performtrack.co.ke`;
+
   const buildDetailedMessage = (l: any): string => {
     // Final dedupe by subject name (in case two learning_area rows share a name)
     const seen = new Set<string>();
@@ -139,7 +142,7 @@ export default function SmsPage() {
       return `${key}-${score}(${g})`;
     }).filter(Boolean).join(', ');
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
-    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${schoolMeta?.school_name || 'School'}`;
+    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${footer}`;
   };
 
   // Always use production domain in SMS links (avoid lovableproject.com previews leaking to parents)
@@ -149,12 +152,12 @@ export default function SmsPage() {
     : rawOrigin;
 
   const buildShortLinkMessage = (l: any, url: string): string => {
-    return `Hello, view results for ${l.full_name}:\n${url}\n- ${schoolMeta?.school_name || 'School'}`;
+    return `Hello, view results for ${l.full_name}:\n${url}\n- ${footer}`;
   };
 
   const buildHybridMessage = (l: any, url: string): string => {
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
-    return `${l.full_name}: AVG ${l.mean.toFixed(1)} GRADE ${l.grade} (${points}pts). Full results:\n${url}\n- ${schoolMeta?.school_name || 'School'}`;
+    return `${l.full_name}: AVG ${l.mean.toFixed(1)} GRADE ${l.grade} (${points}pts). Full results:\n${url}\n- ${footer}`;
   };
 
   const learnersWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
