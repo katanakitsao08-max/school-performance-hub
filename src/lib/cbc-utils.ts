@@ -217,7 +217,7 @@ export function generateTeacherComment(
   return comment;
 }
 
-export const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+export const GRADES = ['PP1', 'PP2', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 export const STREAMS: string[] = [];
 export const TERMS = [1, 2, 3];
 export const ASSESSMENT_TYPES = ['opener', 'mid_term', 'end_term'] as const;
