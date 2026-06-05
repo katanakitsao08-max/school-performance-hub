@@ -305,11 +305,29 @@ export default function SmsPage() {
               </Select>
             </div>
 
+            <div className="flex items-center gap-3 text-xs flex-wrap">
+              <span className="text-muted-foreground">Send to:</span>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" checked={selectionMode === 'all'} onChange={() => setSelectionMode('all')} />
+                All learners ({allWithPhone.length})
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" checked={selectionMode === 'pick'} onChange={() => setSelectionMode('pick')} />
+                Selected only ({selectedIds.size})
+              </label>
+              {selectionMode === 'pick' && (
+                <Button size="sm" variant="ghost" onClick={toggleAll} className="h-6 text-xs">
+                  {selectedIds.size === allWithPhone.length ? 'Clear all' : 'Select all'}
+                </Button>
+              )}
+            </div>
+
             <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {selectionMode === 'pick' && <TableHead className="w-8"></TableHead>}
                       <TableHead>Pos</TableHead>
                       <TableHead>Learner</TableHead>
                       <TableHead>Adm</TableHead>
@@ -320,7 +338,16 @@ export default function SmsPage() {
                   </TableHeader>
                   <TableBody>
                     {smsData.map(l => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className={selectionMode === 'pick' && selectedIds.has(l.id) ? 'bg-primary/5' : ''}>
+                        {selectionMode === 'pick' && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.has(l.id)}
+                              onCheckedChange={() => toggleOne(l.id)}
+                              disabled={!l.parent_phone && !(l as any).parent_phone_2}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>{l.position}</TableCell>
                         <TableCell className="font-medium">{l.full_name}</TableCell>
                         <TableCell className="text-xs">{l.admission_number || '-'}</TableCell>
