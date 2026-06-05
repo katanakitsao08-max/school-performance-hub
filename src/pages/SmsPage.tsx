@@ -47,6 +47,8 @@ export default function SmsPage() {
   const [smsMode, setSmsMode] = useState<SmsMode>('hybrid');
   const [sending, setSending] = useState(false);
   const [lastResponse, setLastResponse] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState<'all' | 'pick'>('all');
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
