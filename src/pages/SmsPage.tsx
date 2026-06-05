@@ -163,9 +163,22 @@ export default function SmsPage() {
     return `${l.full_name}: AVG ${l.mean.toFixed(1)} GRADE ${l.grade} (${points}pts). Full results:\n${url}\n- ${footer}`;
   };
 
-  const learnersWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
+  const allWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
+  const learnersWithPhone = selectionMode === 'pick'
+    ? allWithPhone.filter(l => selectedIds.has(l.id))
+    : allWithPhone;
   const balance = credits?.balance ?? 0;
   const enabled = credits?.enabled ?? true;
+
+  const toggleAll = () => {
+    if (selectedIds.size === allWithPhone.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(allWithPhone.map(l => l.id)));
+  };
+  const toggleOne = (id: string) => {
+    const n = new Set(selectedIds);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelectedIds(n);
+  };
 
   const handleBulkSend = async () => {
     if (!schoolId || !user) return;
