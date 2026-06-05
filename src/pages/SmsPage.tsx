@@ -142,7 +142,8 @@ export default function SmsPage() {
       return `${key}-${score}(${g})`;
     }).filter(Boolean).join(', ');
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
-    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${footer}`;
+    const rank = l.position ? ` | RANK: ${l.position}/${smsData.length}` : '';
+    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}${rank}\n- ${footer}`;
   };
 
   // Always use production domain in SMS links (avoid lovableproject.com previews leaking to parents)
