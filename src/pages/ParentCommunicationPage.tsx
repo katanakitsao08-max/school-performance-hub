@@ -61,6 +61,19 @@ export default function ParentCommunicationPage() {
   const [sending, setSending] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [lastResponse, setLastResponse] = useState<any>(null);
+  const [template, setTemplate] = useState<TemplateKey>('custom');
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+
+  const { data: schoolMeta } = useQuery({
+    queryKey: ['school-meta', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+  const schoolName = schoolMeta?.school_name || 'School';
+  const footer = `\n- Ref: ${schoolName} | performtrack.co.ke`;
 
   const { data: credits } = useQuery({
     queryKey: ['school-sms-credits', schoolId],
