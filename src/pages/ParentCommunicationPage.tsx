@@ -64,6 +64,9 @@ export default function ParentCommunicationPage() {
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [template, setTemplate] = useState<TemplateKey>('custom');
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [resTerm, setResTerm] = useState(1);
+  const [resAssessment, setResAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
+  const resYear = new Date().getFullYear();
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
