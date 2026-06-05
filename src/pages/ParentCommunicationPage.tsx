@@ -323,7 +323,7 @@ export default function ParentCommunicationPage() {
             </CardHeader>
             <CardContent>
               <div className="bg-muted/50 rounded-lg p-4 min-h-[180px] whitespace-pre-wrap text-sm">
-                {recipients[0] ? message.replace('{name}', recipients[0].full_name).replace('{parent}', recipients[0].parent_name || 'Parent') : message || <span className="text-muted-foreground">Your message preview…</span>}
+                {recipients[0] ? composedMessage(recipients[0]) : (message ? `${message}${footer}` : <span className="text-muted-foreground">Your message preview…</span>)}
               </div>
               <p className="text-xs text-muted-foreground mt-2">Sender ID and provider configured by Super Admin.</p>
             </CardContent>
