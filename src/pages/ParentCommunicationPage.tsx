@@ -19,6 +19,26 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
+type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
+
+const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; body: string }> = {
+  fees: {
+    label: 'Fee Reminder',
+    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance. Kindly clear at your earliest convenience. Thank you.',
+  },
+  results: {
+    label: 'Results Notice',
+    body: 'Dear {parent}, {name}\'s academic results are now ready. Please visit the school or contact the class teacher for details.',
+  },
+  communication: {
+    label: 'General Communication',
+    body: 'Dear {parent}, kindly note the following regarding {name}: ',
+  },
+  updates: {
+    label: 'School Updates',
+    body: 'Dear Parent, please note the following school update: ',
+  },
+};
 
 function segmentsFor(msg: string): number {
   const len = (msg || '').length;
