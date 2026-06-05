@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Send, AlertTriangle, MessageSquare, Eye } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
+import { TERMS, getGradeForLevel, getGradePoints } from '@/lib/cbc-utils';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
 type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
@@ -24,11 +25,11 @@ type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
 const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; body: string }> = {
   fees: {
     label: 'Fee Reminder',
-    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance. Kindly clear at your earliest convenience. Thank you.',
+    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance of KES {balance}. Kindly clear at your earliest convenience. Thank you.',
   },
   results: {
     label: 'Results Notice',
-    body: 'Dear {parent}, {name}\'s academic results are now ready. Please visit the school or contact the class teacher for details.',
+    body: 'Dear {parent}, {name} scored AVG {avg} GRADE {grade} ({points}pts) | TOTAL {total} | RANK {rank}. Well done.',
   },
   communication: {
     label: 'General Communication',
@@ -63,6 +64,9 @@ export default function ParentCommunicationPage() {
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [template, setTemplate] = useState<TemplateKey>('custom');
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [resTerm, setResTerm] = useState(1);
+  const [resAssessment, setResAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
+  const resYear = new Date().getFullYear();
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
@@ -128,8 +132,91 @@ export default function ParentCommunicationPage() {
     setExcludedIds(n);
   };
 
-  const personalize = (tpl: string, l: any) =>
-    tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+  const recipientIds = useMemo(() => recipients.map(r => r.id), [recipients]);
+
+  // Fee balances per learner (current year, all terms) — used for {balance}
+  const { data: feeBalances = {} } = useQuery({
+    queryKey: ['comm-fees', schoolId, recipientIds.join(',')],
+    queryFn: async () => {
+      if (!recipientIds.length) return {} as Record<string, number>;
+      const { data } = await supabase.from('fee_records')
+        .select('learner_id, amount_charged, amount_paid, voided_at')
+        .eq('school_id', schoolId!).in('learner_id', recipientIds);
+      const map: Record<string, number> = {};
+      for (const r of (data || []) as any[]) {
+        if (r.voided_at) continue;
+        map[r.learner_id] = (map[r.learner_id] || 0) + (Number(r.amount_charged || 0) - Number(r.amount_paid || 0));
+      }
+      return map;
+    },
+    enabled: template === 'fees' && recipientIds.length > 0,
+  });
+
+  // Results per learner — used for {avg} {grade} {total} {points} {rank}
+  const resultsGrade = mode === 'class' ? grade : (recipients[0]?.grade || '');
+  const { data: resSubjects = [] } = useQuery({
+    queryKey: ['comm-subjects', resultsGrade],
+    queryFn: async () => {
+      const { data } = await supabase.from('learning_areas').select('id, max_score, grade').eq('grade', resultsGrade);
+      return data || [];
+    },
+    enabled: template === 'results' && !!resultsGrade,
+  });
+  const { data: resScores = [] } = useQuery({
+    queryKey: ['comm-scores', recipientIds.join(','), resTerm, resYear, resAssessment],
+    queryFn: async () => {
+      if (!recipientIds.length) return [];
+      const { data } = await supabase.from('scores').select('learner_id, learning_area_id, score')
+        .in('learner_id', recipientIds).eq('term', resTerm).eq('year', resYear).eq('assessment_type', resAssessment);
+      return data || [];
+    },
+    enabled: template === 'results' && recipientIds.length > 0,
+  });
+
+  const resultsByLearner = useMemo(() => {
+    // dedupe by (learner, subject) keep highest
+    const map = new Map<string, any>();
+    for (const s of resScores as any[]) {
+      const k = `${s.learner_id}::${s.learning_area_id}`;
+      const ex = map.get(k);
+      if (!ex || Number(s.score) > Number(ex.score)) map.set(k, s);
+    }
+    const subjById: Record<string, any> = Object.fromEntries((resSubjects as any[]).map(s => [s.id, s]));
+    const avgMax = (resSubjects as any[]).length > 0
+      ? (resSubjects as any[]).reduce((s: number, sub: any) => s + Number(sub.max_score || 100), 0) / (resSubjects as any[]).length
+      : 100;
+    const per: Record<string, { total: number; mean: number; grade: string; points: number }> = {};
+    for (const id of recipientIds) {
+      const rows = Array.from(map.values()).filter((r: any) => r.learner_id === id && subjById[r.learning_area_id]);
+      const total = rows.reduce((s, r: any) => s + Number(r.score || 0), 0);
+      const mean = rows.length ? total / rows.length : 0;
+      const g = rows.length ? getGradeForLevel(mean, avgMax, resultsGrade) : '-';
+      per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10) };
+    }
+    // ranking among recipients by total desc
+    const ranked = [...recipientIds].sort((a, b) => (per[b]?.total || 0) - (per[a]?.total || 0));
+    const rankMap: Record<string, number> = {};
+    ranked.forEach((id, i) => { rankMap[id] = i + 1; });
+    return { per, rankMap, count: recipientIds.length };
+  }, [resScores, resSubjects, recipientIds, resultsGrade]);
+
+  const personalize = (tpl: string, l: any) => {
+    let out = tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+    if (template === 'fees') {
+      const bal = feeBalances[l.id] ?? 0;
+      out = out.replace(/\{balance\}/g, bal.toLocaleString());
+    }
+    if (template === 'results') {
+      const r = resultsByLearner.per[l.id];
+      out = out
+        .replace(/\{avg\}/g, r ? r.mean.toFixed(1) : '-')
+        .replace(/\{grade\}/g, r ? r.grade : '-')
+        .replace(/\{total\}/g, r ? String(Math.round(r.total)) : '-')
+        .replace(/\{points\}/g, r ? String(r.points) : '-')
+        .replace(/\{rank\}/g, `${resultsByLearner.rankMap[l.id] || '-'}/${resultsByLearner.count}`);
+    }
+    return out;
+  };
   const composedMessage = (l: any) => `${personalize(message, l)}${footer}`;
 
   const segments = segmentsFor(message + footer);
@@ -217,8 +304,29 @@ export default function ParentCommunicationPage() {
                     </Button>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Pick a template then edit below. Footer is added automatically.</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Pick a template then edit below. Footer is added automatically.
+                  {template === 'fees' && <> Placeholder <code>{'{balance}'}</code> auto-fills from the Fees module per learner.</>}
+                  {template === 'results' && <> Placeholders <code>{'{avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment.</>}
+                </p>
               </div>
+
+              {template === 'results' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={String(resTerm)} onValueChange={v => setResTerm(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Term" /></SelectTrigger>
+                    <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Select value={resAssessment} onValueChange={v => setResAssessment(v as any)}>
+                    <SelectTrigger><SelectValue placeholder="Assessment" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="opener">Opener</SelectItem>
+                      <SelectItem value="mid_term">Mid Term</SelectItem>
+                      <SelectItem value="end_term">End Term</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div>
                 <Label>Recipients</Label>
