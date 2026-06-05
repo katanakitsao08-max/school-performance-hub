@@ -207,8 +207,22 @@ export default function ParentCommunicationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label>Template</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(['custom', 'fees', 'results', 'communication', 'updates'] as TemplateKey[]).map(k => (
+                    <Button key={k} size="sm" type="button"
+                      variant={template === k ? 'default' : 'outline'}
+                      onClick={() => applyTemplate(k)}>
+                      {k === 'custom' ? 'Custom' : TEMPLATE_PRESETS[k].label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Pick a template then edit below. Footer is added automatically.</p>
+              </div>
+
+              <div>
                 <Label>Recipients</Label>
-                <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid grid-cols-2 gap-2 mt-2">
+                <RadioGroup value={mode} onValueChange={(v) => { setMode(v as Mode); setExcludedIds(new Set()); }} className="grid grid-cols-2 gap-2 mt-2">
                   {([['individual', 'Individual'], ['class', 'Specific class'], ['multi_class', 'Multiple grades'], ['whole_school', 'Whole school']] as [Mode, string][]).map(([v, label]) => (
                     <label key={v} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50">
                       <RadioGroupItem value={v} /> <span className="text-sm">{label}</span>
