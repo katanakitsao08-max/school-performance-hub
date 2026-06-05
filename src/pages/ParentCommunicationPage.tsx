@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Send, AlertTriangle, MessageSquare, Eye } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
+import { TERMS, getGradeForLevel, getGradePoints } from '@/lib/cbc-utils';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
 type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
@@ -24,11 +25,11 @@ type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
 const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; body: string }> = {
   fees: {
     label: 'Fee Reminder',
-    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance. Kindly clear at your earliest convenience. Thank you.',
+    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance of KES {balance}. Kindly clear at your earliest convenience. Thank you.',
   },
   results: {
     label: 'Results Notice',
-    body: 'Dear {parent}, {name}\'s academic results are now ready. Please visit the school or contact the class teacher for details.',
+    body: 'Dear {parent}, {name} scored AVG {avg} GRADE {grade} ({points}pts) | TOTAL {total} | RANK {rank}. Well done.',
   },
   communication: {
     label: 'General Communication',
