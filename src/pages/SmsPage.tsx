@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +48,8 @@ export default function SmsPage() {
   const [smsMode, setSmsMode] = useState<SmsMode>('hybrid');
   const [sending, setSending] = useState(false);
   const [lastResponse, setLastResponse] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState<'all' | 'pick'>('all');
 
   const { data: schoolMeta } = useQuery({
     queryKey: ['school-meta', schoolId],
@@ -142,7 +145,8 @@ export default function SmsPage() {
       return `${key}-${score}(${g})`;
     }).filter(Boolean).join(', ');
     const points = getGradePoints(l.grade as any) || Math.round(l.mean / 10);
-    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}\n- ${footer}`;
+    const rank = l.position ? ` | RANK: ${l.position}/${smsData.length}` : '';
+    return `${l.full_name}, Grade ${l.grade} ${l.stream}\n${subjectLines}\nTOTAL: ${l.total} | AVG: ${l.mean.toFixed(2)} | GRADE: ${l.grade} | POINTS: ${points}${rank}\n- ${footer}`;
   };
 
   // Always use production domain in SMS links (avoid lovableproject.com previews leaking to parents)
@@ -160,9 +164,22 @@ export default function SmsPage() {
     return `${l.full_name}: AVG ${l.mean.toFixed(1)} GRADE ${l.grade} (${points}pts). Full results:\n${url}\n- ${footer}`;
   };
 
-  const learnersWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
+  const allWithPhone = smsData.filter(l => l.parent_phone || (l as any).parent_phone_2);
+  const learnersWithPhone = selectionMode === 'pick'
+    ? allWithPhone.filter(l => selectedIds.has(l.id))
+    : allWithPhone;
   const balance = credits?.balance ?? 0;
   const enabled = credits?.enabled ?? true;
+
+  const toggleAll = () => {
+    if (selectedIds.size === allWithPhone.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(allWithPhone.map(l => l.id)));
+  };
+  const toggleOne = (id: string) => {
+    const n = new Set(selectedIds);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setSelectedIds(n);
+  };
 
   const handleBulkSend = async () => {
     if (!schoolId || !user) return;
@@ -288,11 +305,29 @@ export default function SmsPage() {
               </Select>
             </div>
 
+            <div className="flex items-center gap-3 text-xs flex-wrap">
+              <span className="text-muted-foreground">Send to:</span>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" checked={selectionMode === 'all'} onChange={() => setSelectionMode('all')} />
+                All learners ({allWithPhone.length})
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="radio" checked={selectionMode === 'pick'} onChange={() => setSelectionMode('pick')} />
+                Selected only ({selectedIds.size})
+              </label>
+              {selectionMode === 'pick' && (
+                <Button size="sm" variant="ghost" onClick={toggleAll} className="h-6 text-xs">
+                  {selectedIds.size === allWithPhone.length ? 'Clear all' : 'Select all'}
+                </Button>
+              )}
+            </div>
+
             <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {selectionMode === 'pick' && <TableHead className="w-8"></TableHead>}
                       <TableHead>Pos</TableHead>
                       <TableHead>Learner</TableHead>
                       <TableHead>Adm</TableHead>
@@ -303,7 +338,16 @@ export default function SmsPage() {
                   </TableHeader>
                   <TableBody>
                     {smsData.map(l => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className={selectionMode === 'pick' && selectedIds.has(l.id) ? 'bg-primary/5' : ''}>
+                        {selectionMode === 'pick' && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.has(l.id)}
+                              onCheckedChange={() => toggleOne(l.id)}
+                              disabled={!l.parent_phone && !(l as any).parent_phone_2}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>{l.position}</TableCell>
                         <TableCell className="font-medium">{l.full_name}</TableCell>
                         <TableCell className="text-xs">{l.admission_number || '-'}</TableCell>

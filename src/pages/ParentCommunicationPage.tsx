@@ -19,6 +19,26 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
+type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
+
+const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; body: string }> = {
+  fees: {
+    label: 'Fee Reminder',
+    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance. Kindly clear at your earliest convenience. Thank you.',
+  },
+  results: {
+    label: 'Results Notice',
+    body: 'Dear {parent}, {name}\'s academic results are now ready. Please visit the school or contact the class teacher for details.',
+  },
+  communication: {
+    label: 'General Communication',
+    body: 'Dear {parent}, kindly note the following regarding {name}: ',
+  },
+  updates: {
+    label: 'School Updates',
+    body: 'Dear Parent, please note the following school update: ',
+  },
+};
 
 function segmentsFor(msg: string): number {
   const len = (msg || '').length;
@@ -41,6 +61,19 @@ export default function ParentCommunicationPage() {
   const [sending, setSending] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [lastResponse, setLastResponse] = useState<any>(null);
+  const [template, setTemplate] = useState<TemplateKey>('custom');
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+
+  const { data: schoolMeta } = useQuery({
+    queryKey: ['school-meta', schoolId],
+    queryFn: async () => {
+      const { data } = await supabase.from('schools').select('school_name').eq('id', schoolId!).maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
+  });
+  const schoolName = schoolMeta?.school_name || 'School';
+  const footer = `\n- Ref: ${schoolName} | performtrack.co.ke`;
 
   const { data: credits } = useQuery({
     queryKey: ['school-sms-credits', schoolId],
@@ -76,16 +109,30 @@ export default function ParentCommunicationPage() {
 
   const hasAnyPhone = (l: any) => !!(l.parent_phone || l.parent_phone_2);
 
-  const recipients = useMemo(() => {
+  const candidateRecipients = useMemo(() => {
     if (mode === 'individual') {
       const l = learners.find(x => x.id === individual);
       return l && hasAnyPhone(l) ? [l] : [];
     }
-    if (mode === 'whole_school') return learners.filter(hasAnyPhone);
     return learners.filter(hasAnyPhone);
   }, [learners, mode, individual]);
 
-  const segments = segmentsFor(message);
+  const recipients = useMemo(
+    () => candidateRecipients.filter(l => !excludedIds.has(l.id)),
+    [candidateRecipients, excludedIds]
+  );
+
+  const toggleExcluded = (id: string) => {
+    const n = new Set(excludedIds);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setExcludedIds(n);
+  };
+
+  const personalize = (tpl: string, l: any) =>
+    tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+  const composedMessage = (l: any) => `${personalize(message, l)}${footer}`;
+
+  const segments = segmentsFor(message + footer);
   const totalSegments = recipients.length * segments;
   const balance = credits?.balance ?? 0;
   const enabled = credits?.enabled ?? true;
@@ -98,6 +145,11 @@ export default function ParentCommunicationPage() {
     )).slice(0, 30),
     [learners, search]
   );
+
+  const applyTemplate = (key: TemplateKey) => {
+    setTemplate(key);
+    if (key !== 'custom') setMessage(TEMPLATE_PRESETS[key].body);
+  };
 
   const send = async () => {
     if (!schoolId) return;
@@ -115,7 +167,7 @@ export default function ParentCommunicationPage() {
           messages: recipients.map((l: any) => ({
             phone: l.parent_phone || l.parent_phone_2 || '',
             phone_alt: l.parent_phone_2 || null,
-            message: message.replace('{name}', l.full_name).replace('{parent}', l.parent_name || 'Parent'),
+            message: composedMessage(l),
             learner_id: l.id,
           })),
         },
@@ -155,8 +207,22 @@ export default function ParentCommunicationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label>Template</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(['custom', 'fees', 'results', 'communication', 'updates'] as TemplateKey[]).map(k => (
+                    <Button key={k} size="sm" type="button"
+                      variant={template === k ? 'default' : 'outline'}
+                      onClick={() => applyTemplate(k)}>
+                      {k === 'custom' ? 'Custom' : TEMPLATE_PRESETS[k].label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Pick a template then edit below. Footer is added automatically.</p>
+              </div>
+
+              <div>
                 <Label>Recipients</Label>
-                <RadioGroup value={mode} onValueChange={(v) => setMode(v as Mode)} className="grid grid-cols-2 gap-2 mt-2">
+                <RadioGroup value={mode} onValueChange={(v) => { setMode(v as Mode); setExcludedIds(new Set()); }} className="grid grid-cols-2 gap-2 mt-2">
                   {([['individual', 'Individual'], ['class', 'Specific class'], ['multi_class', 'Multiple grades'], ['whole_school', 'Whole school']] as [Mode, string][]).map(([v, label]) => (
                     <label key={v} className="flex items-center gap-2 border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/50">
                       <RadioGroupItem value={v} /> <span className="text-sm">{label}</span>
@@ -207,13 +273,35 @@ export default function ParentCommunicationPage() {
                 </div>
               )}
 
+              {mode !== 'individual' && candidateRecipients.length > 0 && (
+                <div className="border rounded-md">
+                  <div className="flex items-center justify-between px-3 py-2 border-b text-xs">
+                    <span className="font-medium">Learners ({recipients.length}/{candidateRecipients.length} selected)</span>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs"
+                      onClick={() => setExcludedIds(excludedIds.size === candidateRecipients.length ? new Set() : new Set(candidateRecipients.map(l => l.id)))}>
+                      {excludedIds.size === 0 ? 'Deselect all' : 'Select all'}
+                    </Button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y">
+                    {candidateRecipients.map(l => (
+                      <label key={l.id} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50">
+                        <Checkbox checked={!excludedIds.has(l.id)} onCheckedChange={() => toggleExcluded(l.id)} />
+                        <span className="flex-1">{l.full_name}</span>
+                        <span className="text-xs text-muted-foreground">{l.grade} {l.stream}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label>Message</Label>
-                <Textarea rows={6} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message…" />
+                <Textarea rows={6} value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }} placeholder="Type your message…" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>{message.length} chars · {segments} segment{segments > 1 ? 's' : ''} per recipient</span>
+                  <span>{message.length + footer.length} chars · {segments} segment{segments > 1 ? 's' : ''} per recipient</span>
                   <span>Total cost: {totalSegments} credits</span>
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Auto-added footer: <code>{footer.trim()}</code></p>
               </div>
 
               {blocked && message && recipients.length > 0 && (
@@ -235,7 +323,7 @@ export default function ParentCommunicationPage() {
             </CardHeader>
             <CardContent>
               <div className="bg-muted/50 rounded-lg p-4 min-h-[180px] whitespace-pre-wrap text-sm">
-                {recipients[0] ? message.replace('{name}', recipients[0].full_name).replace('{parent}', recipients[0].parent_name || 'Parent') : message || <span className="text-muted-foreground">Your message preview…</span>}
+                {recipients[0] ? composedMessage(recipients[0]) : (message ? `${message}${footer}` : <span className="text-muted-foreground">Your message preview…</span>)}
               </div>
               <p className="text-xs text-muted-foreground mt-2">Sender ID and provider configured by Super Admin.</p>
             </CardContent>
