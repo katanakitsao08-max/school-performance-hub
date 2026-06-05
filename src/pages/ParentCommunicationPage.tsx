@@ -273,13 +273,35 @@ export default function ParentCommunicationPage() {
                 </div>
               )}
 
+              {mode !== 'individual' && candidateRecipients.length > 0 && (
+                <div className="border rounded-md">
+                  <div className="flex items-center justify-between px-3 py-2 border-b text-xs">
+                    <span className="font-medium">Learners ({recipients.length}/{candidateRecipients.length} selected)</span>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs"
+                      onClick={() => setExcludedIds(excludedIds.size === candidateRecipients.length ? new Set() : new Set(candidateRecipients.map(l => l.id)))}>
+                      {excludedIds.size === 0 ? 'Deselect all' : 'Select all'}
+                    </Button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y">
+                    {candidateRecipients.map(l => (
+                      <label key={l.id} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50">
+                        <Checkbox checked={!excludedIds.has(l.id)} onCheckedChange={() => toggleExcluded(l.id)} />
+                        <span className="flex-1">{l.full_name}</span>
+                        <span className="text-xs text-muted-foreground">{l.grade} {l.stream}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label>Message</Label>
-                <Textarea rows={6} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message…" />
+                <Textarea rows={6} value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }} placeholder="Type your message…" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>{message.length} chars · {segments} segment{segments > 1 ? 's' : ''} per recipient</span>
+                  <span>{message.length + footer.length} chars · {segments} segment{segments > 1 ? 's' : ''} per recipient</span>
                   <span>Total cost: {totalSegments} credits</span>
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Auto-added footer: <code>{footer.trim()}</code></p>
               </div>
 
               {blocked && message && recipients.length > 0 && (
