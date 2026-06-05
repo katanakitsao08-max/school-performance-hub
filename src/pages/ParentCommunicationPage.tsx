@@ -109,16 +109,30 @@ export default function ParentCommunicationPage() {
 
   const hasAnyPhone = (l: any) => !!(l.parent_phone || l.parent_phone_2);
 
-  const recipients = useMemo(() => {
+  const candidateRecipients = useMemo(() => {
     if (mode === 'individual') {
       const l = learners.find(x => x.id === individual);
       return l && hasAnyPhone(l) ? [l] : [];
     }
-    if (mode === 'whole_school') return learners.filter(hasAnyPhone);
     return learners.filter(hasAnyPhone);
   }, [learners, mode, individual]);
 
-  const segments = segmentsFor(message);
+  const recipients = useMemo(
+    () => candidateRecipients.filter(l => !excludedIds.has(l.id)),
+    [candidateRecipients, excludedIds]
+  );
+
+  const toggleExcluded = (id: string) => {
+    const n = new Set(excludedIds);
+    n.has(id) ? n.delete(id) : n.add(id);
+    setExcludedIds(n);
+  };
+
+  const personalize = (tpl: string, l: any) =>
+    tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+  const composedMessage = (l: any) => `${personalize(message, l)}${footer}`;
+
+  const segments = segmentsFor(message + footer);
   const totalSegments = recipients.length * segments;
   const balance = credits?.balance ?? 0;
   const enabled = credits?.enabled ?? true;
@@ -131,6 +145,11 @@ export default function ParentCommunicationPage() {
     )).slice(0, 30),
     [learners, search]
   );
+
+  const applyTemplate = (key: TemplateKey) => {
+    setTemplate(key);
+    if (key !== 'custom') setMessage(TEMPLATE_PRESETS[key].body);
+  };
 
   const send = async () => {
     if (!schoolId) return;
@@ -148,7 +167,7 @@ export default function ParentCommunicationPage() {
           messages: recipients.map((l: any) => ({
             phone: l.parent_phone || l.parent_phone_2 || '',
             phone_alt: l.parent_phone_2 || null,
-            message: message.replace('{name}', l.full_name).replace('{parent}', l.parent_name || 'Parent'),
+            message: composedMessage(l),
             learner_id: l.id,
           })),
         },
