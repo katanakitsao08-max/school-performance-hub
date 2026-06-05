@@ -304,8 +304,29 @@ export default function ParentCommunicationPage() {
                     </Button>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Pick a template then edit below. Footer is added automatically.</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Pick a template then edit below. Footer is added automatically.
+                  {template === 'fees' && <> Placeholder <code>{'{balance}'}</code> auto-fills from the Fees module per learner.</>}
+                  {template === 'results' && <> Placeholders <code>{'{avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment.</>}
+                </p>
               </div>
+
+              {template === 'results' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={String(resTerm)} onValueChange={v => setResTerm(Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Term" /></SelectTrigger>
+                    <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Select value={resAssessment} onValueChange={v => setResAssessment(v as any)}>
+                    <SelectTrigger><SelectValue placeholder="Assessment" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="opener">Opener</SelectItem>
+                      <SelectItem value="mid_term">Mid Term</SelectItem>
+                      <SelectItem value="end_term">End Term</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div>
                 <Label>Recipients</Label>
