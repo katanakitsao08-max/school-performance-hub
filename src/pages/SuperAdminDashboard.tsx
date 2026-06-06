@@ -9,6 +9,7 @@ import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTo
 import LearningPathSubscriptionsSection from '@/components/superadmin/LearningPathSubscriptionsSection';
 import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
+import SuperAdminSmsRemindersSection from '@/components/superadmin/SuperAdminSmsRemindersSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
