@@ -185,13 +185,19 @@ export default function ParentCommunicationPage() {
     const avgMax = (resSubjects as any[]).length > 0
       ? (resSubjects as any[]).reduce((s: number, sub: any) => s + Number(sub.max_score || 100), 0) / (resSubjects as any[]).length
       : 100;
-    const per: Record<string, { total: number; mean: number; grade: string; points: number }> = {};
+    const per: Record<string, { total: number; mean: number; grade: string; points: number; subjects: string }> = {};
     for (const id of recipientIds) {
       const rows = Array.from(map.values()).filter((r: any) => r.learner_id === id && subjById[r.learning_area_id]);
       const total = rows.reduce((s, r: any) => s + Number(r.score || 0), 0);
       const mean = rows.length ? total / rows.length : 0;
       const g = rows.length ? getGradeForLevel(mean, avgMax, resultsGrade) : '-';
-      per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10) };
+      const subjLines = rows.map((r: any) => {
+        const sub = subjById[r.learning_area_id];
+        const label = (sub?.code || sub?.name || '').toString().toUpperCase().slice(0, 12);
+        const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), resultsGrade);
+        return `${label}: ${Math.round(Number(r.score || 0))} (${sg})`;
+      }).join('\n');
+      per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10), subjects: subjLines || '-' };
     }
     // ranking among recipients by total desc
     const ranked = [...recipientIds].sort((a, b) => (per[b]?.total || 0) - (per[a]?.total || 0));
