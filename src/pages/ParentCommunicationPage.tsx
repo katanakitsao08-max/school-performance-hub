@@ -29,7 +29,7 @@ const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; 
   },
   results: {
     label: 'Results Notice',
-    body: 'Dear {parent}, {name} scored AVG {avg} GRADE {grade} ({points}pts) | TOTAL {total} | RANK {rank}. Well done.',
+    body: 'Dear {parent}, results for {name}:\n{subjects}\nTOTAL: {total} | AVG: {avg} | GRADE: {grade} ({points}pts) | RANK: {rank}',
   },
   communication: {
     label: 'General Communication',
