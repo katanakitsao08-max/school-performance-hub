@@ -215,6 +215,7 @@ export default function ParentCommunicationPage() {
     if (template === 'results') {
       const r = resultsByLearner.per[l.id];
       out = out
+        .replace(/\{subjects\}/g, r ? r.subjects : '-')
         .replace(/\{avg\}/g, r ? r.mean.toFixed(1) : '-')
         .replace(/\{grade\}/g, r ? r.grade : '-')
         .replace(/\{total\}/g, r ? String(Math.round(r.total)) : '-')
