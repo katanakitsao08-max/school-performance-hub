@@ -157,7 +157,7 @@ export default function ParentCommunicationPage() {
   const { data: resSubjects = [] } = useQuery({
     queryKey: ['comm-subjects', resultsGrade],
     queryFn: async () => {
-      const { data } = await supabase.from('learning_areas').select('id, max_score, grade').eq('grade', resultsGrade);
+      const { data } = await supabase.from('learning_areas').select('id, name, code, max_score, grade').eq('grade', resultsGrade);
       return data || [];
     },
     enabled: template === 'results' && !!resultsGrade,
