@@ -29,7 +29,7 @@ const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; 
   },
   results: {
     label: 'Results Notice',
-    body: 'Dear {parent}, {name} scored AVG {avg} GRADE {grade} ({points}pts) | TOTAL {total} | RANK {rank}. Well done.',
+    body: 'Dear {parent}, results for {name}:\n{subjects}\nTOTAL: {total} | AVG: {avg} | GRADE: {grade} ({points}pts) | RANK: {rank}',
   },
   communication: {
     label: 'General Communication',
@@ -157,7 +157,7 @@ export default function ParentCommunicationPage() {
   const { data: resSubjects = [] } = useQuery({
     queryKey: ['comm-subjects', resultsGrade],
     queryFn: async () => {
-      const { data } = await supabase.from('learning_areas').select('id, max_score, grade').eq('grade', resultsGrade);
+      const { data } = await supabase.from('learning_areas').select('id, name, code, max_score, grade').eq('grade', resultsGrade);
       return data || [];
     },
     enabled: template === 'results' && !!resultsGrade,
@@ -185,13 +185,19 @@ export default function ParentCommunicationPage() {
     const avgMax = (resSubjects as any[]).length > 0
       ? (resSubjects as any[]).reduce((s: number, sub: any) => s + Number(sub.max_score || 100), 0) / (resSubjects as any[]).length
       : 100;
-    const per: Record<string, { total: number; mean: number; grade: string; points: number }> = {};
+    const per: Record<string, { total: number; mean: number; grade: string; points: number; subjects: string }> = {};
     for (const id of recipientIds) {
       const rows = Array.from(map.values()).filter((r: any) => r.learner_id === id && subjById[r.learning_area_id]);
       const total = rows.reduce((s, r: any) => s + Number(r.score || 0), 0);
       const mean = rows.length ? total / rows.length : 0;
       const g = rows.length ? getGradeForLevel(mean, avgMax, resultsGrade) : '-';
-      per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10) };
+      const subjLines = rows.map((r: any) => {
+        const sub = subjById[r.learning_area_id];
+        const label = (sub?.code || sub?.name || '').toString().toUpperCase().slice(0, 12);
+        const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), resultsGrade);
+        return `${label}: ${Math.round(Number(r.score || 0))} (${sg})`;
+      }).join('\n');
+      per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10), subjects: subjLines || '-' };
     }
     // ranking among recipients by total desc
     const ranked = [...recipientIds].sort((a, b) => (per[b]?.total || 0) - (per[a]?.total || 0));
@@ -209,6 +215,7 @@ export default function ParentCommunicationPage() {
     if (template === 'results') {
       const r = resultsByLearner.per[l.id];
       out = out
+        .replace(/\{subjects\}/g, r ? r.subjects : '-')
         .replace(/\{avg\}/g, r ? r.mean.toFixed(1) : '-')
         .replace(/\{grade\}/g, r ? r.grade : '-')
         .replace(/\{total\}/g, r ? String(Math.round(r.total)) : '-')
@@ -307,7 +314,8 @@ export default function ParentCommunicationPage() {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Pick a template then edit below. Footer is added automatically.
                   {template === 'fees' && <> Placeholder <code>{'{balance}'}</code> auto-fills from the Fees module per learner.</>}
-                  {template === 'results' && <> Placeholders <code>{'{avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment.</>}
+                  {template === 'results' && <> Placeholders <code>{'{subjects} {avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment. <code>{'{subjects}'}</code> lists every subject with its score & grade.</>}
+
                 </p>
               </div>
 

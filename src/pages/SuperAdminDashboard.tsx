@@ -9,6 +9,7 @@ import SchoolFeatureTogglesSection from '@/components/superadmin/SchoolFeatureTo
 import LearningPathSubscriptionsSection from '@/components/superadmin/LearningPathSubscriptionsSection';
 import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
+import SuperAdminSmsRemindersSection from '@/components/superadmin/SuperAdminSmsRemindersSection';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -151,6 +152,9 @@ export default function SuperAdminDashboard() {
 
         {/* New: WhatsApp Subscription Reminders (click-to-send) */}
         <SubscriptionRemindersSection schools={schools} />
+
+        {/* New: SMS Reminders to school admins (custom / expiry / announcements) */}
+        <SuperAdminSmsRemindersSection schools={schools} />
       </div>
     </DashboardLayout>
   );
