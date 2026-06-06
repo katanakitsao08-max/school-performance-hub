@@ -220,9 +220,13 @@ export default function SuperAdminSmsRemindersSection({ schools }: { schools: Sc
                       <Checkbox checked={selected.has(s.id)} disabled={!has} onCheckedChange={() => toggle(s.id)} />
                     </TableCell>
                     <TableCell className="font-medium">{s.school_name}</TableCell>
-                    <TableCell className="text-xs">{a?.phone || '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      {a?.phone || '—'}
+                      {a?.source === 'school' && <Badge variant="outline" className="ml-1 text-[9px]">school</Badge>}
+                    </TableCell>
                     <TableCell className="capitalize text-xs">{s.subscription_plan || '—'}</TableCell>
                     <TableCell className="text-xs">{s.plan_expires_at ? new Date(s.plan_expires_at).toLocaleDateString() : '—'}</TableCell>
+
                     <TableCell>
                       <Badge variant="outline" className={
                         s.subscription_status === 'active' ? 'border-success/40 text-success' :
