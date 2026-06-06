@@ -30,12 +30,24 @@ type School = {
   subscription_status?: string | null;
   subscription_plan?: string | null;
   plan_expires_at?: string | null;
+  contact_phone?: string | null;
 };
 
 function segmentsFor(msg: string): number {
   const len = (msg || '').length;
   if (len === 0) return 1;
   return len <= 160 ? 1 : Math.ceil(len / 153);
+}
+
+function normalizePhone(p?: string | null): string {
+  if (!p) return '';
+  const digits = String(p).replace(/[^\d+]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('+')) return digits.slice(1);
+  if (digits.startsWith('254')) return digits;
+  if (digits.startsWith('0')) return '254' + digits.slice(1);
+  if (digits.startsWith('7') || digits.startsWith('1')) return '254' + digits;
+  return digits;
 }
 
 export default function SuperAdminSmsRemindersSection({ schools }: { schools: School[] }) {
@@ -51,7 +63,9 @@ export default function SuperAdminSmsRemindersSection({ schools }: { schools: Sc
     queryKey: ['sms-school-admins', schoolIds.join(',')],
     queryFn: async () => {
       if (!schoolIds.length) return [];
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
+      const { data: roles } = await supabase
+        .from('user_roles').select('user_id, role')
+        .in('role', ['admin', 'headteacher'] as any);
       const userIds = (roles || []).map(r => r.user_id);
       if (!userIds.length) return [];
       const { data: profs } = await supabase.from('profiles')
@@ -63,14 +77,28 @@ export default function SuperAdminSmsRemindersSection({ schools }: { schools: Sc
   });
 
   const adminBySchool = useMemo(() => {
-    const map: Record<string, { name: string; phone: string }> = {};
+    const map: Record<string, { name: string; phone: string; source: 'admin' | 'school' }> = {};
+    // First pass: pick an admin profile with a phone for each school
     (admins as any[]).forEach(p => {
-      if (!map[p.school_id] && p.whatsapp_number) {
-        map[p.school_id] = { name: p.full_name || 'Admin', phone: p.whatsapp_number };
+      const ph = normalizePhone(p.whatsapp_number);
+      if (ph && !map[p.school_id]) {
+        map[p.school_id] = { name: p.full_name || 'Admin', phone: ph, source: 'admin' };
+      }
+    });
+    // Fallback: use school contact_phone so every school gets a recipient
+    schools.forEach(s => {
+      if (!map[s.id]) {
+        const ph = normalizePhone(s.contact_phone);
+        if (ph) {
+          // Try to name from any admin profile we have for this school
+          const anyAdmin = (admins as any[]).find(p => p.school_id === s.id);
+          map[s.id] = { name: anyAdmin?.full_name || 'Administrator', phone: ph, source: 'school' };
+        }
       }
     });
     return map;
-  }, [admins]);
+  }, [admins, schools]);
+
 
   const applyTpl = (k: TplKey) => {
     setTpl(k);
@@ -192,9 +220,13 @@ export default function SuperAdminSmsRemindersSection({ schools }: { schools: Sc
                       <Checkbox checked={selected.has(s.id)} disabled={!has} onCheckedChange={() => toggle(s.id)} />
                     </TableCell>
                     <TableCell className="font-medium">{s.school_name}</TableCell>
-                    <TableCell className="text-xs">{a?.phone || '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      {a?.phone || '—'}
+                      {a?.source === 'school' && <Badge variant="outline" className="ml-1 text-[9px]">school</Badge>}
+                    </TableCell>
                     <TableCell className="capitalize text-xs">{s.subscription_plan || '—'}</TableCell>
                     <TableCell className="text-xs">{s.plan_expires_at ? new Date(s.plan_expires_at).toLocaleDateString() : '—'}</TableCell>
+
                     <TableCell>
                       <Badge variant="outline" className={
                         s.subscription_status === 'active' ? 'border-success/40 text-success' :
