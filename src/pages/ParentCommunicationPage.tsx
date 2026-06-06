@@ -314,7 +314,8 @@ export default function ParentCommunicationPage() {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Pick a template then edit below. Footer is added automatically.
                   {template === 'fees' && <> Placeholder <code>{'{balance}'}</code> auto-fills from the Fees module per learner.</>}
-                  {template === 'results' && <> Placeholders <code>{'{avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment.</>}
+                  {template === 'results' && <> Placeholders <code>{'{subjects} {avg} {grade} {points} {total} {rank}'}</code> auto-fill from the selected term & assessment. <code>{'{subjects}'}</code> lists every subject with its score & grade.</>}
+
                 </p>
               </div>
 
