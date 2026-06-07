@@ -637,5 +637,4 @@ function LivePanel({ courseId }: { courseId: string }) {
   );
 }
 
-// Pull ClipboardList into scope for AssignmentsPanel above
-import { ClipboardList } from "lucide-react";
+
