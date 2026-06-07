@@ -560,6 +560,22 @@ export default function ParentLearningPathTab({ child }: Props) {
         </CardHeader>
       </Card>
 
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/20 grid place-items-center text-primary">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Full LMS Library</p>
+            <p className="text-[11px] text-muted-foreground">Structured courses, video lessons, quizzes, assignments, live classes & certificates.</p>
+          </div>
+          <Button size="sm" onClick={() => window.location.assign(`/lms?child=${child.id}`)}>
+            Open <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </CardContent>
+      </Card>
+
+
       {activeEntitlement?.expires_at && (
         <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80 flex items-center justify-between">
           <span>⏳ Access active until <strong>{new Date(activeEntitlement.expires_at).toLocaleString()}</strong>. Auto-closes on expiry.</span>
