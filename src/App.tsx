@@ -66,6 +66,9 @@ const TeacherStandaloneDashboard = lazy(() => import("./pages/teacher/TeacherSta
 const TeacherApprovalsPage = lazy(() => import("./pages/TeacherApprovalsPage"));
 const DocumentsPage = lazy(() => import("./pages/DocumentsPage"));
 const ClassTeacherPortal = lazy(() => import("./pages/ClassTeacherPortal"));
+const LmsPage = lazy(() => import("./pages/LmsPage"));
+const SuperAdminLmsPage = lazy(() => import("./pages/SuperAdminLmsPage"));
+
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 
