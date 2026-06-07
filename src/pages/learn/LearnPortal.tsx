@@ -95,10 +95,14 @@ export default function LearnPortal() {
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Learning Portal</p>
           </div>
           <Badge variant="outline" className="text-xs font-mono">{code}</Badge>
+          <Button size="sm" variant="default" className="hidden sm:inline-flex" onClick={() => navigate("/lms")}>
+            <BookOpen className="w-3 h-3 mr-1" /> LMS
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => signOut().then(() => navigate("/learn/login"))} aria-label="Sign out">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
+
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-5 space-y-5 pb-24">
