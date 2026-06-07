@@ -529,7 +529,7 @@ function AssignmentsTab({ learnerRef }: { learnerRef: string | null }) {
     },
     enabled: !!learnerRef,
   });
-  const subBy = new Map(subs.map((s: any) => [s.assignment_id, s]));
+  const subBy = new Map<string, any>(subs.map((s: any) => [s.assignment_id, s]));
 
   const submit = async (assignmentId: string, text: string) => {
     if (!learnerRef) return;
@@ -544,7 +544,8 @@ function AssignmentsTab({ learnerRef }: { learnerRef: string | null }) {
   return (
     <div className="space-y-3">
       {items.map(a => {
-        const sub = subBy.get(a.id);
+        const sub: any = subBy.get(a.id);
+
         return (
           <Card key={a.id}>
             <CardContent className="p-3 space-y-2">
