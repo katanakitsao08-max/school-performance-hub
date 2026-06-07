@@ -224,8 +224,13 @@ const App = () => (
                 <Route path="/more" element={<ProtectedRoute><MorePage /></ProtectedRoute>} />
                 <Route path="/my-class" element={<ProtectedRoute allowedRoles={['teacher', 'admin', 'headteacher']}><ErrorBoundary inline label="My Class"><ClassTeacherPortal /></ErrorBoundary></ProtectedRoute>} />
 
+                {/* LMS — accessible to all signed-in roles */}
+                <Route path="/lms" element={<ProtectedRoute><ErrorBoundary inline label="LMS"><LmsPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/super-admin/lms" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="LMS Catalog"><SuperAdminLmsPage /></ErrorBoundary></ProtectedRoute>} />
+
                 {/* Parent routes */}
                 <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
+
                 <Route path="*" element={<SmartRedirect />} />
               </Routes>
             </Suspense>
