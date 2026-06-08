@@ -285,7 +285,10 @@ function CourseView({ courseId, learnerRef, learnerName, onBack, onOpenLesson }:
   );
 }
 
-function CertificateRow({ courseId, learnerRef }: { courseId: string; learnerRef: string }) {
+function CertificateRow({ courseId, learnerRef, learnerName, courseTitle, instructor }: {
+  courseId: string; learnerRef: string; learnerName: string; courseTitle: string; instructor?: string | null;
+}) {
+  const qc = useQueryClient();
   const { data: cert } = useQuery({
     queryKey: ["lms-cert", learnerRef, courseId],
     queryFn: async () => {
@@ -295,19 +298,33 @@ function CertificateRow({ courseId, learnerRef }: { courseId: string; learnerRef
     },
   });
   const { toast } = useToast();
+  const download = (c: any) => downloadCertificatePdf({
+    learnerName, courseTitle, certificateNo: c.certificate_no,
+    issuedAt: c.issued_at || new Date().toISOString(), instructor,
+  });
   const issue = async () => {
     const certNo = `LMS-${Date.now().toString(36).toUpperCase()}`;
-    const { error } = await (supabase as any).from("lms_certificates").insert({
+    const { data, error } = await (supabase as any).from("lms_certificates").insert({
       learner_ref: learnerRef, course_id: courseId, certificate_no: certNo,
-    });
-    if (error) toast({ title: "Certificate failed", description: error.message, variant: "destructive" });
-    else toast({ title: "Certificate issued", description: certNo });
+    }).select().maybeSingle();
+    if (error) { toast({ title: "Certificate failed", description: error.message, variant: "destructive" }); return; }
+    await evaluateAndAwardBadges(learnerRef);
+    qc.invalidateQueries({ queryKey: ["lms-cert", learnerRef, courseId] });
+    qc.invalidateQueries({ queryKey: ["lms-certs-mine", learnerRef] });
+    qc.invalidateQueries({ queryKey: ["lms-badges-mine", learnerRef] });
+    toast({ title: "Certificate issued", description: certNo });
+    if (data) download(data);
   };
   return (
     <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-md p-2 text-sm">
       <Award className="h-4 w-4 text-green-700" />
       <span className="flex-1">Course completed!</span>
-      {cert ? <Badge className="bg-green-600">{cert.certificate_no}</Badge> : <Button size="sm" onClick={issue}>Issue certificate</Button>}
+      {cert ? (
+        <>
+          <Badge className="bg-green-600">{cert.certificate_no}</Badge>
+          <Button size="sm" variant="outline" onClick={() => download(cert)}><Download className="h-3 w-3 mr-1" />PDF</Button>
+        </>
+      ) : <Button size="sm" onClick={issue}>Issue certificate</Button>}
     </div>
   );
 }
