@@ -106,7 +106,7 @@ export default function LmsPage() {
             <TabsContent value="catalog"><CatalogTab gradeHint={gradeHint} onOpen={setActiveCourseId} /></TabsContent>
             <TabsContent value="assignments"><AssignmentsTab learnerRef={learnerRef} /></TabsContent>
             <TabsContent value="live"><LiveTab learnerRef={learnerRef} /></TabsContent>
-            <TabsContent value="progress"><ProgressTab learnerRef={learnerRef} /></TabsContent>
+            <TabsContent value="progress"><ProgressTab learnerRef={learnerRef} learnerName={learnerName} /></TabsContent>
             <TabsContent value="discussion"><div className="text-center text-sm text-muted-foreground py-8">Open a lesson to join its discussion thread.</div></TabsContent>
           </Tabs>
         )}
