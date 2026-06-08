@@ -21,10 +21,13 @@ import {
 import {
   Course, Module, Lesson, Quiz, QuizQuestion, Assignment, LiveSession,
   toEmbedUrl, markQuestion, markLessonComplete, recordQuizAttempt, LmsLearnerKind,
+  evaluateAndAwardBadges,
 } from "@/features/lms/api";
+import { downloadCertificatePdf } from "@/lib/lms-certificate-pdf";
+import { Download } from "lucide-react";
 
 /** Resolve learner_ref + kind for the current user. Parent reads ?child=. */
-function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loading: boolean; gradeHint?: string | null } {
+function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loading: boolean; gradeHint?: string | null; name?: string | null } {
   const { user, role } = useAuth();
   const [params] = useSearchParams();
   const childId = params.get("child");
@@ -32,31 +35,30 @@ function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loa
   const { data, isLoading } = useQuery({
     queryKey: ["lms-learner-ref", user?.id, role, childId],
     queryFn: async () => {
-      if (!user) return { ref: null, kind: null, gradeHint: null };
+      if (!user) return { ref: null, kind: null, gradeHint: null, name: null };
       if (role === "independent_learner") {
         const { data: il } = await supabase.from("independent_learners")
-          .select("id, grade").eq("user_id", user.id).maybeSingle();
-        return { ref: il?.id ?? null, kind: "independent" as const, gradeHint: il?.grade ?? null };
+          .select("id, grade, full_name").eq("user_id", user.id).maybeSingle();
+        return { ref: il?.id ?? null, kind: "independent" as const, gradeHint: il?.grade ?? null, name: il?.full_name ?? null };
       }
       if (role === "parent") {
-        if (!childId) return { ref: null, kind: "school" as const, gradeHint: null };
+        if (!childId) return { ref: null, kind: "school" as const, gradeHint: null, name: null };
         const { data: l } = await supabase.from("learners")
-          .select("id, grade").eq("id", childId).maybeSingle();
-        return { ref: l?.id ?? null, kind: "school" as const, gradeHint: l?.grade ?? null };
+          .select("id, grade, full_name").eq("id", childId).maybeSingle();
+        return { ref: l?.id ?? null, kind: "school" as const, gradeHint: l?.grade ?? null, name: l?.full_name ?? null };
       }
-      // super admin or admin previewing — no learner ref, but allow browse
-      return { ref: null, kind: null, gradeHint: null };
+      return { ref: null, kind: null, gradeHint: null, name: null };
     },
     enabled: !!user,
   });
 
-  return { ref: data?.ref ?? null, kind: data?.kind ?? null, loading: isLoading, gradeHint: data?.gradeHint };
+  return { ref: data?.ref ?? null, kind: data?.kind ?? null, loading: isLoading, gradeHint: data?.gradeHint, name: data?.name };
 }
 
 export default function LmsPage() {
   const navigate = useNavigate();
   const { user, role, loading: authLoading } = useAuth();
-  const { ref: learnerRef, kind, loading: refLoading, gradeHint } = useLearnerRef();
+  const { ref: learnerRef, kind, loading: refLoading, gradeHint, name: learnerName } = useLearnerRef();
   const [tab, setTab] = useState("catalog");
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -88,9 +90,10 @@ export default function LmsPage() {
         {activeLessonId ? (
           <LessonView lessonId={activeLessonId} learnerRef={learnerRef} kind={kind} onBack={() => setActiveLessonId(null)} />
         ) : activeCourseId ? (
-          <CourseView courseId={activeCourseId} learnerRef={learnerRef}
+          <CourseView courseId={activeCourseId} learnerRef={learnerRef} learnerName={learnerName}
             onBack={() => setActiveCourseId(null)}
             onOpenLesson={setActiveLessonId} />
+
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="w-full grid grid-cols-5 mb-4 h-auto">
@@ -103,7 +106,7 @@ export default function LmsPage() {
             <TabsContent value="catalog"><CatalogTab gradeHint={gradeHint} onOpen={setActiveCourseId} /></TabsContent>
             <TabsContent value="assignments"><AssignmentsTab learnerRef={learnerRef} /></TabsContent>
             <TabsContent value="live"><LiveTab learnerRef={learnerRef} /></TabsContent>
-            <TabsContent value="progress"><ProgressTab learnerRef={learnerRef} /></TabsContent>
+            <TabsContent value="progress"><ProgressTab learnerRef={learnerRef} learnerName={learnerName} /></TabsContent>
             <TabsContent value="discussion"><div className="text-center text-sm text-muted-foreground py-8">Open a lesson to join its discussion thread.</div></TabsContent>
           </Tabs>
         )}
@@ -180,8 +183,8 @@ function CatalogTab({ gradeHint, onOpen }: { gradeHint?: string | null; onOpen: 
 }
 
 /* ----------------------------- Course view ----------------------------- */
-function CourseView({ courseId, learnerRef, onBack, onOpenLesson }: {
-  courseId: string; learnerRef: string | null; onBack: () => void; onOpenLesson: (id: string) => void;
+function CourseView({ courseId, learnerRef, learnerName, onBack, onOpenLesson }: {
+  courseId: string; learnerRef: string | null; learnerName?: string | null; onBack: () => void; onOpenLesson: (id: string) => void;
 }) {
   const { data: course } = useQuery({
     queryKey: ["lms-course", courseId],
@@ -244,7 +247,7 @@ function CourseView({ courseId, learnerRef, onBack, onOpenLesson }: {
             <div className="flex justify-between text-xs mb-1"><span>Progress</span><span>{done.size} / {lessons.length} lessons</span></div>
             <Progress value={pct} className="h-2" />
           </div>
-          {pct === 100 && learnerRef && <CertificateRow courseId={courseId} learnerRef={learnerRef} />}
+          {pct === 100 && learnerRef && <CertificateRow courseId={courseId} learnerRef={learnerRef} learnerName={learnerName || "Learner"} courseTitle={course.title} instructor={course.instructor_name} />}
         </CardContent>
       </Card>
 
@@ -282,7 +285,10 @@ function CourseView({ courseId, learnerRef, onBack, onOpenLesson }: {
   );
 }
 
-function CertificateRow({ courseId, learnerRef }: { courseId: string; learnerRef: string }) {
+function CertificateRow({ courseId, learnerRef, learnerName, courseTitle, instructor }: {
+  courseId: string; learnerRef: string; learnerName: string; courseTitle: string; instructor?: string | null;
+}) {
+  const qc = useQueryClient();
   const { data: cert } = useQuery({
     queryKey: ["lms-cert", learnerRef, courseId],
     queryFn: async () => {
@@ -292,19 +298,33 @@ function CertificateRow({ courseId, learnerRef }: { courseId: string; learnerRef
     },
   });
   const { toast } = useToast();
+  const download = (c: any) => downloadCertificatePdf({
+    learnerName, courseTitle, certificateNo: c.certificate_no,
+    issuedAt: c.issued_at || new Date().toISOString(), instructor,
+  });
   const issue = async () => {
     const certNo = `LMS-${Date.now().toString(36).toUpperCase()}`;
-    const { error } = await (supabase as any).from("lms_certificates").insert({
+    const { data, error } = await (supabase as any).from("lms_certificates").insert({
       learner_ref: learnerRef, course_id: courseId, certificate_no: certNo,
-    });
-    if (error) toast({ title: "Certificate failed", description: error.message, variant: "destructive" });
-    else toast({ title: "Certificate issued", description: certNo });
+    }).select().maybeSingle();
+    if (error) { toast({ title: "Certificate failed", description: error.message, variant: "destructive" }); return; }
+    await evaluateAndAwardBadges(learnerRef);
+    qc.invalidateQueries({ queryKey: ["lms-cert", learnerRef, courseId] });
+    qc.invalidateQueries({ queryKey: ["lms-certs-mine", learnerRef] });
+    qc.invalidateQueries({ queryKey: ["lms-badges-mine", learnerRef] });
+    toast({ title: "Certificate issued", description: certNo });
+    if (data) download(data);
   };
   return (
     <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-md p-2 text-sm">
       <Award className="h-4 w-4 text-green-700" />
       <span className="flex-1">Course completed!</span>
-      {cert ? <Badge className="bg-green-600">{cert.certificate_no}</Badge> : <Button size="sm" onClick={issue}>Issue certificate</Button>}
+      {cert ? (
+        <>
+          <Badge className="bg-green-600">{cert.certificate_no}</Badge>
+          <Button size="sm" variant="outline" onClick={() => download(cert)}><Download className="h-3 w-3 mr-1" />PDF</Button>
+        </>
+      ) : <Button size="sm" onClick={issue}>Issue certificate</Button>}
     </div>
   );
 }
@@ -335,8 +355,11 @@ function LessonView({ lessonId, learnerRef, kind, onBack }: {
   const onComplete = async () => {
     if (!learnerRef) { toast({ title: "Sign in as a learner to track progress", variant: "destructive" }); return; }
     await markLessonComplete(learnerRef, lessonId);
+    const awarded = await evaluateAndAwardBadges(learnerRef);
     qc.invalidateQueries({ queryKey: ["lms-progress"] });
-    toast({ title: "Marked complete" });
+    qc.invalidateQueries({ queryKey: ["lms-badges-mine"] });
+    if (awarded.length) toast({ title: "🏅 Badge unlocked!", description: awarded.join(", ") });
+    else toast({ title: "Marked complete" });
     onBack();
   };
 
@@ -405,6 +428,8 @@ function QuizCard({ quiz, learnerRef }: { quiz: Quiz; learnerRef: string | null 
       learnerRef, quizId: quiz.id, scorePercent: pct, passed, answers: breakdown,
       durationSeconds: Math.round((Date.now() - startedAtRef.t) / 1000),
     });
+    const awarded = await evaluateAndAwardBadges(learnerRef);
+    if (awarded.length) toast({ title: "🏅 Badge unlocked!", description: awarded.join(", ") });
     setSubmitted({ pct, passed });
   };
 
@@ -630,7 +655,7 @@ function LiveTab({ learnerRef }: { learnerRef: string | null }) {
 }
 
 /* ----------------------------- Progress ----------------------------- */
-function ProgressTab({ learnerRef }: { learnerRef: string | null }) {
+function ProgressTab({ learnerRef, learnerName }: { learnerRef: string | null; learnerName?: string | null }) {
   const { data: prog = [] } = useQuery({
     queryKey: ["lms-prog-all", learnerRef],
     queryFn: async () => {
@@ -690,9 +715,15 @@ function ProgressTab({ learnerRef }: { learnerRef: string | null }) {
         <CardContent>
           {certs.length === 0 ? <p className="text-xs text-muted-foreground">Complete a course to earn a certificate.</p> :
             <ul className="text-sm space-y-1">{certs.map((c: any) => (
-              <li key={c.id} className="flex items-center justify-between border rounded p-2">
-                <span>{c.lms_courses?.title}</span>
+              <li key={c.id} className="flex items-center justify-between border rounded p-2 gap-2">
+                <span className="flex-1 truncate">{c.lms_courses?.title}</span>
                 <Badge>{c.certificate_no}</Badge>
+                <Button size="sm" variant="outline" onClick={() => downloadCertificatePdf({
+                  learnerName: learnerName || "Learner",
+                  courseTitle: c.lms_courses?.title || "Course",
+                  certificateNo: c.certificate_no,
+                  issuedAt: c.issued_at || new Date().toISOString(),
+                })}><Download className="h-3 w-3 mr-1" />PDF</Button>
               </li>
             ))}</ul>}
         </CardContent>

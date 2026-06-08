@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ArrowLeft, BookOpen, Pencil, GripVertical, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, BookOpen, Pencil, GripVertical, ClipboardList, FileCheck2 } from "lucide-react";
 import { Course, Module, Lesson, Quiz, QuizQuestion, Assignment, LiveSession, slugify } from "@/features/lms/api";
+import { SortableList, persistOrder } from "@/features/lms/Sortable";
 
 export default function SuperAdminLmsPage() {
   const navigate = useNavigate();
@@ -36,7 +37,14 @@ export default function SuperAdminLmsPage() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-4 max-w-6xl">
-        <CoursesPanel />
+        <Tabs defaultValue="courses">
+          <TabsList>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="badges">Badges</TabsTrigger>
+          </TabsList>
+          <TabsContent value="courses"><CoursesPanel /></TabsContent>
+          <TabsContent value="badges"><BadgesPanel /></TabsContent>
+        </Tabs>
       </main>
     </div>
   );
@@ -157,15 +165,17 @@ function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }
         <p className="text-xs text-muted-foreground">{course.grade || "—"} · {course.level} · {course.is_published ? "Published" : "Draft"}</p>
       </CardContent></Card>
       <Tabs defaultValue="structure">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="structure">Modules & Lessons</TabsTrigger>
+        <TabsList className="grid grid-cols-5 w-full">
+          <TabsTrigger value="structure">Curriculum</TabsTrigger>
           <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="submissions">Grading</TabsTrigger>
           <TabsTrigger value="live">Live</TabsTrigger>
         </TabsList>
         <TabsContent value="structure"><ModulesPanel courseId={course.id} /></TabsContent>
         <TabsContent value="quizzes"><QuizzesPanel courseId={course.id} /></TabsContent>
         <TabsContent value="assignments"><AssignmentsPanel courseId={course.id} /></TabsContent>
+        <TabsContent value="submissions"><SubmissionsPanel courseId={course.id} /></TabsContent>
         <TabsContent value="live"><LivePanel courseId={course.id} /></TabsContent>
       </Tabs>
     </div>
@@ -198,25 +208,33 @@ function ModulesPanel({ courseId }: { courseId: string }) {
     qc.invalidateQueries({ queryKey: ["lms-admin-modules", courseId] });
   };
 
+  const onReorder = async (next: Module[]) => {
+    qc.setQueryData(["lms-admin-modules", courseId], next);
+    await persistOrder("lms_modules", next.map(m => m.id));
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end"><Button size="sm" onClick={() => setMDraft({ title: "" })}><Plus className="h-4 w-4 mr-1" /> Add module</Button></div>
-      {modules.map(m => (
-        <Card key={m.id}>
-          <CardHeader className="pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">{m.title}</CardTitle>
-              <div className="flex gap-1">
+      <SortableList<Module>
+        items={modules}
+        onReorder={onReorder}
+        render={(m, handle) => (
+          <Card className="mb-3">
+            <CardHeader className="pb-1">
+              <div className="flex items-center gap-2">
+                {handle}
+                <CardTitle className="text-sm flex-1">{m.title}</CardTitle>
                 <Button size="sm" variant="ghost" onClick={() => setMDraft(m)}><Pencil className="h-3 w-3" /></Button>
                 <Button size="sm" variant="ghost" onClick={() => delM(m.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <LessonsList moduleId={m.id} />
-          </CardContent>
-        </Card>
-      ))}
+            </CardHeader>
+            <CardContent className="pt-0">
+              <LessonsList moduleId={m.id} />
+            </CardContent>
+          </Card>
+        )}
+      />
       {modules.length === 0 && <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No modules yet.</CardContent></Card>}
 
       <Dialog open={!!mDraft} onOpenChange={o => !o && setMDraft(null)}>
@@ -268,19 +286,29 @@ function LessonsList({ moduleId }: { moduleId: string }) {
     qc.invalidateQueries({ queryKey: ["lms-admin-lessons", moduleId] });
   };
 
+  const onReorder = async (next: Lesson[]) => {
+    qc.setQueryData(["lms-admin-lessons", moduleId], next);
+    await persistOrder("lms_lessons", next.map(l => l.id));
+  };
+
   return (
     <div className="space-y-1">
-      {lessons.map(l => (
-        <div key={l.id} className="flex items-center gap-2 p-2 border rounded">
-          <GripVertical className="h-3 w-3 text-muted-foreground" />
-          <Badge variant="outline" className="text-[10px]">{l.kind}</Badge>
-          <span className="flex-1 text-sm">{l.title}</span>
-          {l.is_free && <Badge className="text-[9px]">free</Badge>}
-          <Button size="sm" variant="ghost" onClick={() => setDraft(l)}><Pencil className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => del(l.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-        </div>
-      ))}
+      <SortableList<Lesson>
+        items={lessons}
+        onReorder={onReorder}
+        render={(l, handle) => (
+          <div className="flex items-center gap-2 p-2 border rounded mb-1">
+            {handle}
+            <Badge variant="outline" className="text-[10px]">{l.kind}</Badge>
+            <span className="flex-1 text-sm">{l.title}</span>
+            {l.is_free && <Badge className="text-[9px]">free</Badge>}
+            <Button size="sm" variant="ghost" onClick={() => setDraft(l)}><Pencil className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => del(l.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+          </div>
+        )}
+      />
       <Button size="sm" variant="outline" onClick={() => setDraft({ title: "", kind: "video" })}><Plus className="h-3 w-3 mr-1" /> Add lesson</Button>
+
 
       <Dialog open={!!draft} onOpenChange={o => !o && setDraft(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -637,4 +665,200 @@ function LivePanel({ courseId }: { courseId: string }) {
   );
 }
 
+/* ----------------------------- Submissions / Grading ----------------------------- */
+function SubmissionsPanel({ courseId }: { courseId: string }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["lms-admin-assignments-grade", courseId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("lms_assignments").select("id, title, max_marks").eq("course_id", courseId);
+      return (data || []) as Array<{ id: string; title: string; max_marks: number }>;
+    },
+  });
+  const assignmentIds = assignments.map(a => a.id);
+  const { data: subs = [] } = useQuery({
+    queryKey: ["lms-admin-subs", courseId, assignmentIds.join(",")],
+    queryFn: async () => {
+      if (!assignmentIds.length) return [];
+      const { data } = await (supabase as any).from("lms_assignment_submissions")
+        .select("*").in("assignment_id", assignmentIds).order("submitted_at", { ascending: false });
+      return data || [];
+    },
+    enabled: assignmentIds.length > 0,
+  });
+
+  const [grading, setGrading] = useState<any | null>(null);
+  const [score, setScore] = useState<string>("");
+  const [feedback, setFeedback] = useState("");
+
+  const openGrade = (s: any) => {
+    setGrading(s); setScore(s.score?.toString() ?? ""); setFeedback(s.feedback ?? "");
+  };
+  const saveGrade = async () => {
+    if (!grading) return;
+    const { error } = await (supabase as any).from("lms_assignment_submissions").update({
+      score: score === "" ? null : Number(score),
+      feedback,
+      graded_at: new Date().toISOString(),
+    }).eq("id", grading.id);
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Graded" });
+    setGrading(null);
+    qc.invalidateQueries({ queryKey: ["lms-admin-subs", courseId] });
+  };
+
+  const aMap = new Map(assignments.map(a => [a.id, a]));
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">All submissions for this course. Click <em>Grade</em> to score &amp; leave feedback.</p>
+      {subs.length === 0 && <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No submissions yet.</CardContent></Card>}
+      {subs.map((s: any) => {
+        const a = aMap.get(s.assignment_id);
+        return (
+          <Card key={s.id}><CardContent className="p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{a?.title || "Assignment"}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Learner {s.learner_ref?.slice(0, 8)} · {s.submitted_at ? new Date(s.submitted_at).toLocaleString() : "—"}
+                </p>
+              </div>
+              {s.score != null
+                ? <Badge className="bg-green-600">{s.score} / {a?.max_marks ?? 100}</Badge>
+                : <Badge variant="outline">Pending</Badge>}
+              <Button size="sm" variant="outline" onClick={() => openGrade(s)}>{s.score != null ? "Edit" : "Grade"}</Button>
+            </div>
+            {s.text_answer && <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap">{s.text_answer}</div>}
+            {s.file_url && <a href={s.file_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Attached file</a>}
+            {s.feedback && <p className="text-xs"><span className="font-semibold">Feedback:</span> {s.feedback}</p>}
+          </CardContent></Card>
+        );
+      })}
+
+      <Dialog open={!!grading} onOpenChange={o => !o && setGrading(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Grade submission</DialogTitle></DialogHeader>
+          {grading && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">{aMap.get(grading.assignment_id)?.title}</p>
+              {grading.text_answer && <div className="text-xs bg-muted/40 rounded p-2 whitespace-pre-wrap max-h-40 overflow-y-auto">{grading.text_answer}</div>}
+              <div>
+                <Label>Score (out of {aMap.get(grading.assignment_id)?.max_marks ?? 100})</Label>
+                <Input type="number" value={score} onChange={e => setScore(e.target.value)} />
+              </div>
+              <div>
+                <Label>Feedback</Label>
+                <Textarea rows={3} value={feedback} onChange={e => setFeedback(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter><Button variant="outline" onClick={() => setGrading(null)}>Cancel</Button><Button onClick={saveGrade}>Save grade</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* ----------------------------- Badges (global) ----------------------------- */
+type BadgeRow = { id: string; code: string; name: string; description: string | null; icon: string | null; rule_json: any };
+
+function BadgesPanel() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: badges = [] } = useQuery({
+    queryKey: ["lms-admin-badges"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("lms_badges").select("*").order("code");
+      return (data || []) as BadgeRow[];
+    },
+  });
+  const [draft, setDraft] = useState<Partial<BadgeRow> & { ruleType?: string; ruleCount?: number; ruleCourseId?: string } | null>(null);
+
+  const openNew = () => setDraft({ code: "", name: "", icon: "🏅", description: "", ruleType: "lessons_completed", ruleCount: 5 });
+  const openEdit = (b: BadgeRow) => {
+    const r = b.rule_json || {};
+    setDraft({ ...b, ruleType: r.type || "lessons_completed", ruleCount: r.count || 1, ruleCourseId: r.course_id || "" });
+  };
+  const save = async () => {
+    if (!draft?.code || !draft.name) { toast({ title: "Code and name required", variant: "destructive" }); return; }
+    const rule_json: any = { type: draft.ruleType };
+    if (["lessons_completed", "quizzes_passed", "streak_days"].includes(draft.ruleType || "")) rule_json.count = Number(draft.ruleCount || 1);
+    if (draft.ruleType === "course_completed" && draft.ruleCourseId) rule_json.course_id = draft.ruleCourseId;
+    const row = {
+      code: draft.code, name: draft.name, description: draft.description || null, icon: draft.icon || "🏅", rule_json,
+    };
+    if (draft.id) await (supabase as any).from("lms_badges").update(row).eq("id", draft.id);
+    else await (supabase as any).from("lms_badges").insert(row);
+    setDraft(null); qc.invalidateQueries({ queryKey: ["lms-admin-badges"] });
+    toast({ title: "Saved" });
+  };
+  const del = async (id: string) => {
+    if (!confirm("Delete badge?")) return;
+    await (supabase as any).from("lms_badges").delete().eq("id", id);
+    qc.invalidateQueries({ queryKey: ["lms-admin-badges"] });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display font-bold">Badges ({badges.length})</h2>
+        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> New badge</Button>
+      </div>
+      <p className="text-xs text-muted-foreground">Awarded automatically when a learner completes a lesson or passes a quiz.</p>
+      <div className="grid sm:grid-cols-2 gap-2">
+        {badges.map(b => (
+          <Card key={b.id}><CardContent className="p-3 flex items-center gap-2">
+            <span className="text-2xl">{b.icon || "🏅"}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">{b.name} <span className="text-[10px] text-muted-foreground">({b.code})</span></p>
+              <p className="text-[11px] text-muted-foreground truncate">{b.rule_json?.type} · {b.rule_json?.count || b.rule_json?.course_id || "—"}</p>
+              {b.description && <p className="text-[11px] text-muted-foreground line-clamp-1">{b.description}</p>}
+            </div>
+            <Button size="sm" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => del(b.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+          </CardContent></Card>
+        ))}
+        {badges.length === 0 && <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No badges yet.</CardContent></Card>}
+      </div>
+
+      <Dialog open={!!draft} onOpenChange={o => !o && setDraft(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{draft?.id ? "Edit badge" : "New badge"}</DialogTitle></DialogHeader>
+          {draft && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <div><Label>Icon</Label><Input value={draft.icon || ""} onChange={e => setDraft({ ...draft, icon: e.target.value })} placeholder="🏅" /></div>
+                <div className="col-span-2"><Label>Code</Label><Input value={draft.code || ""} onChange={e => setDraft({ ...draft, code: e.target.value })} placeholder="unique-code" /></div>
+              </div>
+              <div><Label>Name</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} /></div>
+              <div><Label>Description</Label><Textarea rows={2} value={draft.description || ""} onChange={e => setDraft({ ...draft, description: e.target.value })} /></div>
+              <div>
+                <Label>Award rule</Label>
+                <Select value={draft.ruleType} onValueChange={v => setDraft({ ...draft, ruleType: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lessons_completed">After N lessons completed</SelectItem>
+                    <SelectItem value="quizzes_passed">After N quizzes passed</SelectItem>
+                    <SelectItem value="perfect_quiz">When any quiz is 100%</SelectItem>
+                    <SelectItem value="course_completed">When a course certificate is issued</SelectItem>
+                    <SelectItem value="streak_days">N-day learning streak</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {["lessons_completed", "quizzes_passed", "streak_days"].includes(draft.ruleType || "") && (
+                <div><Label>Count</Label><Input type="number" value={draft.ruleCount ?? 1} onChange={e => setDraft({ ...draft, ruleCount: Number(e.target.value) })} /></div>
+              )}
+              {draft.ruleType === "course_completed" && (
+                <div><Label>Specific course ID (optional)</Label><Input value={draft.ruleCourseId || ""} onChange={e => setDraft({ ...draft, ruleCourseId: e.target.value })} placeholder="any course if blank" /></div>
+              )}
+            </div>
+          )}
+          <DialogFooter><Button variant="outline" onClick={() => setDraft(null)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
