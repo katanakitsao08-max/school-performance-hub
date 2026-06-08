@@ -165,15 +165,17 @@ function CourseEditor({ course, onBack }: { course: Course; onBack: () => void }
         <p className="text-xs text-muted-foreground">{course.grade || "—"} · {course.level} · {course.is_published ? "Published" : "Draft"}</p>
       </CardContent></Card>
       <Tabs defaultValue="structure">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="structure">Modules & Lessons</TabsTrigger>
+        <TabsList className="grid grid-cols-5 w-full">
+          <TabsTrigger value="structure">Curriculum</TabsTrigger>
           <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="submissions">Grading</TabsTrigger>
           <TabsTrigger value="live">Live</TabsTrigger>
         </TabsList>
         <TabsContent value="structure"><ModulesPanel courseId={course.id} /></TabsContent>
         <TabsContent value="quizzes"><QuizzesPanel courseId={course.id} /></TabsContent>
         <TabsContent value="assignments"><AssignmentsPanel courseId={course.id} /></TabsContent>
+        <TabsContent value="submissions"><SubmissionsPanel courseId={course.id} /></TabsContent>
         <TabsContent value="live"><LivePanel courseId={course.id} /></TabsContent>
       </Tabs>
     </div>
