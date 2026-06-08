@@ -183,8 +183,8 @@ function CatalogTab({ gradeHint, onOpen }: { gradeHint?: string | null; onOpen: 
 }
 
 /* ----------------------------- Course view ----------------------------- */
-function CourseView({ courseId, learnerRef, onBack, onOpenLesson }: {
-  courseId: string; learnerRef: string | null; onBack: () => void; onOpenLesson: (id: string) => void;
+function CourseView({ courseId, learnerRef, learnerName, onBack, onOpenLesson }: {
+  courseId: string; learnerRef: string | null; learnerName?: string | null; onBack: () => void; onOpenLesson: (id: string) => void;
 }) {
   const { data: course } = useQuery({
     queryKey: ["lms-course", courseId],
