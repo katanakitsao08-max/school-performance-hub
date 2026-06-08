@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ArrowLeft, BookOpen, Pencil, GripVertical, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, BookOpen, Pencil, GripVertical, ClipboardList, Award, FileCheck2 } from "lucide-react";
 import { Course, Module, Lesson, Quiz, QuizQuestion, Assignment, LiveSession, slugify } from "@/features/lms/api";
+import { SortableList, persistOrder } from "@/features/lms/Sortable";
 
 export default function SuperAdminLmsPage() {
   const navigate = useNavigate();
