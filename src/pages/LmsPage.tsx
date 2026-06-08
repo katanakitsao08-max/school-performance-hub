@@ -58,7 +58,7 @@ function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loa
 export default function LmsPage() {
   const navigate = useNavigate();
   const { user, role, loading: authLoading } = useAuth();
-  const { ref: learnerRef, kind, loading: refLoading, gradeHint } = useLearnerRef();
+  const { ref: learnerRef, kind, loading: refLoading, gradeHint, name: learnerName } = useLearnerRef();
   const [tab, setTab] = useState("catalog");
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
