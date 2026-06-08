@@ -37,7 +37,14 @@ export default function SuperAdminLmsPage() {
         </div>
       </header>
       <main className="container mx-auto px-4 py-4 max-w-6xl">
-        <CoursesPanel />
+        <Tabs defaultValue="courses">
+          <TabsList>
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="badges">Badges</TabsTrigger>
+          </TabsList>
+          <TabsContent value="courses"><CoursesPanel /></TabsContent>
+          <TabsContent value="badges"><BadgesPanel /></TabsContent>
+        </Tabs>
       </main>
     </div>
   );
