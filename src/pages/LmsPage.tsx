@@ -655,7 +655,7 @@ function LiveTab({ learnerRef }: { learnerRef: string | null }) {
 }
 
 /* ----------------------------- Progress ----------------------------- */
-function ProgressTab({ learnerRef }: { learnerRef: string | null }) {
+function ProgressTab({ learnerRef, learnerName }: { learnerRef: string | null; learnerName?: string | null }) {
   const { data: prog = [] } = useQuery({
     queryKey: ["lms-prog-all", learnerRef],
     queryFn: async () => {
