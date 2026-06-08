@@ -36,6 +36,7 @@ const superAdminSections: NavSection[] = [
     label: "Curriculum",
     items: [
       { title: "Curriculum Designs", url: "/curriculum-manager", icon: BookMarked },
+      { title: "LMS Catalog", url: "/super-admin/lms", icon: BookOpen },
       { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
     ],
   },

@@ -96,6 +96,7 @@ const superAdminMenuSections = [
     items: [
       { title: "Manage Schools", icon: Building2, to: "/manage-schools" },
       { title: "Curriculum Designs", icon: BookMarked, to: "/curriculum-manager" },
+      { title: "LMS Catalog", icon: BookOpen, to: "/super-admin/lms" },
     ],
   },
 ];
