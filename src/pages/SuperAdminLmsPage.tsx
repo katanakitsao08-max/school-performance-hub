@@ -286,19 +286,29 @@ function LessonsList({ moduleId }: { moduleId: string }) {
     qc.invalidateQueries({ queryKey: ["lms-admin-lessons", moduleId] });
   };
 
+  const onReorder = async (next: Lesson[]) => {
+    qc.setQueryData(["lms-admin-lessons", moduleId], next);
+    await persistOrder("lms_lessons", next.map(l => l.id));
+  };
+
   return (
     <div className="space-y-1">
-      {lessons.map(l => (
-        <div key={l.id} className="flex items-center gap-2 p-2 border rounded">
-          <GripVertical className="h-3 w-3 text-muted-foreground" />
-          <Badge variant="outline" className="text-[10px]">{l.kind}</Badge>
-          <span className="flex-1 text-sm">{l.title}</span>
-          {l.is_free && <Badge className="text-[9px]">free</Badge>}
-          <Button size="sm" variant="ghost" onClick={() => setDraft(l)}><Pencil className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => del(l.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-        </div>
-      ))}
+      <SortableList<Lesson>
+        items={lessons}
+        onReorder={onReorder}
+        render={(l, handle) => (
+          <div className="flex items-center gap-2 p-2 border rounded mb-1">
+            {handle}
+            <Badge variant="outline" className="text-[10px]">{l.kind}</Badge>
+            <span className="flex-1 text-sm">{l.title}</span>
+            {l.is_free && <Badge className="text-[9px]">free</Badge>}
+            <Button size="sm" variant="ghost" onClick={() => setDraft(l)}><Pencil className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => del(l.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+          </div>
+        )}
+      />
       <Button size="sm" variant="outline" onClick={() => setDraft({ title: "", kind: "video" })}><Plus className="h-3 w-3 mr-1" /> Add lesson</Button>
+
 
       <Dialog open={!!draft} onOpenChange={o => !o && setDraft(null)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
