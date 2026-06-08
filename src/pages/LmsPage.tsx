@@ -247,7 +247,7 @@ function CourseView({ courseId, learnerRef, learnerName, onBack, onOpenLesson }:
             <div className="flex justify-between text-xs mb-1"><span>Progress</span><span>{done.size} / {lessons.length} lessons</span></div>
             <Progress value={pct} className="h-2" />
           </div>
-          {pct === 100 && learnerRef && <CertificateRow courseId={courseId} learnerRef={learnerRef} />}
+          {pct === 100 && learnerRef && <CertificateRow courseId={courseId} learnerRef={learnerRef} learnerName={learnerName || "Learner"} courseTitle={course.title} instructor={course.instructor_name} />}
         </CardContent>
       </Card>
 
