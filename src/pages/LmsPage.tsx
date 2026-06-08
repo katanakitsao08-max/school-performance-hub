@@ -411,6 +411,8 @@ function QuizCard({ quiz, learnerRef }: { quiz: Quiz; learnerRef: string | null 
       learnerRef, quizId: quiz.id, scorePercent: pct, passed, answers: breakdown,
       durationSeconds: Math.round((Date.now() - startedAtRef.t) / 1000),
     });
+    const awarded = await evaluateAndAwardBadges(learnerRef);
+    if (awarded.length) toast({ title: "🏅 Badge unlocked!", description: awarded.join(", ") });
     setSubmitted({ pct, passed });
   };
 
