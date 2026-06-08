@@ -94,3 +94,63 @@ export async function recordQuizAttempt(opts: {
 export function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 }
+
+/**
+ * Badge auto-award engine.
+ * Each badge.rule_json supports:
+ *   { type: "lessons_completed", count: N }
+ *   { type: "quizzes_passed",    count: N }
+ *   { type: "perfect_quiz" }                       // any 100% attempt
+ *   { type: "course_completed",  course_id?: id }  // certificate issued
+ *   { type: "streak_days",       count: N }        // consecutive completion days
+ */
+export async function evaluateAndAwardBadges(learnerRef: string): Promise<string[]> {
+  if (!learnerRef) return [];
+  const [badgesRes, ownedRes, lessonsRes, attemptsRes, certsRes] = await Promise.all([
+    (supabase as any).from("lms_badges").select("*"),
+    (supabase as any).from("lms_learner_badges").select("badge_id").eq("learner_ref", learnerRef),
+    (supabase as any).from("lms_lesson_progress").select("lesson_id, status, completed_at").eq("learner_ref", learnerRef),
+    (supabase as any).from("lms_quiz_attempts").select("quiz_id, passed, score_percent, created_at").eq("learner_ref", learnerRef),
+    (supabase as any).from("lms_certificates").select("course_id").eq("learner_ref", learnerRef),
+  ]);
+  const badges = (badgesRes.data || []) as Array<{ id: string; rule_json: any; name: string }>;
+  const owned = new Set((ownedRes.data || []).map((b: any) => b.badge_id));
+  const lessons = (lessonsRes.data || []).filter((l: any) => l.status === "completed");
+  const attempts = (attemptsRes.data || []) as Array<any>;
+  const certs = (certsRes.data || []) as Array<any>;
+
+  const lessonsDone = lessons.length;
+  const passed = attempts.filter(a => a.passed).length;
+  const hasPerfect = attempts.some(a => Number(a.score_percent) >= 100);
+
+  // streak: distinct YYYY-MM-DD completion days, longest consecutive run
+  const days = Array.from(new Set(lessons.map((l: any) => (l.completed_at || "").slice(0, 10)).filter(Boolean))).sort();
+  let bestStreak = 0, cur = 0, prev: number | null = null;
+  for (const d of days) {
+    const t = new Date(d).getTime();
+    if (prev != null && (t - prev) === 86400000) cur += 1; else cur = 1;
+    bestStreak = Math.max(bestStreak, cur);
+    prev = t;
+  }
+
+  const newlyAwarded: string[] = [];
+  for (const b of badges) {
+    if (owned.has(b.id)) continue;
+    const r = b.rule_json || {};
+    let qualifies = false;
+    switch (r.type) {
+      case "lessons_completed": qualifies = lessonsDone >= Number(r.count || 1); break;
+      case "quizzes_passed":    qualifies = passed >= Number(r.count || 1); break;
+      case "perfect_quiz":      qualifies = hasPerfect; break;
+      case "course_completed":  qualifies = r.course_id ? certs.some((c: any) => c.course_id === r.course_id) : certs.length > 0; break;
+      case "streak_days":       qualifies = bestStreak >= Number(r.count || 3); break;
+    }
+    if (qualifies) {
+      const { error } = await (supabase as any).from("lms_learner_badges")
+        .insert({ learner_ref: learnerRef, badge_id: b.id });
+      if (!error) newlyAwarded.push(b.name);
+    }
+  }
+  return newlyAwarded;
+}
+
