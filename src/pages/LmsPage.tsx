@@ -27,7 +27,7 @@ import { downloadCertificatePdf } from "@/lib/lms-certificate-pdf";
 import { Download } from "lucide-react";
 
 /** Resolve learner_ref + kind for the current user. Parent reads ?child=. */
-function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loading: boolean; gradeHint?: string | null } {
+function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loading: boolean; gradeHint?: string | null; name?: string | null } {
   const { user, role } = useAuth();
   const [params] = useSearchParams();
   const childId = params.get("child");
@@ -35,25 +35,24 @@ function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loa
   const { data, isLoading } = useQuery({
     queryKey: ["lms-learner-ref", user?.id, role, childId],
     queryFn: async () => {
-      if (!user) return { ref: null, kind: null, gradeHint: null };
+      if (!user) return { ref: null, kind: null, gradeHint: null, name: null };
       if (role === "independent_learner") {
         const { data: il } = await supabase.from("independent_learners")
-          .select("id, grade").eq("user_id", user.id).maybeSingle();
-        return { ref: il?.id ?? null, kind: "independent" as const, gradeHint: il?.grade ?? null };
+          .select("id, grade, full_name").eq("user_id", user.id).maybeSingle();
+        return { ref: il?.id ?? null, kind: "independent" as const, gradeHint: il?.grade ?? null, name: il?.full_name ?? null };
       }
       if (role === "parent") {
-        if (!childId) return { ref: null, kind: "school" as const, gradeHint: null };
+        if (!childId) return { ref: null, kind: "school" as const, gradeHint: null, name: null };
         const { data: l } = await supabase.from("learners")
-          .select("id, grade").eq("id", childId).maybeSingle();
-        return { ref: l?.id ?? null, kind: "school" as const, gradeHint: l?.grade ?? null };
+          .select("id, grade, full_name").eq("id", childId).maybeSingle();
+        return { ref: l?.id ?? null, kind: "school" as const, gradeHint: l?.grade ?? null, name: l?.full_name ?? null };
       }
-      // super admin or admin previewing — no learner ref, but allow browse
-      return { ref: null, kind: null, gradeHint: null };
+      return { ref: null, kind: null, gradeHint: null, name: null };
     },
     enabled: !!user,
   });
 
-  return { ref: data?.ref ?? null, kind: data?.kind ?? null, loading: isLoading, gradeHint: data?.gradeHint };
+  return { ref: data?.ref ?? null, kind: data?.kind ?? null, loading: isLoading, gradeHint: data?.gradeHint, name: data?.name };
 }
 
 export default function LmsPage() {
