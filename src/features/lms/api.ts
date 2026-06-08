@@ -124,7 +124,7 @@ export async function evaluateAndAwardBadges(learnerRef: string): Promise<string
   const hasPerfect = attempts.some(a => Number(a.score_percent) >= 100);
 
   // streak: distinct YYYY-MM-DD completion days, longest consecutive run
-  const days = Array.from(new Set(lessons.map((l: any) => (l.completed_at || "").slice(0, 10)).filter(Boolean))).sort();
+  const days = (Array.from(new Set(lessons.map((l: any) => (l.completed_at || "").slice(0, 10)).filter(Boolean))) as string[]).sort();
   let bestStreak = 0, cur = 0, prev: number | null = null;
   for (const d of days) {
     const t = new Date(d).getTime();
