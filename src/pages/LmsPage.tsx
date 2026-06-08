@@ -90,9 +90,10 @@ export default function LmsPage() {
         {activeLessonId ? (
           <LessonView lessonId={activeLessonId} learnerRef={learnerRef} kind={kind} onBack={() => setActiveLessonId(null)} />
         ) : activeCourseId ? (
-          <CourseView courseId={activeCourseId} learnerRef={learnerRef}
+          <CourseView courseId={activeCourseId} learnerRef={learnerRef} learnerName={learnerName}
             onBack={() => setActiveCourseId(null)}
             onOpenLesson={setActiveLessonId} />
+
         ) : (
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="w-full grid grid-cols-5 mb-4 h-auto">
