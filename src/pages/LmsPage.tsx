@@ -338,8 +338,11 @@ function LessonView({ lessonId, learnerRef, kind, onBack }: {
   const onComplete = async () => {
     if (!learnerRef) { toast({ title: "Sign in as a learner to track progress", variant: "destructive" }); return; }
     await markLessonComplete(learnerRef, lessonId);
+    const awarded = await evaluateAndAwardBadges(learnerRef);
     qc.invalidateQueries({ queryKey: ["lms-progress"] });
-    toast({ title: "Marked complete" });
+    qc.invalidateQueries({ queryKey: ["lms-badges-mine"] });
+    if (awarded.length) toast({ title: "🏅 Badge unlocked!", description: awarded.join(", ") });
+    else toast({ title: "Marked complete" });
     onBack();
   };
 
