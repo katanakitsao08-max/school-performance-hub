@@ -21,7 +21,10 @@ import {
 import {
   Course, Module, Lesson, Quiz, QuizQuestion, Assignment, LiveSession,
   toEmbedUrl, markQuestion, markLessonComplete, recordQuizAttempt, LmsLearnerKind,
+  evaluateAndAwardBadges,
 } from "@/features/lms/api";
+import { downloadCertificatePdf } from "@/lib/lms-certificate-pdf";
+import { Download } from "lucide-react";
 
 /** Resolve learner_ref + kind for the current user. Parent reads ?child=. */
 function useLearnerRef(): { ref: string | null; kind: LmsLearnerKind | null; loading: boolean; gradeHint?: string | null } {
