@@ -715,9 +715,15 @@ function ProgressTab({ learnerRef, learnerName }: { learnerRef: string | null; l
         <CardContent>
           {certs.length === 0 ? <p className="text-xs text-muted-foreground">Complete a course to earn a certificate.</p> :
             <ul className="text-sm space-y-1">{certs.map((c: any) => (
-              <li key={c.id} className="flex items-center justify-between border rounded p-2">
-                <span>{c.lms_courses?.title}</span>
+              <li key={c.id} className="flex items-center justify-between border rounded p-2 gap-2">
+                <span className="flex-1 truncate">{c.lms_courses?.title}</span>
                 <Badge>{c.certificate_no}</Badge>
+                <Button size="sm" variant="outline" onClick={() => downloadCertificatePdf({
+                  learnerName: learnerName || "Learner",
+                  courseTitle: c.lms_courses?.title || "Course",
+                  certificateNo: c.certificate_no,
+                  issuedAt: c.issued_at || new Date().toISOString(),
+                })}><Download className="h-3 w-3 mr-1" />PDF</Button>
               </li>
             ))}</ul>}
         </CardContent>
