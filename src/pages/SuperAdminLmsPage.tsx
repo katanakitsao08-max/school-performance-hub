@@ -208,25 +208,33 @@ function ModulesPanel({ courseId }: { courseId: string }) {
     qc.invalidateQueries({ queryKey: ["lms-admin-modules", courseId] });
   };
 
+  const onReorder = async (next: Module[]) => {
+    qc.setQueryData(["lms-admin-modules", courseId], next);
+    await persistOrder("lms_modules", next.map(m => m.id));
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end"><Button size="sm" onClick={() => setMDraft({ title: "" })}><Plus className="h-4 w-4 mr-1" /> Add module</Button></div>
-      {modules.map(m => (
-        <Card key={m.id}>
-          <CardHeader className="pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">{m.title}</CardTitle>
-              <div className="flex gap-1">
+      <SortableList<Module>
+        items={modules}
+        onReorder={onReorder}
+        render={(m, handle) => (
+          <Card className="mb-3">
+            <CardHeader className="pb-1">
+              <div className="flex items-center gap-2">
+                {handle}
+                <CardTitle className="text-sm flex-1">{m.title}</CardTitle>
                 <Button size="sm" variant="ghost" onClick={() => setMDraft(m)}><Pencil className="h-3 w-3" /></Button>
                 <Button size="sm" variant="ghost" onClick={() => delM(m.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <LessonsList moduleId={m.id} />
-          </CardContent>
-        </Card>
-      ))}
+            </CardHeader>
+            <CardContent className="pt-0">
+              <LessonsList moduleId={m.id} />
+            </CardContent>
+          </Card>
+        )}
+      />
       {modules.length === 0 && <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">No modules yet.</CardContent></Card>}
 
       <Dialog open={!!mDraft} onOpenChange={o => !o && setMDraft(null)}>
