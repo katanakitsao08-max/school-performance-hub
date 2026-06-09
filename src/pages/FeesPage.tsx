@@ -251,12 +251,25 @@ export default function FeesPage() {
       toast({ title: 'No receipt', description: 'This record has no payment.', variant: 'destructive' });
       return;
     }
-    // Compute term + total balance for this learner
+    // Compute term + total balance for this learner, plus full breakdown
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
     const allRows = (all || []) as any[];
     const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
     const termBal = termRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
     const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+
+    // Consolidate breakdown by fee_type for the term
+    const byType: Record<string, { charged: number; paid: number }> = {};
+    termRows.forEach(x => {
+      const t = String(x.fee_type || 'other');
+      if (!byType[t]) byType[t] = { charged: 0, paid: 0 };
+      byType[t].charged += Number(x.amount_charged) || 0;
+      byType[t].paid += Number(x.amount_paid) || 0;
+    });
+    const breakdown = Object.entries(byType).map(([feeType, v]) => ({ feeType, ...v }));
+    const termCharged = breakdown.reduce((s, b) => s + b.charged, 0);
+    const termPaid = breakdown.reduce((s, b) => s + b.paid, 0);
+
     generateFeeReceiptPDF({
       receiptNumber: r.receipt_number,
       date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
@@ -274,6 +287,8 @@ export default function FeesPage() {
       receivedBy: user?.email || 'Cashier',
       schoolName: schoolMeta.name, schoolAddress: schoolMeta.address, schoolPhone: schoolMeta.phone,
       schoolEmail: schoolMeta.email, schoolMotto: schoolMeta.motto, logoBase64: schoolMeta.logo,
+      term: r.term, year: r.year,
+      breakdown, termCharged, termPaid,
     });
   };
 
