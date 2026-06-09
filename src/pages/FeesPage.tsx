@@ -930,6 +930,65 @@ export default function FeesPage() {
           </DialogContent>
         </Dialog>
 
+        {/* ----- Bulk Structure dialog (consolidated fee structure) ----- */}
+        <Dialog open={bulkStructureDialog} onOpenChange={setBulkStructureDialog}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>New Fee Structure — Term {selectedTerm}, {selectedYear}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Grade</Label>
+                <Select value={bulkStructureGrade} onValueChange={setBulkStructureGrade}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pick grade" /></SelectTrigger>
+                  <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Fee Components</Label>
+                {bulkComponents.map((c, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                    <Select value={c.fee_type} onValueChange={v => {
+                      const n = [...bulkComponents]; n[idx] = { ...n[idx], fee_type: v }; setBulkComponents(n);
+                    }}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" min="0" placeholder="Amount (KES)" value={c.amount}
+                      onChange={e => { const n = [...bulkComponents]; n[idx] = { ...n[idx], amount: e.target.value }; setBulkComponents(n); }}
+                      className="h-9 text-xs" />
+                    <Button size="icon" variant="ghost" className="h-9 w-9"
+                      onClick={() => setBulkComponents(bulkComponents.filter((_, i) => i !== idx))}
+                      disabled={bulkComponents.length === 1}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" className="w-full"
+                  onClick={() => setBulkComponents([...bulkComponents, { fee_type: 'other', amount: '', description: '' }])}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Add Component
+                </Button>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded border border-primary/30">
+                <span className="text-xs font-bold">CONSOLIDATED TOTAL</span>
+                <span className="text-sm font-bold text-primary">
+                  {fmt(bulkComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Components are stored individually; learners see only the consolidated total. Receipts show the full breakdown.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => addBulkStructure.mutate()} disabled={addBulkStructure.isPending || !bulkStructureGrade} className="w-full">
+                {addBulkStructure.isPending ? 'Saving...' : 'Save Fee Structure'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
+
         {/* ----- Void dialog ----- */}
         <Dialog open={!!voidTarget} onOpenChange={(o) => !o && setVoidTarget(null)}>
           <DialogContent className="max-w-sm">
