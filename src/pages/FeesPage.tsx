@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
@@ -251,12 +251,25 @@ export default function FeesPage() {
       toast({ title: 'No receipt', description: 'This record has no payment.', variant: 'destructive' });
       return;
     }
-    // Compute term + total balance for this learner
+    // Compute term + total balance for this learner, plus full breakdown
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
     const allRows = (all || []) as any[];
     const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
     const termBal = termRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
     const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+
+    // Consolidate breakdown by fee_type for the term
+    const byType: Record<string, { charged: number; paid: number }> = {};
+    termRows.forEach(x => {
+      const t = String(x.fee_type || 'other');
+      if (!byType[t]) byType[t] = { charged: 0, paid: 0 };
+      byType[t].charged += Number(x.amount_charged) || 0;
+      byType[t].paid += Number(x.amount_paid) || 0;
+    });
+    const breakdown = Object.entries(byType).map(([feeType, v]) => ({ feeType, ...v }));
+    const termCharged = breakdown.reduce((s, b) => s + b.charged, 0);
+    const termPaid = breakdown.reduce((s, b) => s + b.paid, 0);
+
     generateFeeReceiptPDF({
       receiptNumber: r.receipt_number,
       date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
@@ -274,6 +287,8 @@ export default function FeesPage() {
       receivedBy: user?.email || 'Cashier',
       schoolName: schoolMeta.name, schoolAddress: schoolMeta.address, schoolPhone: schoolMeta.phone,
       schoolEmail: schoolMeta.email, schoolMotto: schoolMeta.motto, logoBase64: schoolMeta.logo,
+      term: r.term, year: r.year,
+      breakdown, termCharged, termPaid,
     });
   };
 
@@ -350,6 +365,66 @@ export default function FeesPage() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fee-structures'] }); toast({ title: 'Removed' }); },
   });
+
+  // ---------- Bulk Structure (multiple components for a grade) ----------
+  const [bulkStructureDialog, setBulkStructureDialog] = useState(false);
+  const [bulkStructureGrade, setBulkStructureGrade] = useState('');
+  const [bulkComponents, setBulkComponents] = useState<{ fee_type: string; amount: string; description: string }[]>([
+    { fee_type: 'tuition', amount: '', description: '' },
+  ]);
+
+  const openBulkStructure = () => {
+    setBulkStructureGrade('');
+    setBulkComponents([{ fee_type: 'tuition', amount: '', description: '' }]);
+    setBulkStructureDialog(true);
+  };
+
+  const addBulkStructure = useMutation({
+    mutationFn: async () => {
+      if (!bulkStructureGrade) throw new Error('Select a grade');
+      const rows = bulkComponents
+        .filter(c => c.fee_type && Number(c.amount) > 0)
+        .map(c => ({
+          school_id: schoolId!, grade: bulkStructureGrade,
+          term: Number(selectedTerm), year: Number(selectedYear),
+          fee_type: c.fee_type, amount: Number(c.amount),
+          description: c.description || null, created_by: user!.id,
+        }));
+      if (rows.length === 0) throw new Error('Add at least one component with an amount');
+      // Skip duplicates (same grade/term/year/fee_type already exists)
+      const existing = new Set(structures.filter((s: any) => s.grade === bulkStructureGrade).map((s: any) => s.fee_type));
+      const toInsert = rows.filter(r => !existing.has(r.fee_type));
+      if (toInsert.length === 0) throw new Error('All these components already exist for this grade');
+      const { error } = await supabase.from('fee_structures').insert(toInsert);
+      if (error) throw error;
+      return toInsert.length;
+    },
+    onSuccess: (n: any) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-structures'] });
+      setBulkStructureDialog(false);
+      toast({ title: `Added ${n} fee component${n === 1 ? '' : 's'}` });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Consolidated structures grouped by grade
+  const consolidatedStructures = useMemo(() => {
+    const map = new Map<string, { grade: string; total: number; items: any[] }>();
+    (structures as any[]).forEach(s => {
+      const k = s.grade;
+      const cur = map.get(k) || { grade: k, total: 0, items: [] };
+      cur.total += Number(s.amount) || 0;
+      cur.items.push(s);
+      map.set(k, cur);
+    });
+    return Array.from(map.values()).sort((a, b) => a.grade.localeCompare(b.grade));
+  }, [structures]);
+  const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
+  const toggleGrade = (g: string) => {
+    const n = new Set(expandedGrades);
+    n.has(g) ? n.delete(g) : n.add(g);
+    setExpandedGrades(n);
+  };
 
   // ---------- Bulk billing ----------
   const [billGrade, setBillGrade] = useState('all');
@@ -606,37 +681,81 @@ export default function FeesPage() {
 
           {/* STRUCTURES TAB */}
           <TabsContent value="structures" className="space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">Standard fees per grade for Term {selectedTerm}, {selectedYear}</p>
-              <Button size="sm" onClick={() => setStructureDialog(true)}><Plus className="h-4 w-4 mr-1" />Add Item</Button>
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <p className="text-xs text-muted-foreground">
+                Consolidated fee per grade for Term {selectedTerm}, {selectedYear}.
+                Each grade's total is the sum of its components. Click a row to view the breakdown.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setStructureDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" />Add Component
+                </Button>
+                <Button size="sm" onClick={openBulkStructure}>
+                  <Layers className="h-4 w-4 mr-1" />New Fee Structure
+                </Button>
+              </div>
             </div>
             <Card>
               <Table>
                 <TableHeader><TableRow>
                   <TableHead className="text-xs">Grade</TableHead>
-                  <TableHead className="text-xs">Fee Type</TableHead>
-                  <TableHead className="text-xs text-right">Amount</TableHead>
-                  <TableHead className="text-xs">Description</TableHead>
-                  <TableHead className="text-xs w-[60px]"></TableHead>
+                  <TableHead className="text-xs">Term / Year</TableHead>
+                  <TableHead className="text-xs text-right">Components</TableHead>
+                  <TableHead className="text-xs text-right">Total Fee</TableHead>
+                  <TableHead className="text-xs w-[120px]">Actions</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {structures.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">No structures defined</TableCell></TableRow>
-                  ) : structures.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="text-xs font-medium">Grade {s.grade}</TableCell>
-                      <TableCell className="text-xs capitalize">{s.fee_type}</TableCell>
-                      <TableCell className="text-xs text-right font-bold">{fmt(Number(s.amount))}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{s.description || '-'}</TableCell>
-                      <TableCell>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteStructure.mutate(s.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {consolidatedStructures.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">No fee structures defined for this term</TableCell></TableRow>
+                  ) : consolidatedStructures.map((g) => {
+                    const expanded = expandedGrades.has(g.grade);
+                    return (
+                      <Fragment key={g.grade}>
+                        <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGrade(g.grade)}>
+                          <TableCell className="text-xs font-medium">Grade {g.grade}</TableCell>
+                          <TableCell className="text-xs">Term {selectedTerm}, {selectedYear}</TableCell>
+                          <TableCell className="text-xs text-right">{g.items.length}</TableCell>
+                          <TableCell className="text-xs text-right font-bold text-primary">{fmt(g.total)}</TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); toggleGrade(g.grade); }}>
+                              <Eye className="h-3.5 w-3.5 mr-1" />{expanded ? 'Hide' : 'View Breakdown'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expanded && (
+                          <TableRow key={`${g.grade}-bd`}>
+                            <TableCell colSpan={5} className="bg-muted/30 p-3">
+                              <div className="text-[11px] font-semibold text-muted-foreground mb-2">FEE BREAKDOWN — Grade {g.grade}</div>
+                              <div className="space-y-1">
+                                {g.items.map((s: any) => (
+                                  <div key={s.id} className="flex items-center justify-between px-3 py-1.5 bg-background rounded border">
+                                    <div className="flex-1">
+                                      <span className="text-xs font-medium capitalize">{s.fee_type}</span>
+                                      {s.description && <span className="text-[10px] text-muted-foreground ml-2">— {s.description}</span>}
+                                    </div>
+                                    <span className="text-xs font-semibold">{fmt(Number(s.amount))}</span>
+                                    <Button size="icon" variant="ghost" className="h-6 w-6 ml-2" onClick={() => deleteStructure.mutate(s.id)}>
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded border border-primary/30 mt-2">
+                                  <span className="text-xs font-bold">CONSOLIDATED TOTAL</span>
+                                  <span className="text-sm font-bold text-primary">{fmt(g.total)}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
+
+
 
           {/* BULK BILL TAB */}
           <TabsContent value="bulk" className="space-y-3">
@@ -810,6 +929,65 @@ export default function FeesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ----- Bulk Structure dialog (consolidated fee structure) ----- */}
+        <Dialog open={bulkStructureDialog} onOpenChange={setBulkStructureDialog}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>New Fee Structure — Term {selectedTerm}, {selectedYear}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Grade</Label>
+                <Select value={bulkStructureGrade} onValueChange={setBulkStructureGrade}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pick grade" /></SelectTrigger>
+                  <SelectContent>{grades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Fee Components</Label>
+                {bulkComponents.map((c, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                    <Select value={c.fee_type} onValueChange={v => {
+                      const n = [...bulkComponents]; n[idx] = { ...n[idx], fee_type: v }; setBulkComponents(n);
+                    }}>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" min="0" placeholder="Amount (KES)" value={c.amount}
+                      onChange={e => { const n = [...bulkComponents]; n[idx] = { ...n[idx], amount: e.target.value }; setBulkComponents(n); }}
+                      className="h-9 text-xs" />
+                    <Button size="icon" variant="ghost" className="h-9 w-9"
+                      onClick={() => setBulkComponents(bulkComponents.filter((_, i) => i !== idx))}
+                      disabled={bulkComponents.length === 1}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+                <Button size="sm" variant="outline" className="w-full"
+                  onClick={() => setBulkComponents([...bulkComponents, { fee_type: 'other', amount: '', description: '' }])}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Add Component
+                </Button>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded border border-primary/30">
+                <span className="text-xs font-bold">CONSOLIDATED TOTAL</span>
+                <span className="text-sm font-bold text-primary">
+                  {fmt(bulkComponents.reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Components are stored individually; learners see only the consolidated total. Receipts show the full breakdown.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => addBulkStructure.mutate()} disabled={addBulkStructure.isPending || !bulkStructureGrade} className="w-full">
+                {addBulkStructure.isPending ? 'Saving...' : 'Save Fee Structure'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
 
         {/* ----- Void dialog ----- */}
         <Dialog open={!!voidTarget} onOpenChange={(o) => !o && setVoidTarget(null)}>

@@ -80,9 +80,16 @@ Deno.serve(async (req) => {
     }
 
     const totalSegments = messages.reduce((s, m) => s + segmentsFor(m.message), 0);
-    const { data: deductOk } = await supabase.rpc('deduct_sms_credits', { _school_id: school_id, _amount: totalSegments });
-    if (!deductOk) {
-      return new Response(JSON.stringify({ error: 'Insufficient SMS credits or SMS disabled for this school', required: totalSegments }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+    // Super admins bypass per-school credit checks (they pay from a global pool / system).
+    const { data: isSuperAdmin } = await supabase.rpc('has_role', { _user_id: userId, _role: 'super_admin' });
+    const bypassCredits = !!isSuperAdmin;
+
+    if (!bypassCredits) {
+      const { data: deductOk } = await supabase.rpc('deduct_sms_credits', { _school_id: school_id, _amount: totalSegments });
+      if (!deductOk) {
+        return new Response(JSON.stringify({ error: 'Insufficient SMS credits or SMS disabled for this school', required: totalSegments }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     const results: any[] = [];
@@ -128,7 +135,7 @@ Deno.serve(async (req) => {
     }
 
     const failedSegments = results.reduce((s, r, i) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
-    if (failedSegments > 0) {
+    if (failedSegments > 0 && !bypassCredits) {
       const { data: cur } = await supabase.from('school_sms_credits').select('balance, used').eq('school_id', school_id).maybeSingle();
       if (cur) {
         await supabase.from('school_sms_credits').update({
