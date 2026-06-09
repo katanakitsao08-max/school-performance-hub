@@ -366,6 +366,66 @@ export default function FeesPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fee-structures'] }); toast({ title: 'Removed' }); },
   });
 
+  // ---------- Bulk Structure (multiple components for a grade) ----------
+  const [bulkStructureDialog, setBulkStructureDialog] = useState(false);
+  const [bulkStructureGrade, setBulkStructureGrade] = useState('');
+  const [bulkComponents, setBulkComponents] = useState<{ fee_type: string; amount: string; description: string }[]>([
+    { fee_type: 'tuition', amount: '', description: '' },
+  ]);
+
+  const openBulkStructure = () => {
+    setBulkStructureGrade('');
+    setBulkComponents([{ fee_type: 'tuition', amount: '', description: '' }]);
+    setBulkStructureDialog(true);
+  };
+
+  const addBulkStructure = useMutation({
+    mutationFn: async () => {
+      if (!bulkStructureGrade) throw new Error('Select a grade');
+      const rows = bulkComponents
+        .filter(c => c.fee_type && Number(c.amount) > 0)
+        .map(c => ({
+          school_id: schoolId!, grade: bulkStructureGrade,
+          term: Number(selectedTerm), year: Number(selectedYear),
+          fee_type: c.fee_type, amount: Number(c.amount),
+          description: c.description || null, created_by: user!.id,
+        }));
+      if (rows.length === 0) throw new Error('Add at least one component with an amount');
+      // Skip duplicates (same grade/term/year/fee_type already exists)
+      const existing = new Set(structures.filter((s: any) => s.grade === bulkStructureGrade).map((s: any) => s.fee_type));
+      const toInsert = rows.filter(r => !existing.has(r.fee_type));
+      if (toInsert.length === 0) throw new Error('All these components already exist for this grade');
+      const { error } = await supabase.from('fee_structures').insert(toInsert);
+      if (error) throw error;
+      return toInsert.length;
+    },
+    onSuccess: (n: any) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-structures'] });
+      setBulkStructureDialog(false);
+      toast({ title: `Added ${n} fee component${n === 1 ? '' : 's'}` });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Consolidated structures grouped by grade
+  const consolidatedStructures = useMemo(() => {
+    const map = new Map<string, { grade: string; total: number; items: any[] }>();
+    (structures as any[]).forEach(s => {
+      const k = s.grade;
+      const cur = map.get(k) || { grade: k, total: 0, items: [] };
+      cur.total += Number(s.amount) || 0;
+      cur.items.push(s);
+      map.set(k, cur);
+    });
+    return Array.from(map.values()).sort((a, b) => a.grade.localeCompare(b.grade));
+  }, [structures]);
+  const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
+  const toggleGrade = (g: string) => {
+    const n = new Set(expandedGrades);
+    n.has(g) ? n.delete(g) : n.add(g);
+    setExpandedGrades(n);
+  };
+
   // ---------- Bulk billing ----------
   const [billGrade, setBillGrade] = useState('all');
   const billRun = useMutation({
