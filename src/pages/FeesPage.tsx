@@ -681,37 +681,81 @@ export default function FeesPage() {
 
           {/* STRUCTURES TAB */}
           <TabsContent value="structures" className="space-y-3">
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">Standard fees per grade for Term {selectedTerm}, {selectedYear}</p>
-              <Button size="sm" onClick={() => setStructureDialog(true)}><Plus className="h-4 w-4 mr-1" />Add Item</Button>
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <p className="text-xs text-muted-foreground">
+                Consolidated fee per grade for Term {selectedTerm}, {selectedYear}.
+                Each grade's total is the sum of its components. Click a row to view the breakdown.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setStructureDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" />Add Component
+                </Button>
+                <Button size="sm" onClick={openBulkStructure}>
+                  <Layers className="h-4 w-4 mr-1" />New Fee Structure
+                </Button>
+              </div>
             </div>
             <Card>
               <Table>
                 <TableHeader><TableRow>
                   <TableHead className="text-xs">Grade</TableHead>
-                  <TableHead className="text-xs">Fee Type</TableHead>
-                  <TableHead className="text-xs text-right">Amount</TableHead>
-                  <TableHead className="text-xs">Description</TableHead>
-                  <TableHead className="text-xs w-[60px]"></TableHead>
+                  <TableHead className="text-xs">Term / Year</TableHead>
+                  <TableHead className="text-xs text-right">Components</TableHead>
+                  <TableHead className="text-xs text-right">Total Fee</TableHead>
+                  <TableHead className="text-xs w-[120px]">Actions</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {structures.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">No structures defined</TableCell></TableRow>
-                  ) : structures.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="text-xs font-medium">Grade {s.grade}</TableCell>
-                      <TableCell className="text-xs capitalize">{s.fee_type}</TableCell>
-                      <TableCell className="text-xs text-right font-bold">{fmt(Number(s.amount))}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{s.description || '-'}</TableCell>
-                      <TableCell>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteStructure.mutate(s.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {consolidatedStructures.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">No fee structures defined for this term</TableCell></TableRow>
+                  ) : consolidatedStructures.map((g) => {
+                    const expanded = expandedGrades.has(g.grade);
+                    return (
+                      <>
+                        <TableRow key={g.grade} className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGrade(g.grade)}>
+                          <TableCell className="text-xs font-medium">Grade {g.grade}</TableCell>
+                          <TableCell className="text-xs">Term {selectedTerm}, {selectedYear}</TableCell>
+                          <TableCell className="text-xs text-right">{g.items.length}</TableCell>
+                          <TableCell className="text-xs text-right font-bold text-primary">{fmt(g.total)}</TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); toggleGrade(g.grade); }}>
+                              <Eye className="h-3.5 w-3.5 mr-1" />{expanded ? 'Hide' : 'View Breakdown'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expanded && (
+                          <TableRow key={`${g.grade}-bd`}>
+                            <TableCell colSpan={5} className="bg-muted/30 p-3">
+                              <div className="text-[11px] font-semibold text-muted-foreground mb-2">FEE BREAKDOWN — Grade {g.grade}</div>
+                              <div className="space-y-1">
+                                {g.items.map((s: any) => (
+                                  <div key={s.id} className="flex items-center justify-between px-3 py-1.5 bg-background rounded border">
+                                    <div className="flex-1">
+                                      <span className="text-xs font-medium capitalize">{s.fee_type}</span>
+                                      {s.description && <span className="text-[10px] text-muted-foreground ml-2">— {s.description}</span>}
+                                    </div>
+                                    <span className="text-xs font-semibold">{fmt(Number(s.amount))}</span>
+                                    <Button size="icon" variant="ghost" className="h-6 w-6 ml-2" onClick={() => deleteStructure.mutate(s.id)}>
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded border border-primary/30 mt-2">
+                                  <span className="text-xs font-bold">CONSOLIDATED TOTAL</span>
+                                  <span className="text-sm font-bold text-primary">{fmt(g.total)}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
+
+
 
           {/* BULK BILL TAB */}
           <TabsContent value="bulk" className="space-y-3">
