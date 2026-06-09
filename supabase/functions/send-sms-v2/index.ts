@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     }
 
     const failedSegments = results.reduce((s, r, i) => r.ok ? s : s + segmentsFor(messages[i].message), 0);
-    if (failedSegments > 0) {
+    if (failedSegments > 0 && !bypassCredits) {
       const { data: cur } = await supabase.from('school_sms_credits').select('balance, used').eq('school_id', school_id).maybeSingle();
       if (cur) {
         await supabase.from('school_sms_credits').update({
