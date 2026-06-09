@@ -710,8 +710,8 @@ export default function FeesPage() {
                   ) : consolidatedStructures.map((g) => {
                     const expanded = expandedGrades.has(g.grade);
                     return (
-                      <>
-                        <TableRow key={g.grade} className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGrade(g.grade)}>
+                      <Fragment key={g.grade}>
+                        <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => toggleGrade(g.grade)}>
                           <TableCell className="text-xs font-medium">Grade {g.grade}</TableCell>
                           <TableCell className="text-xs">Term {selectedTerm}, {selectedYear}</TableCell>
                           <TableCell className="text-xs text-right">{g.items.length}</TableCell>
