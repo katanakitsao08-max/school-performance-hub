@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
