@@ -85,7 +85,8 @@ function header(doc: jsPDF, school: { name: string; address?: string; phone?: st
 }
 
 export function generateFeeReceiptPDF(data: FeeReceiptData) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a5', orientation: 'portrait' }); // A5 receipt
+  // A4 receipt — accommodates the consolidated fee breakdown
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const W = doc.internal.pageSize.getWidth();
   header(doc, {
     name: data.schoolName, address: data.schoolAddress, phone: data.schoolPhone,
@@ -93,7 +94,7 @@ export function generateFeeReceiptPDF(data: FeeReceiptData) {
   });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
   doc.text('OFFICIAL FEE RECEIPT', W / 2, 42, { align: 'center' });
 
@@ -102,36 +103,87 @@ export function generateFeeReceiptPDF(data: FeeReceiptData) {
   doc.text(`Receipt #: ${data.receiptNumber}`, 14, 50);
   doc.text(`Date: ${data.date}`, W - 14, 50, { align: 'right' });
 
+  const termLabel = data.term && data.year ? `Term ${data.term}, ${data.year}` : '';
+
   autoTable(doc, {
     startY: 54,
     theme: 'plain',
     styles: { fontSize: 9, cellPadding: 1.5 },
     body: [
-      ['Received from:', `${data.learnerName} (${data.admissionNumber})`],
+      ['Student:', `${data.learnerName}`],
+      ['Admission No:', data.admissionNumber],
       ['Class:', `Grade ${data.grade} ${data.stream}`],
-      ['Fee item:', data.feeType.toUpperCase()],
+      ...(termLabel ? [['Period:', termLabel]] : []),
       ['Payment method:', data.paymentMethod.toUpperCase() + (data.mpesaReference ? ` — Ref ${data.mpesaReference}` : '')],
       ...(data.description ? [['Description:', data.description]] : []),
     ],
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 35 } },
   });
 
-  const y = (doc as any).lastAutoTable.finalY + 4;
+  // FEE BREAKDOWN (consolidated)
+  const breakdown = data.breakdown && data.breakdown.length > 0
+    ? data.breakdown
+    : [{ feeType: data.feeType, charged: 0, paid: data.amountPaid }];
+
+  const termCharged = data.termCharged ?? breakdown.reduce((s, b) => s + b.charged, 0);
+  const termPaid = data.termPaid ?? breakdown.reduce((s, b) => s + b.paid, 0);
+  const termBal = termCharged - termPaid;
+
+  let y = (doc as any).lastAutoTable.finalY + 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(26, 92, 46);
+  doc.text('FEE BREAKDOWN', 14, y);
+  y += 2;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Fee Component', 'Charged (KES)', 'Paid (KES)', 'Balance (KES)']],
+    body: breakdown.map(b => [
+      b.feeType.toUpperCase(),
+      b.charged.toLocaleString(),
+      b.paid.toLocaleString(),
+      (b.charged - b.paid).toLocaleString(),
+    ]),
+    foot: [[
+      'TOTAL',
+      termCharged.toLocaleString(),
+      termPaid.toLocaleString(),
+      termBal.toLocaleString(),
+    ]],
+    headStyles: { fillColor: [26, 92, 46], textColor: 255, fontSize: 9 },
+    footStyles: { fillColor: [240, 248, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' },
+    },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // THIS PAYMENT highlight box
   doc.setFillColor(240, 248, 240);
   doc.rect(14, y, W - 28, 16, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(26, 92, 46);
-  doc.text('AMOUNT RECEIVED', 18, y + 6);
+  doc.text('AMOUNT RECEIVED (THIS PAYMENT)', 18, y + 6);
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
   doc.text(fmtKES(data.amountPaid), W - 18, y + 11, { align: 'right' });
 
+  // Summary rows
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
-  doc.text(`Term balance after this payment: ${fmtKES(data.termBalance)}`, 14, y + 24);
-  doc.text(`Overall outstanding balance: ${fmtKES(data.totalBalance)}`, 14, y + 30);
+  doc.text(`Total Fee (Term): ${fmtKES(termCharged)}`, 14, y + 24);
+  doc.text(`Amount Paid (Term): ${fmtKES(termPaid)}`, 14, y + 30);
+  doc.setTextColor(termBal > 0 ? 200 : 26, termBal > 0 ? 30 : 92, termBal > 0 ? 30 : 46);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Term Balance: ${fmtKES(termBal)}`, 14, y + 36);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Overall outstanding balance: ${fmtKES(data.totalBalance)}`, 14, y + 42);
 
   // Footer
   const footY = doc.internal.pageSize.getHeight() - 20;
