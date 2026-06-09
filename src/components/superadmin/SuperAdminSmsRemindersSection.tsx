@@ -136,23 +136,41 @@ export default function SuperAdminSmsRemindersSection({ schools }: { schools: Sc
     if (targets.length === 0) { toast({ title: 'Select at least one school with admin phone', variant: 'destructive' }); return; }
     setSending(true);
     let sent = 0, failed = 0;
+    const errors: string[] = [];
     try {
-      for (const s of targets) {
-        const a = adminBySchool[s.id];
-        const body = personalize(message, s);
-        const { data, error } = await supabase.functions.invoke('send-sms-v2', {
-          body: {
-            school_id: s.id, type: 'CUSTOM',
-            messages: [{ phone: a.phone, message: body }],
-          },
-        });
-        if (error) { failed++; continue; }
-        sent += (data as any)?.sent ?? 0;
-        failed += (data as any)?.failed ?? 0;
+      // Send all schools in parallel, batched, so it is not one-at-a-time anymore.
+      const BATCH = 5;
+      for (let i = 0; i < targets.length; i += BATCH) {
+        const slice = targets.slice(i, i + BATCH);
+        const results = await Promise.all(slice.map(async (s) => {
+          const a = adminBySchool[s.id];
+          const body = personalize(message, s);
+          const { data, error } = await supabase.functions.invoke('send-sms-v2', {
+            body: { school_id: s.id, type: 'CUSTOM', messages: [{ phone: a.phone, message: body }] },
+          });
+          return { s, data, error };
+        }));
+        for (const { s, data, error } of results) {
+          if (error) {
+            failed++;
+            errors.push(`${s.school_name}: ${error.message || 'send failed'}`);
+          } else {
+            sent += (data as any)?.sent ?? 0;
+            failed += (data as any)?.failed ?? 0;
+            const errs = ((data as any)?.results || []).filter((r: any) => !r.ok).map((r: any) => r.error).filter(Boolean);
+            if (errs.length) errors.push(`${s.school_name}: ${errs.join('; ')}`);
+          }
+        }
       }
-      toast({ title: 'Reminders sent', description: `${sent} sent, ${failed} failed` });
-      setMessage('');
-      setSelected(new Set());
+      toast({
+        title: 'Reminders sent',
+        description: `${sent} sent, ${failed} failed${errors.length ? ` — ${errors.slice(0, 2).join(' | ')}` : ''}`,
+        variant: failed > 0 && sent === 0 ? 'destructive' : 'default',
+      });
+      if (sent > 0) {
+        setMessage('');
+        setSelected(new Set());
+      }
     } catch (e: any) {
       toast({ title: 'Send failed', description: e?.message || String(e), variant: 'destructive' });
     } finally { setSending(false); }
