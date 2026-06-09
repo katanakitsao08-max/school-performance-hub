@@ -2,6 +2,12 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
+export interface FeeBreakdownItem {
+  feeType: string;
+  charged: number;
+  paid: number;
+}
+
 export interface FeeReceiptData {
   receiptNumber: string;
   date: string;
@@ -23,6 +29,12 @@ export interface FeeReceiptData {
   schoolEmail?: string;
   schoolMotto?: string;
   logoBase64?: string | null;
+  term?: number;
+  year?: number;
+  // Consolidated breakdown of all fee components for the term
+  breakdown?: FeeBreakdownItem[];
+  termCharged?: number;
+  termPaid?: number;
 }
 
 export interface FeeStatementRow {
