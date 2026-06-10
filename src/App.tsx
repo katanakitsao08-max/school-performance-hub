@@ -68,6 +68,7 @@ const DocumentsPage = lazy(() => import("./pages/DocumentsPage"));
 const ClassTeacherPortal = lazy(() => import("./pages/ClassTeacherPortal"));
 const LmsPage = lazy(() => import("./pages/LmsPage"));
 const SuperAdminLmsPage = lazy(() => import("./pages/SuperAdminLmsPage"));
+const SuperAdminAnalyticsPage = lazy(() => import("./pages/SuperAdminAnalyticsPage"));
 
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -227,6 +228,7 @@ const App = () => (
                 {/* LMS — accessible to all signed-in roles */}
                 <Route path="/lms" element={<ProtectedRoute><ErrorBoundary inline label="LMS"><LmsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/super-admin/lms" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="LMS Catalog"><SuperAdminLmsPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/super-admin/analytics" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Platform Analytics"><SuperAdminAnalyticsPage /></ErrorBoundary></ProtectedRoute>} />
 
                 {/* Parent routes */}
                 <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />
