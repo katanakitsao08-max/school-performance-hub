@@ -870,26 +870,61 @@ export default function FeesPage() {
                   <SelectContent>{learners.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.admission_number})</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Fee type</Label>
-                  <Select value={recordForm.fee_type} onValueChange={v => setRecordForm(f => ({ ...f, fee_type: v }))}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Method</Label>
-                  <Select value={recordForm.payment_method} onValueChange={v => setRecordForm(f => ({ ...f, payment_method: v }))}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{PAYMENT_METHODS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Charged (KES)</Label><Input type="number" min="0" value={recordForm.amount_charged} onChange={e => setRecordForm(f => ({ ...f, amount_charged: e.target.value }))} className="h-9 text-xs" /></div>
-                <div><Label className="text-xs">Paid (KES)</Label><Input type="number" min="0" value={recordForm.amount_paid} onChange={e => setRecordForm(f => ({ ...f, amount_paid: e.target.value }))} className="h-9 text-xs" /></div>
-              </div>
+              {(() => {
+                const selectedLearner: any = learners.find((l: any) => l.id === recordForm.learner_id);
+                const learnerGrade = selectedLearner?.grade ? String(selectedLearner.grade) : null;
+                const components = (structures as any[]).filter((s: any) =>
+                  (!learnerGrade || String(s.grade) === learnerGrade)
+                  && (!s.term || Number(s.term) === Number(selectedTerm))
+                  && (!s.year || Number(s.year) === Number(selectedYear))
+                );
+                const pickComponent = (id: string) => {
+                  if (id === '__custom__') return;
+                  const c = components.find((x: any) => x.id === id);
+                  if (!c) return;
+                  setRecordForm(f => ({ ...f, fee_type: c.fee_type, amount_charged: String(c.amount), description: f.description || c.description || '' }));
+                };
+                return (
+                  <>
+                    {components.length > 0 && (
+                      <div>
+                        <Label className="text-xs">Fee item (from structure)</Label>
+                        <Select onValueChange={pickComponent}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={learnerGrade ? `Pick item for Grade ${learnerGrade} · T${selectedTerm}/${selectedYear}` : 'Select learner first'} /></SelectTrigger>
+                          <SelectContent>
+                            {components.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id} className="text-xs">
+                                <span className="capitalize">{c.fee_type}</span> — KES {Number(c.amount).toLocaleString()}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__custom__" className="text-xs">Custom item…</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Fee type</Label>
+                        <Select value={recordForm.fee_type} onValueChange={v => setRecordForm(f => ({ ...f, fee_type: v }))}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{FEE_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Method</Label>
+                        <Select value={recordForm.payment_method} onValueChange={v => setRecordForm(f => ({ ...f, payment_method: v }))}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{PAYMENT_METHODS.map(m => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-xs">Charged (KES)</Label><Input type="number" min="0" value={recordForm.amount_charged} onChange={e => setRecordForm(f => ({ ...f, amount_charged: e.target.value }))} className="h-9 text-xs" /></div>
+                      <div><Label className="text-xs">Paid (KES)</Label><Input type="number" min="0" value={recordForm.amount_paid} onChange={e => setRecordForm(f => ({ ...f, amount_paid: e.target.value }))} className="h-9 text-xs" /></div>
+                    </div>
+                  </>
+                );
+              })()}
               {recordForm.payment_method === 'mpesa' && (
                 <div><Label className="text-xs">M-Pesa Reference</Label><Input maxLength={50} value={recordForm.mpesa_reference} onChange={e => setRecordForm(f => ({ ...f, mpesa_reference: e.target.value }))} className="h-9 text-xs" /></div>
               )}
