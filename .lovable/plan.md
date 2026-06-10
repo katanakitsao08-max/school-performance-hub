@@ -1,93 +1,108 @@
-## Goal
-Evolve the current Learning Path into a Full LMS — Courses → Modules → Lessons (video/notes/quiz) → Assignments → Live Sessions → Gradebook → Discussions → Certificates — with one shared catalog managed by Super Admin and consumed by two front-ends (parent portal child view and `/learn` independent portal), still paywalled per learner.
+# Plan: Fee Autofill + Super Admin Analytics & Monitoring
 
-## Data model (new tables in `public`, all RLS-on, all GRANTed)
-- `lms_courses` — id, title, slug, subject_slug, grade, level (KPSEA/KJSEA), summary, cover_url, sort_order, is_published, created_by(super_admin).
-- `lms_modules` — id, course_id, title, sort_order, is_published.
-- `lms_lessons` — id, module_id, title, kind (video|notes|reading|live), video_url, notes_md, attachment_url, duration_min, sort_order, is_published.
-- `lms_quizzes` — id, lesson_id (nullable for module quiz), title, pass_percent, time_limit_min.
-- `lms_quiz_questions` — id, quiz_id, prompt, type, options jsonb, correct_answers text[], marks, sort_order.
-- `lms_assignments` — id, course_id, module_id (nullable), title, instructions_md, attachment_url, due_at, max_marks, allow_late.
-- `lms_assignment_submissions` — id, assignment_id, learner_ref (uuid: learners.id or independent_learners.id), submitted_at, file_url, text_answer, score, feedback, graded_at, graded_by.
-- `lms_live_sessions` — id, course_id, title, starts_at, duration_min, meeting_url, host_name, recording_url.
-- `lms_live_attendance` — id, session_id, learner_ref, joined_at, left_at.
-- `lms_discussion_threads` — id, lesson_id, author_ref, title, body, created_at.
-- `lms_discussion_replies` — id, thread_id, author_ref, body, created_at.
-- `lms_lesson_progress` — id, learner_ref, lesson_id, status (started|completed), seconds_watched, completed_at. Unique (learner_ref, lesson_id).
-- `lms_quiz_attempts` — id, learner_ref, quiz_id, score_percent, passed, answers jsonb, created_at.
-- `lms_badges` — id, code, name, description, icon, rule_json.
-- `lms_learner_badges` — id, learner_ref, badge_id, awarded_at. Unique.
-- `lms_certificates` — id, learner_ref, course_id, issued_at, certificate_no, pdf_url. Issued automatically when course completion = 100% and average quiz score ≥ course.pass_percent.
+Two scoped deliverables. Phase 1 is a small fix. Phase 2 is the analytics module — large but additive and built on existing tables to avoid scope explosion.
 
-`learner_ref` is just a uuid — we resolve which table at the application layer (school learner via `learners.id`, independent via `independent_learners.id`). RLS uses two helper SQL functions:
-- `lms_is_school_learner_of(_ref)` — true when current user is parent of `_ref` via `parent_learners`.
-- `lms_is_independent_owner(_ref)` — true when `independent_learners.user_id = auth.uid()`.
+---
 
-## Paywall (unchanged surface, extended logic)
-- Reuse `learning_path_entitlements` for school learners (`has_active_learning_path(learner_id)`) and `independent_subscriptions` for independent learners (`has_active_independent_subscription(user_id)`).
-- Gate all `lms_*` read RLS on either having an active entitlement, being Super Admin, or being the lesson's content author preview.
-- Free preview: every course's first lesson and first quiz remain readable without entitlement (boolean `is_free` on `lms_lessons`).
+## Phase 1 — Fee Record Entry: Autofill Fee Item & Amount
 
-## Super Admin (single global catalog)
-New page `/superadmin/lms` with tabs:
-1. Courses (CRUD + publish toggle + cover upload).
-2. Curriculum builder per course: drag-ordered modules → lessons; inline editor for video URL, notes (markdown), attachments.
-3. Quizzes & question bank (per lesson or module final quiz).
-4. Assignments (instructions + due date + max marks).
-5. Live sessions (title, datetime, Zoom/Meet URL).
-6. Badges & certificate template editor (logo, signature, default text).
-7. Analytics: enrollments, completion %, top courses.
+**Problem:** When adding a payment record, the fee item (component) and charged amount are blank — admin types them manually.
 
-Storage: reuse `school-branding` bucket for cover images and a new public `lms-assets` bucket for attachments/notes images.
+**Fix in `src/pages/FeesPage.tsx` (Add Payment dialog):**
+- After learner + term + year are chosen, query `fee_structures` rows for the learner's grade/term/year.
+- Render a **Fee Item** dropdown listing each component (Tuition, Transport, Lunch, etc.) with its `amount` shown.
+- On selection, auto-populate:
+  - `fee_type` = component name
+  - `amount_charged` = component amount (editable in case of partial waivers)
+- Keep "Custom item" as a fallback option.
+- Same change applies to the bulk/grade-level payment flow if present.
 
-## Learner front-ends (shared component, two entry points)
-A new `src/features/lms/` folder with reusable components used by both:
-- Parent portal: replace `ParentLearningPathTab.tsx` content with `<LmsLearnerShell learnerRef={child.id} kind="school" />`.
-- Independent portal: rewrite `LearnPortal.tsx` to use `<LmsLearnerShell learnerRef={independent.id} kind="independent" />`.
+No DB changes.
 
-`LmsLearnerShell` routes:
-- `/lms` Course catalog (filter by subject/grade/level, "enrolled" vs "browse").
-- `/lms/course/:slug` Course overview, syllabus, progress bar, "Continue" CTA, instructor card, certificate badge when 100%.
-- `/lms/lesson/:id` Player: video (YouTube/Vimeo via existing `toEmbedUrl`), notes (markdown), quiz runner reusing `markQuestion()`, "Mark complete" → writes `lms_lesson_progress` and bumps streak.
-- `/lms/assignments` Assignment list + submit flow (file upload to `lms-assets`, score view).
-- `/lms/live` Upcoming + past live sessions with "Join" (opens meeting_url, marks attendance) and "Watch recording".
-- `/lms/discussion/:lessonId` Threads + replies.
-- `/lms/progress` Gradebook (per course completion, quiz averages), badges shelf, certificates download.
+---
 
-Paywall integration: existing `LearningPathPaywall.tsx` wraps the shell; free lessons render through.
+## Phase 2 — Super Admin Analytics & Platform Monitoring
 
-## Edge function additions
-- `lms-issue-certificate` — verifies completion, generates PDF via `jsPDF` reusing brand-aware template, uploads to `lms-assets`, inserts `lms_certificates` row.
-- `lms-evaluate-badges` — runs the badge rule set after each quiz/lesson completion.
+Realistic scope: build a real, useful module from the data we **already collect**, with hooks for future telemetry. We will not invent infrastructure metrics (API latency, server uptime, DB perf) that this app doesn't measure — those will be shown as "Not tracked yet" rather than faked.
 
-## Notifications
-- Trigger on `lms_assignments` insert → in-app `notifications` for enrolled learners' parents (school) or learner (independent).
-- Trigger on `lms_live_sessions` insert → same.
-- Cron-style edge call (existing scheduler) for assignment due-soon reminders (24h before).
+### 2.1 Data foundations (migration)
 
-## Technical details
-- All `lms_*` tables follow the GRANT-then-RLS contract (`GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO authenticated; GRANT ALL ... TO service_role;`).
-- RLS for catalog tables (`lms_courses`, `lms_modules`, `lms_lessons`, `lms_quizzes`, `lms_quiz_questions`, `lms_assignments`, `lms_live_sessions`, `lms_badges`): SELECT to `authenticated` always; INSERT/UPDATE/DELETE only `has_role(auth.uid(), 'super_admin')`.
-- RLS for learner-owned tables (`lms_lesson_progress`, `lms_quiz_attempts`, `lms_assignment_submissions`, `lms_live_attendance`, `lms_learner_badges`, `lms_certificates`, `lms_discussion_*`): user must own the `learner_ref` via helper functions OR be super_admin.
-- Reuse existing competency rollup (`competencyFromPercent`) for grade letters in the gradebook.
-- Mobile-first; FAB on lesson player for "Mark complete".
-- Offline: lesson notes cached via existing `localStorage` queue pattern (read-only when offline).
+New table `public.user_activity_log` (super-admin readable):
+- `user_id`, `school_id`, `role`, `action` (e.g. `login`, `marks_entered`, `report_generated`, `sms_sent`, `learner_created`, `assessment_created`), `entity_type`, `entity_id`, `metadata jsonb`, `device`, `user_agent`, `created_at`.
+- Indexes on `school_id`, `created_at`, `action`.
+- RLS: super_admin full read; authenticated insert own rows; service_role all.
+- GRANTs included.
 
-## Build order (each step is a separate batch/migration)
-1. Migration: new `lms_*` tables, helper functions, GRANTs, RLS policies, storage bucket `lms-assets`.
-2. Super Admin catalog UI: `/superadmin/lms` with Courses + Modules + Lessons CRUD (covers ~60% of authoring needs).
-3. Quizzes + assignments CRUD + question bank.
-4. Live sessions + badges + certificate template config.
-5. Shared `LmsLearnerShell` + catalog + course detail + lesson player (video/notes/quiz/mark complete).
-6. Assignment submission + live session join/attendance.
-7. Discussions + gradebook + badges shelf + certificate generation edge function.
-8. Notifications triggers + due-soon reminders + analytics for Super Admin.
+New table `public.platform_alerts`:
+- `school_id`, `kind` (`inactive_14d`, `no_assessments_term`, `no_reports_term`, `low_sms_balance`, `failed_logins`), `severity`, `message`, `resolved_at`, `created_at`.
+- Super_admin read/write; service_role all.
 
-Existing pages kept until the new shell is wired, then `ParentLearningPathTab.tsx` and `LearnPortal.tsx` are swapped to delegate to the shell.
+Lightweight client logger `src/lib/activity-log.ts` wired into:
+- `AuthContext` login success → `login`
+- Marks save (MarksEntryPage) → `marks_entered`
+- Report PDF generation → `report_generated`
+- SMS send (send-sms-v2 response) → `sms_sent`
+- Learner / assessment create
 
-## Out of scope (call out)
-- No per-school course authoring (only Super Admin curates; teachers can be added later).
-- No payment changes — paywall amounts and M-Pesa flow stay as-is.
-- No native mobile app — PWA only.
+(Existing tables `sms_logs`, `scores`, `learners`, `schools`, `report_delivery_log` already give us most counts; the activity log fills the login/session/DAU gap.)
 
-Confirm to proceed and I'll start with step 1 (the migration).
+### 2.2 New Super Admin pages
+
+Route group under `/super-admin/analytics/*`, added to `AppSidebar` + `MorePage`.
+
+1. **`/super-admin/analytics`** — Overview KPIs
+   - Cards: Total Schools, Active 30d, Inactive, Total Users, DAU/WAU/MAU, Total Learners, Reports this month, Assessments this month, SMS this month.
+   - Each card shows period-over-period delta (↑/↓ %).
+   - "System Uptime" card labelled *Not tracked* with a tooltip.
+
+2. **`/super-admin/analytics/schools`** — School Activity Table
+   - Columns per spec (School, County, Type, Users, Last Activity, Logins, Assessments, Reports, SMS, Score, Status).
+   - Health-score engine (client-side calc using the documented formula).
+   - Color-coded status badges (Highly Active / Active / Needs Support / Inactive).
+   - Search, county filter, status filter, Export to Excel (xlsx) and PDF (jspdf-autotable).
+
+3. **`/super-admin/analytics/features`** — Feature Usage
+   - Bar chart: usage counts per module (from `user_activity_log.action`).
+   - Pie chart: share of total actions.
+   - Most/Least used, adoption rate (= schools using module / total schools).
+
+4. **`/super-admin/analytics/live`** — Real-Time Monitoring
+   - Supabase Realtime subscription on `user_activity_log` → live feed list ("Teacher X entered Grade 6 marks", etc.).
+   - Last 100 events, auto-scroll, action-type filter.
+
+5. **`/super-admin/analytics/communications`** — SMS Analytics
+   - Total Sent, Delivery success %, Failed, Cost (sum of `cost` column in `sms_logs` if present, else messages × default rate from `global_sms_config`).
+   - Top 10 schools by SMS, monthly trend line chart (Recharts).
+
+6. **`/super-admin/analytics/adoption`** — Adoption & Retention
+   - New schools this month, renewed (subscription updates), at-risk (expiring in 14d), churned (expired > 30d), user growth chart, subscription plan distribution.
+
+7. **`/super-admin/analytics/alerts`** — Alerts Center
+   - Lists `platform_alerts`, generated by a periodic check inside the page (and a button "Run checks now") that scans for inactive schools, no-assessments-this-term, low SMS balance, repeated failed logins.
+   - Resolve / dismiss actions.
+
+8. **`/super-admin/analytics/insights`** — AI Insights
+   - Edge function `super-admin-insights` calls Lovable AI Gateway with aggregated stats and returns 3-6 plain-English insights.
+   - Cached for 1 hour.
+
+9. **`/super-admin/analytics/reports`** — Reports Center
+   - Pre-built reports (School Activity, User Activity, SMS Usage, Assessment, Feature Usage, Subscription Performance).
+   - Export PDF / Excel / CSV using existing libs.
+
+### 2.3 Out of scope / honest limits
+- **Infrastructure metrics** (API latency, server uptime, DB perf, error rates): a SaaS frontend cannot observe these. Page shows "Connect APM provider" placeholder rather than fabricated numbers.
+- **Session duration / logout time**: only captured if user explicitly logs out; otherwise approximated from last activity.
+- **IP address / device fingerprint**: captured best-effort from `navigator.userAgent`; IP requires an edge function so we add a tiny `log-activity` function to stamp IP server-side.
+
+### 2.4 Tech stack used
+- Existing: React + TS, Tailwind, shadcn, Recharts, Supabase, jsPDF, xlsx.
+- No new heavy dependencies.
+
+---
+
+## Delivery order
+1. Phase 1 fee autofill (small, ships immediately).
+2. Phase 2.1 migration (activity log + alerts tables).
+3. Phase 2.2 pages in the order listed, each shippable on its own.
+
+Confirm and I'll start with Phase 1 + the migration, then iterate page-by-page.

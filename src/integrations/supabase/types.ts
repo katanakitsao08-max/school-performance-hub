@@ -2358,6 +2358,39 @@ export type Database = {
           },
         ]
       }
+      platform_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          metadata: Json
+          resolved_at: string | null
+          school_id: string | null
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          metadata?: Json
+          resolved_at?: string | null
+          school_id?: string | null
+          severity?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          metadata?: Json
+          resolved_at?: string | null
+          school_id?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       principal_comment_bands: {
         Row: {
           comment: string
@@ -3647,6 +3680,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          device: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json
+          role: string | null
+          school_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          device?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          role?: string | null
+          school_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          device?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          role?: string | null
+          school_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
