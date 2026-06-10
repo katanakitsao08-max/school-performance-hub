@@ -40,6 +40,12 @@ const superAdminSections: NavSection[] = [
       { title: "Timetable Keys", url: "/timetable-keys", icon: KeyRound },
     ],
   },
+  {
+    label: "Insights",
+    items: [
+      { title: "Platform Analytics", url: "/super-admin/analytics", icon: BarChart3 },
+    ],
+  },
 ];
 
 const adminSections: NavSection[] = [

@@ -105,6 +105,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    // Fire-and-forget activity log for analytics (login event)
+    try {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (u) {
+        const [{ data: p }, { data: r }] = await Promise.all([
+          supabase.from('profiles').select('school_id').eq('user_id', u.id).maybeSingle(),
+          supabase.from('user_roles').select('role').eq('user_id', u.id).maybeSingle(),
+        ]);
+        supabase.from('user_activity_log').insert({
+          user_id: u.id,
+          school_id: p?.school_id ?? null,
+          role: r?.role ?? null,
+          action: 'login',
+          metadata: {},
+          device: /mobile/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          user_agent: navigator.userAgent.slice(0, 500),
+        }).then(() => {}, () => {});
+      }
+    } catch {}
   };
 
   const signOut = async () => {
