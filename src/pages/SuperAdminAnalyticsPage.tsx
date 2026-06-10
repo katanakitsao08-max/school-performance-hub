@@ -250,9 +250,9 @@ export default function SuperAdminAnalyticsPage() {
   const adoption = useMemo(() => {
     const monthStart = startOfMonth();
     const newThis = schools.filter(s => new Date(s.created_at) >= monthStart).length;
-    const atRisk = schools.filter(s => {
-      if (!s.subscription_end_date) return false;
-      const d = new Date(s.subscription_end_date); const diff = (d.getTime() - Date.now()) / 86400000;
+    const atRisk = schools.filter((s: any) => {
+      if (!s.plan_expires_at) return false;
+      const d = new Date(s.plan_expires_at); const diff = (d.getTime() - Date.now()) / 86400000;
       return diff > 0 && diff <= 14;
     }).length;
     const churned = schools.filter(s => s.subscription_status === 'expired').length;
