@@ -255,20 +255,35 @@ export default function FeesPage() {
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
     const allRows = (all || []) as any[];
     const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
-    const termBal = termRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
     const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
 
-    // Consolidate breakdown by fee_type for the term
+    // Pull the full fee STRUCTURE so EVERY charged component appears on the
+    // receipt — even ones the learner has not paid against yet.
+    const learnerGrade = r.learners?.grade;
+    const { data: struct } = learnerGrade
+      ? await supabase.from('fee_structures').select('fee_type, amount')
+          .eq('school_id', schoolId!).eq('grade', learnerGrade)
+          .eq('term', r.term).eq('year', r.year)
+      : { data: [] as any[] };
+
     const byType: Record<string, { charged: number; paid: number }> = {};
+    (struct || []).forEach((s: any) => {
+      const t = String(s.fee_type || 'other');
+      if (!byType[t]) byType[t] = { charged: 0, paid: 0 };
+      byType[t].charged += Number(s.amount) || 0;
+    });
     termRows.forEach(x => {
       const t = String(x.fee_type || 'other');
       if (!byType[t]) byType[t] = { charged: 0, paid: 0 };
-      byType[t].charged += Number(x.amount_charged) || 0;
+      if (!(struct || []).some((s: any) => String(s.fee_type) === t)) {
+        byType[t].charged += Number(x.amount_charged) || 0;
+      }
       byType[t].paid += Number(x.amount_paid) || 0;
     });
     const breakdown = Object.entries(byType).map(([feeType, v]) => ({ feeType, ...v }));
     const termCharged = breakdown.reduce((s, b) => s + b.charged, 0);
     const termPaid = breakdown.reduce((s, b) => s + b.paid, 0);
+    const termBal = termCharged - termPaid;
 
     generateFeeReceiptPDF({
       receiptNumber: r.receipt_number,
