@@ -1,108 +1,50 @@
-# Plan: Fee Autofill + Super Admin Analytics & Monitoring
+# Reports Module — UI/UX Redesign Plan
 
-Two scoped deliverables. Phase 1 is a small fix. Phase 2 is the analytics module — large but additive and built on existing tables to avoid scope explosion.
+## Already shipped this turn
+- **Fee receipt** now merges `fee_structures` with `fee_records`: every charged component appears with its amount, the payment received, and the per-component term balance — even if it has not been paid against yet. Overall outstanding balance and term balance remain at the bottom of the PDF.
+- **Parent fee reminder** in Parent Communication already auto-fills each learner's outstanding balance via the `{balance}` token (per-learner SMS), pulled live from `fee_records`. No change needed.
 
----
+## Reports redesign — scope
+Rebuild only the **selection/configuration panel** of `src/pages/ReportsPage.tsx`. The data hooks, generation logic, PDF/Excel exports, batch flows, WhatsApp send — all untouched. Same state variables (`selectedGrades`, `selectedStreams`, `selectedTerm`, `selectedAssessment`, `selectedGenderFilter`, `mergeCombinedSubjects`, `viewMode`) just rendered through a new mobile-first UI.
 
-## Phase 1 — Fee Record Entry: Autofill Fee Item & Amount
+### New component: `src/components/reports/ReportSelectionPanel.tsx`
+Receives current state + setters as props. Sections in order:
 
-**Problem:** When adding a payment record, the fee item (component) and charged amount are blank — admin types them manually.
+1. **Report Type** — modern card-style `Select` mapping to existing `viewMode` (class / individual / school) plus virtual options (subject / gender / assessment) that toggle existing filters.
+2. **Grade Selection** — chip grid (`flex-wrap gap-2`), multi-select, PerformTrack-green when selected, instant update. Driven by `useSchoolGrades()`.
+3. **Classes / Streams** (label renamed) — card grid. Each card: grade-stream label + live learner count from a single `learners` count query keyed by selected grades. Selected = green border + check + light green bg. "Select All" checkbox top-right. Streams dynamically filtered to selected grades via existing `streams` table.
+4. **Term** — modern `Select`.
+5. **Assessment** — modern `Select` (Opener / Mid-term / End-term / Merged).
+6. **Combine Related Subjects** — `Switch` replacing existing checkbox; bound to `mergeCombinedSubjects`.
+7. **Gender** — `Select` (All / Male / Female).
+8. **Live Selection Summary** — sticky card showing grade(s), streams, term, assessment, gender, total learners (computed from cached learner counts).
+9. **Quick Filters** — chip row: Current Grade, Whole School, Lower Primary (PP1–G3), Upper Primary (G4–G6), Junior School (G7–G9), Custom. Each updates `selectedGrades` + `selectedStreams` via existing setters.
+10. **Generate Report** — full-width green button, sticky on mobile (`sticky bottom-0`), validates, then calls the existing generation entrypoint.
 
-**Fix in `src/pages/FeesPage.tsx` (Add Payment dialog):**
-- After learner + term + year are chosen, query `fee_structures` rows for the learner's grade/term/year.
-- Render a **Fee Item** dropdown listing each component (Tuition, Transport, Lunch, etc.) with its `amount` shown.
-- On selection, auto-populate:
-  - `fee_type` = component name
-  - `amount_charged` = component amount (editable in case of partial waivers)
-- Keep "Custom item" as a fallback option.
-- Same change applies to the bulk/grade-level payment flow if present.
+### Performance
+- Single batched `learners` query: `select('grade, stream', { count: 'exact', head: false })` filtered by selected grades, then grouped client-side for stream cards and totals. Cached via React Query keyed on `[schoolId, selectedGrades]`.
+- Stream cards rendered only after grade selection (lazy).
+- No duplicate fetches — share queries with the existing page through React Query keys.
 
-No DB changes.
+### Mobile / a11y
+- All controls min 44 px tap target, `role` + `aria-pressed` on chips/cards, keyboard navigable (`tabIndex`, Enter/Space toggles).
+- Layout: single column on mobile, 2-col summary on tablet+, sticky generate button on mobile.
 
----
+### Visual tokens
+Uses existing PerformTrack tokens (`bg-primary`, `border-primary`, `text-primary-foreground`). No hardcoded colors. Soft shadows via `shadow-card`, rounded-xl cards, `transition-colors` for chips.
 
-## Phase 2 — Super Admin Analytics & Platform Monitoring
+### Analytics
+Log each generation through existing `logActivity({ action: 'report_generated', metadata: { type, grades, streams, term, assessment, gender, learnerCount, durationMs } })`.
 
-Realistic scope: build a real, useful module from the data we **already collect**, with hooks for future telemetry. We will not invent infrastructure metrics (API latency, server uptime, DB perf) that this app doesn't measure — those will be shown as "Not tracked yet" rather than faked.
+## Files touched
+- **New**: `src/components/reports/ReportSelectionPanel.tsx`
+- **Edited**: `src/pages/ReportsPage.tsx` — replace the current top selection block (~lines 600–900 visual JSX only) with `<ReportSelectionPanel ... />`. All hooks, queries, generation functions, render results table, PDF exports left intact.
 
-### 2.1 Data foundations (migration)
+## Database / logic guarantees
+No migrations. No table or column renames. No changes to `learners`, `streams`, `scores`, `learning_areas`, report generation, batch ZIP export, WhatsApp send, or PDF templates. Existing reports continue to generate identically.
 
-New table `public.user_activity_log` (super-admin readable):
-- `user_id`, `school_id`, `role`, `action` (e.g. `login`, `marks_entered`, `report_generated`, `sms_sent`, `learner_created`, `assessment_created`), `entity_type`, `entity_id`, `metadata jsonb`, `device`, `user_agent`, `created_at`.
-- Indexes on `school_id`, `created_at`, `action`.
-- RLS: super_admin full read; authenticated insert own rows; service_role all.
-- GRANTs included.
-
-New table `public.platform_alerts`:
-- `school_id`, `kind` (`inactive_14d`, `no_assessments_term`, `no_reports_term`, `low_sms_balance`, `failed_logins`), `severity`, `message`, `resolved_at`, `created_at`.
-- Super_admin read/write; service_role all.
-
-Lightweight client logger `src/lib/activity-log.ts` wired into:
-- `AuthContext` login success → `login`
-- Marks save (MarksEntryPage) → `marks_entered`
-- Report PDF generation → `report_generated`
-- SMS send (send-sms-v2 response) → `sms_sent`
-- Learner / assessment create
-
-(Existing tables `sms_logs`, `scores`, `learners`, `schools`, `report_delivery_log` already give us most counts; the activity log fills the login/session/DAU gap.)
-
-### 2.2 New Super Admin pages
-
-Route group under `/super-admin/analytics/*`, added to `AppSidebar` + `MorePage`.
-
-1. **`/super-admin/analytics`** — Overview KPIs
-   - Cards: Total Schools, Active 30d, Inactive, Total Users, DAU/WAU/MAU, Total Learners, Reports this month, Assessments this month, SMS this month.
-   - Each card shows period-over-period delta (↑/↓ %).
-   - "System Uptime" card labelled *Not tracked* with a tooltip.
-
-2. **`/super-admin/analytics/schools`** — School Activity Table
-   - Columns per spec (School, County, Type, Users, Last Activity, Logins, Assessments, Reports, SMS, Score, Status).
-   - Health-score engine (client-side calc using the documented formula).
-   - Color-coded status badges (Highly Active / Active / Needs Support / Inactive).
-   - Search, county filter, status filter, Export to Excel (xlsx) and PDF (jspdf-autotable).
-
-3. **`/super-admin/analytics/features`** — Feature Usage
-   - Bar chart: usage counts per module (from `user_activity_log.action`).
-   - Pie chart: share of total actions.
-   - Most/Least used, adoption rate (= schools using module / total schools).
-
-4. **`/super-admin/analytics/live`** — Real-Time Monitoring
-   - Supabase Realtime subscription on `user_activity_log` → live feed list ("Teacher X entered Grade 6 marks", etc.).
-   - Last 100 events, auto-scroll, action-type filter.
-
-5. **`/super-admin/analytics/communications`** — SMS Analytics
-   - Total Sent, Delivery success %, Failed, Cost (sum of `cost` column in `sms_logs` if present, else messages × default rate from `global_sms_config`).
-   - Top 10 schools by SMS, monthly trend line chart (Recharts).
-
-6. **`/super-admin/analytics/adoption`** — Adoption & Retention
-   - New schools this month, renewed (subscription updates), at-risk (expiring in 14d), churned (expired > 30d), user growth chart, subscription plan distribution.
-
-7. **`/super-admin/analytics/alerts`** — Alerts Center
-   - Lists `platform_alerts`, generated by a periodic check inside the page (and a button "Run checks now") that scans for inactive schools, no-assessments-this-term, low SMS balance, repeated failed logins.
-   - Resolve / dismiss actions.
-
-8. **`/super-admin/analytics/insights`** — AI Insights
-   - Edge function `super-admin-insights` calls Lovable AI Gateway with aggregated stats and returns 3-6 plain-English insights.
-   - Cached for 1 hour.
-
-9. **`/super-admin/analytics/reports`** — Reports Center
-   - Pre-built reports (School Activity, User Activity, SMS Usage, Assessment, Feature Usage, Subscription Performance).
-   - Export PDF / Excel / CSV using existing libs.
-
-### 2.3 Out of scope / honest limits
-- **Infrastructure metrics** (API latency, server uptime, DB perf, error rates): a SaaS frontend cannot observe these. Page shows "Connect APM provider" placeholder rather than fabricated numbers.
-- **Session duration / logout time**: only captured if user explicitly logs out; otherwise approximated from last activity.
-- **IP address / device fingerprint**: captured best-effort from `navigator.userAgent`; IP requires an edge function so we add a tiny `log-activity` function to stamp IP server-side.
-
-### 2.4 Tech stack used
-- Existing: React + TS, Tailwind, shadcn, Recharts, Supabase, jsPDF, xlsx.
-- No new heavy dependencies.
-
----
-
-## Delivery order
-1. Phase 1 fee autofill (small, ships immediately).
-2. Phase 2.1 migration (activity log + alerts tables).
-3. Phase 2.2 pages in the order listed, each shippable on its own.
-
-Confirm and I'll start with Phase 1 + the migration, then iterate page-by-page.
+## Out of scope (will not change)
+- Report generation algorithms, ranking, qualification rules.
+- PDF templates and styling.
+- WhatsApp/SMS flows beyond linking the already-working `{balance}` token.
+- KPSEA/KJSEA grading logic.
