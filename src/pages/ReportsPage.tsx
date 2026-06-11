@@ -30,6 +30,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { ReportSelectionPanel } from '@/components/reports/ReportSelectionPanel';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
@@ -1109,133 +1110,44 @@ export default function ReportsPage() {
         />
 
 
-        <div className="flex gap-4 flex-wrap no-print items-end">
-          <div className="space-y-1">
-            <Label className="text-xs">Report Type</Label>
-            <Select value={viewMode} onValueChange={v => { setViewMode(v as any); if (v === 'school') setSelectedGrades(availableGrades); }}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {viewModeOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
+        <ReportSelectionPanel
+          availableGrades={availableGrades}
+          dbStreams={dbStreams}
+          viewMode={viewMode}
+          setViewMode={(v) => setViewMode(v)}
+          selectedGrades={selectedGrades}
+          setSelectedGrades={setSelectedGrades}
+          selectedStreams={selectedStreams}
+          setSelectedStreams={setSelectedStreams as any}
+          selectedTerm={selectedTerm}
+          setSelectedTerm={setSelectedTerm}
+          selectedAssessment={selectedAssessment}
+          setSelectedAssessment={setSelectedAssessment}
+          selectedGenderFilter={selectedGenderFilter}
+          setSelectedGenderFilter={setSelectedGenderFilter}
+          mergeCombinedSubjects={mergeCombinedSubjects}
+          setMergeCombinedSubjects={(v) => {
+            setMergeCombinedSubjects(v);
+            const at = isMerged ? 'end_term' : selectedAssessment;
+            if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
+          }}
+          mergedReportsOn={mergedReportsOn}
+          schoolName={schoolName}
+          showCombineToggle={!isSchoolWide && selectedGrades.length <= 1}
+          learnerCount={learners.length}
+          isAdminOrHead={role === 'admin' || role === 'headteacher'}
+        />
+
+        {viewMode === 'individual' && (
+          <div className="space-y-1 no-print max-w-md">
+            <Label className="text-xs">Learner</Label>
+            <Select value={selectedLearner || ''} onValueChange={setSelectedLearner}>
+              <SelectTrigger className="h-11"><SelectValue placeholder="Select learner" /></SelectTrigger>
+              <SelectContent>{learners.map(l => <SelectItem key={l.id} value={l.id}>{l.full_name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+        )}
 
-          {!isSchoolWide && (
-            <>
-              {(role === 'admin' || role === 'headteacher') && viewMode === 'class' ? (
-                <div className="space-y-1">
-                  <Label className="text-xs">Grades (select multiple to combine)</Label>
-                  <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-w-[200px]">
-                    {availableGrades.map(g => (
-                      <label key={g} className="flex items-center gap-1.5 text-sm">
-                        <Checkbox
-                          checked={selectedGrades.includes(g)}
-                          onCheckedChange={() => toggleGradeSelection(g)}
-                        />
-                        G{g}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <Label className="text-xs">Grade</Label>
-                  <Select value={selectedGrade} onValueChange={v => setSelectedGrades([v])}>
-                    <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>{availableGrades.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label className="text-xs">Stream(s)</Label>
-                {(role === 'admin' || role === 'headteacher') ? (
-                  <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background min-w-[160px]">
-                    {dbStreams.map(s => (
-                      <label key={s} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={selectedStreams.includes(s)}
-                          onCheckedChange={() => {
-                            setSelectedStreams(prev => {
-                              if (prev.includes(s)) {
-                                const next = prev.filter(x => x !== s);
-                                return next.length > 0 ? next : prev;
-                              }
-                              return [...prev, s];
-                            });
-                          }}
-                        />
-                        {s}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <Select value={selectedStream} onValueChange={v => setSelectedStreams([v])}>
-                    <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>{dbStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                  </Select>
-                )}
-              </div>
-            </>
-          )}
-
-          <div className="space-y-1">
-            <Label className="text-xs">Term</Label>
-            <Select value={String(selectedTerm)} onValueChange={v => setSelectedTerm(Number(v))}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{TERMS.map(t => <SelectItem key={t} value={String(t)}>Term {t}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Assessment</Label>
-            <Select value={selectedAssessment} onValueChange={v => setSelectedAssessment(v as AssessmentType | 'merged')}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ASSESSMENT_TYPES.map(at => <SelectItem key={at} value={at}>{ASSESSMENT_TYPE_LABELS[at]}</SelectItem>)}
-                {mergedReportsOn && <SelectItem value="merged">Combined (Opener + Mid + End)</SelectItem>}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {!isSchoolWide && selectedGrades.length <= 1 && (
-            <div className="space-y-1">
-              <Label className="text-xs">Combine related subjects</Label>
-              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-background">
-                <Switch
-                  checked={mergeCombinedSubjects}
-                  onCheckedChange={(v) => {
-                    setMergeCombinedSubjects(v);
-                    const at = isMerged ? 'end_term' : selectedAssessment;
-                    if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
-                  }}
-                />
-                <span className="text-xs text-muted-foreground">{mergeCombinedSubjects ? 'Merged' : 'Separate'}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <Label className="text-xs">Gender</Label>
-            <Select value={selectedGenderFilter} onValueChange={v => setSelectedGenderFilter(v as any)}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {viewMode === 'individual' && (
-            <div className="space-y-1">
-              <Label className="text-xs">Learner</Label>
-              <Select value={selectedLearner || ''} onValueChange={setSelectedLearner}>
-                <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select learner" /></SelectTrigger>
-                <SelectContent>{learners.map(l => <SelectItem key={l.id} value={l.id}>{l.full_name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
 
         <div ref={reportRef}>
           {viewMode === 'individual' ? (
