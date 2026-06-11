@@ -30,6 +30,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { ReportSelectionPanel } from '@/components/reports/ReportSelectionPanel';
 
 export default function ReportsPage() {
   const { user, role, profile, schoolId } = useAuth();
