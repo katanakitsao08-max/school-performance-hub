@@ -121,6 +121,28 @@ export default function ParentCommunicationPage() {
     return learners.filter(hasAnyPhone);
   }, [learners, mode, individual]);
 
+  const candidateIds = useMemo(() => candidateRecipients.map(r => r.id), [candidateRecipients]);
+
+  // Fee balances per learner (cumulative: sum across all fee_records, voids excluded).
+  // Queried on candidate set so we can filter zero-balance learners out of `recipients`.
+  const { data: feeBalances = {} } = useQuery({
+    queryKey: ['comm-fees', schoolId, candidateIds.join(',')],
+    queryFn: async () => {
+      if (!candidateIds.length) return {} as Record<string, number>;
+      const { data } = await supabase.from('fee_records')
+        .select('learner_id, amount_charged, amount_paid, voided_at')
+        .eq('school_id', schoolId!).in('learner_id', candidateIds);
+      const map: Record<string, number> = {};
+      for (const r of (data || []) as any[]) {
+        if (r.voided_at) continue;
+        map[r.learner_id] = (map[r.learner_id] || 0) + (Number(r.amount_charged || 0) - Number(r.amount_paid || 0));
+      }
+      return map;
+    },
+    enabled: template === 'fees' && candidateIds.length > 0,
+    staleTime: 0, // always recompute before send
+  });
+
   const recipients = useMemo(
     () => {
       const base = candidateRecipients.filter(l => !excludedIds.has(l.id));
@@ -140,24 +162,6 @@ export default function ParentCommunicationPage() {
   };
 
   const recipientIds = useMemo(() => recipients.map(r => r.id), [recipients]);
-
-  // Fee balances per learner (current year, all terms) — used for {balance}
-  const { data: feeBalances = {} } = useQuery({
-    queryKey: ['comm-fees', schoolId, recipientIds.join(',')],
-    queryFn: async () => {
-      if (!recipientIds.length) return {} as Record<string, number>;
-      const { data } = await supabase.from('fee_records')
-        .select('learner_id, amount_charged, amount_paid, voided_at')
-        .eq('school_id', schoolId!).in('learner_id', recipientIds);
-      const map: Record<string, number> = {};
-      for (const r of (data || []) as any[]) {
-        if (r.voided_at) continue;
-        map[r.learner_id] = (map[r.learner_id] || 0) + (Number(r.amount_charged || 0) - Number(r.amount_paid || 0));
-      }
-      return map;
-    },
-    enabled: template === 'fees' && recipientIds.length > 0,
-  });
 
   // Results per learner — used for {avg} {grade} {total} {points} {rank}
   const resultsGrade = mode === 'class' ? grade : (recipients[0]?.grade || '');
