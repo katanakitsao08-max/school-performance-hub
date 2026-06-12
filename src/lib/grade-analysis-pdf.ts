@@ -75,7 +75,7 @@ export async function generateGradeAnalysisPDF(
   // ============= LEARNER SUMMARY =============
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  const summary = [
+  const summaryPL = [
     `Total Learners: ${analysis.totalEntries}`,
     `Male: ${analysis.totalM}`,
     `Female: ${analysis.totalF}`,
