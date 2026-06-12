@@ -75,13 +75,13 @@ export async function generateGradeAnalysisPDF(
   // ============= LEARNER SUMMARY =============
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  const summary = [
+  const learnerSummary = [
     `Total Learners: ${analysis.totalEntries}`,
     `Male: ${analysis.totalM}`,
     `Female: ${analysis.totalF}`,
     `Stream(s): ${meta.streamLabel}`,
   ];
-  doc.text(summary.join('   |   '), margin, y);
+  doc.text(learnerSummary.join('   |   '), margin, y);
   y += 5;
 
   // ============= SUBJECT TABLE =============
@@ -154,8 +154,52 @@ export async function generateGradeAnalysisPDF(
   ];
   classLines.forEach((t, i) => doc.text(doc.splitTextToSize(t, colW - 4), margin + 2, boxTop + 10 + i * 5));
 
+  // ============= PERFORMANCE LEVEL DISTRIBUTION =============
+  const plTop = boxTop + 38;
+  const classRoll = analysis.totalEntries;
+  const dist = analysis.performanceLevelDistribution;
+  const tally = analysis.performanceLevelTotal;
+  const pct = (n: number) => (classRoll > 0 ? `${((n / classRoll) * 100).toFixed(1)}%` : '0%');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(22, 101, 52);
+  doc.text('PERFORMANCE LEVEL DISTRIBUTION', margin, plTop);
+  doc.setTextColor(0);
+
+  autoTable(doc, {
+    startY: plTop + 2,
+    head: [['Metric', 'Total Roll', ...SUB_LEVELS]],
+    body: [
+      ['Count', classRoll, ...SUB_LEVELS.map(lv => dist[lv])],
+      ['%', '100%', ...SUB_LEVELS.map(lv => pct(dist[lv]))],
+    ],
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7, halign: 'center', cellPadding: 1.2 },
+    headStyles: { fillColor: [22, 101, 52], textColor: 255, fontSize: 7, halign: 'center', fontStyle: 'bold' },
+    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+  });
+  let plY = (doc as any).lastAutoTable?.finalY ?? plTop + 12;
+  const tallyOk = tally === classRoll;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(tallyOk ? 22 : 200, tallyOk ? 101 : 0, tallyOk ? 52 : 0);
+  doc.text(`Performance Level Tally: ${tally} / ${classRoll} ${tallyOk ? 'OK' : 'MISMATCH'}`, margin, plY + 4);
+  doc.setTextColor(0);
+  const g = analysis.performanceLevelGroups;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const summary = [
+    `Below Expectation (BE1+BE2): ${g.belowExpectation}`,
+    `Approaching (AE1+AE2): ${g.approachingExpectation}`,
+    `Meeting (ME1+ME2): ${g.meetingExpectation}`,
+    `Exceeding (EE1+EE2): ${g.exceedingExpectation}`,
+  ];
+  doc.text(summary.join('   |   '), margin, plY + 9);
+  plY += 12;
+
   // AI Insights
-  const aiTop = boxTop + 38;
+  const aiTop = plY + 2;
   doc.setFillColor(252, 248, 240);
   doc.rect(margin, aiTop, colW, 35, 'F');
   doc.setDrawColor(180, 120, 30);

@@ -63,6 +63,15 @@ export interface GradeAnalysisReport {
   totalEntries: number;
   totalM: number;
   totalF: number;
+  /** Per-learner overall performance level distribution (each learner counted once). */
+  performanceLevelDistribution: Record<CBCSubLevel, number>;
+  performanceLevelTotal: number;
+  performanceLevelGroups: {
+    belowExpectation: number;       // BE1 + BE2
+    approachingExpectation: number; // AE1 + AE2
+    meetingExpectation: number;     // ME1 + ME2
+    exceedingExpectation: number;   // EE1 + EE2
+  };
   insights: {
     highestBand: string;
     genderNote: string;
@@ -161,7 +170,29 @@ export function computeGradeAnalysis(
     ? `Reinforce ${ranked[ranked.length - 1]?.subjectName || 'weak areas'} through targeted remedial sessions and peer learning.`
     : `Urgent intervention required. Prioritise remediation in ${ranked[ranked.length - 1]?.subjectName || 'low-performing subjects'} and engage parents.`;
 
-  // Roster-based learner counts (count learners enrolled in scope, NOT score rows)
+  // Per-learner overall performance level: average each learner's per-subject points,
+  // then derive their band. Only learners with at least one non-zero score are counted.
+  const perfDist = emptyDist();
+  let perfTotal = 0;
+  learners.forEach(l => {
+    let pts = 0, n = 0;
+    subjects.forEach((sub: any) => {
+      const sc = scores.find((s: any) => s.learner_id === l.id && s.learning_area_id === sub.id);
+      if (sc && Number(sc.score) > 0) {
+        pts += getSubLevelPoints(getSubLevel(Number(sc.score), Number(sub.max_score || 100)));
+        n++;
+      }
+    });
+    if (n > 0) {
+      const avg = pts / n;
+      const band = getMeanGradeLabel(avg) as CBCSubLevel;
+      if (perfDist[band] !== undefined) {
+        perfDist[band]++;
+        perfTotal++;
+      }
+    }
+  });
+
   return {
     subjects: subjectAnalyses,
     overallDistribution: overallDist,
@@ -173,6 +204,14 @@ export function computeGradeAnalysis(
     totalEntries: learners.length,
     totalM: learners.filter(l => learnerGender[l.id] === 'M').length,
     totalF: learners.filter(l => learnerGender[l.id] === 'F').length,
+    performanceLevelDistribution: perfDist,
+    performanceLevelTotal: perfTotal,
+    performanceLevelGroups: {
+      belowExpectation: perfDist.BE1 + perfDist.BE2,
+      approachingExpectation: perfDist.AE1 + perfDist.AE2,
+      meetingExpectation: perfDist.ME1 + perfDist.ME2,
+      exceedingExpectation: perfDist.EE1 + perfDist.EE2,
+    },
     insights: { highestBand, genderNote, overallComment, bestSubject, weakestSubject, recommendation },
   };
 }

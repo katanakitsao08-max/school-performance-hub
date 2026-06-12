@@ -18,6 +18,7 @@ import { FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GradeAnalysisTable } from '@/components/GradeAnalysisTable';
 import { GradeAnalysisInsights } from '@/components/GradeAnalysisInsights';
+import { PerformanceLevelDistribution } from '@/components/PerformanceLevelDistribution';
 import { toast } from 'sonner';
 import { fetchAllPaged } from '@/lib/fetch-all';
 
@@ -284,6 +285,11 @@ export default function GradeAnalysisPage() {
             <GradeAnalysisTable analysis={analysis} />
           </CardContent>
         </Card>
+
+        {/* Performance Level Distribution */}
+        {analysis.subjects.length > 0 && (
+          <PerformanceLevelDistribution analysis={analysis} classRoll={learners.length} />
+        )}
 
         {/* Insights */}
         {analysis.subjects.length > 0 && <GradeAnalysisInsights analysis={analysis} />}
