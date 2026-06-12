@@ -25,7 +25,7 @@ type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
 const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; body: string }> = {
   fees: {
     label: 'Fee Reminder',
-    body: 'Dear {parent}, this is a reminder that {name} has an outstanding fee balance of KES {balance}. Kindly clear at your earliest convenience. Thank you.',
+    body: 'Dear Parent, this is a reminder that {name} has an outstanding fee balance of KES {balance}. Kindly clear it at your earliest convenience. Thank you.',
   },
   results: {
     label: 'Results Notice',
@@ -122,8 +122,15 @@ export default function ParentCommunicationPage() {
   }, [learners, mode, individual]);
 
   const recipients = useMemo(
-    () => candidateRecipients.filter(l => !excludedIds.has(l.id)),
-    [candidateRecipients, excludedIds]
+    () => {
+      const base = candidateRecipients.filter(l => !excludedIds.has(l.id));
+      // Fee reminders: exclude learners whose cumulative outstanding balance is <= 0.
+      if (template === 'fees') {
+        return base.filter(l => (feeBalances[l.id] ?? 0) > 0);
+      }
+      return base;
+    },
+    [candidateRecipients, excludedIds, template, feeBalances]
   );
 
   const toggleExcluded = (id: string) => {
