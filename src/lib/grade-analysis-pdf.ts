@@ -75,13 +75,13 @@ export async function generateGradeAnalysisPDF(
   // ============= LEARNER SUMMARY =============
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  const summaryPL = [
+  const learnerSummary = [
     `Total Learners: ${analysis.totalEntries}`,
     `Male: ${analysis.totalM}`,
     `Female: ${analysis.totalF}`,
     `Stream(s): ${meta.streamLabel}`,
   ];
-  doc.text(summary.join('   |   '), margin, y);
+  doc.text(learnerSummary.join('   |   '), margin, y);
   y += 5;
 
   // ============= SUBJECT TABLE =============
