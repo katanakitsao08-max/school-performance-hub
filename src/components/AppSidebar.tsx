@@ -58,6 +58,7 @@ const adminSections: NavSection[] = [
     items: [
       { title: "Learning Areas", url: "/learning-areas", icon: BookOpen },
       { title: "Grades", url: "/grades", icon: GraduationCap },
+      { title: "Classes", url: "/classes", icon: Columns },
       { title: "Streams", url: "/streams", icon: Columns },
       { title: "Strands", url: "/strands", icon: Layers },
       { title: "Learners", url: "/learners", icon: GraduationCap },
