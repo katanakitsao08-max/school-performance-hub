@@ -326,8 +326,46 @@ export type Database = {
         }
         Relationships: []
       }
+      fee_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          after: Json | null
+          before: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          school_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          school_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          school_id?: string
+        }
+        Relationships: []
+      }
       fee_records: {
         Row: {
+          allocation_mode: string | null
+          allocation_parent_id: string | null
           amount_charged: number
           amount_paid: number
           created_at: string
@@ -336,12 +374,14 @@ export type Database = {
           id: string
           learner_id: string
           mpesa_reference: string | null
+          payer_phone: string | null
           payment_date: string | null
           payment_method: string | null
           receipt_number: string | null
           recorded_by: string
           school_id: string | null
           term: number
+          transaction_type: string
           updated_at: string
           void_reason: string | null
           voided_at: string | null
@@ -349,6 +389,8 @@ export type Database = {
           year: number
         }
         Insert: {
+          allocation_mode?: string | null
+          allocation_parent_id?: string | null
           amount_charged?: number
           amount_paid?: number
           created_at?: string
@@ -357,12 +399,14 @@ export type Database = {
           id?: string
           learner_id: string
           mpesa_reference?: string | null
+          payer_phone?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_number?: string | null
           recorded_by: string
           school_id?: string | null
           term: number
+          transaction_type?: string
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
@@ -370,6 +414,8 @@ export type Database = {
           year?: number
         }
         Update: {
+          allocation_mode?: string | null
+          allocation_parent_id?: string | null
           amount_charged?: number
           amount_paid?: number
           created_at?: string
@@ -378,12 +424,14 @@ export type Database = {
           id?: string
           learner_id?: string
           mpesa_reference?: string | null
+          payer_phone?: string | null
           payment_date?: string | null
           payment_method?: string | null
           receipt_number?: string | null
           recorded_by?: string
           school_id?: string | null
           term?: number
+          transaction_type?: string
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
@@ -391,6 +439,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fee_records_allocation_parent_id_fkey"
+            columns: ["allocation_parent_id"]
+            isOneToOne: false
+            referencedRelation: "fee_records"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fee_records_learner_id_fkey"
             columns: ["learner_id"]
