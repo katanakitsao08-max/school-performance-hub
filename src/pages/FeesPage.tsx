@@ -25,6 +25,10 @@ import {
   exportCollectionReportXLSX, type CollectionReportRow,
 } from '@/lib/fee-pdf';
 import { buildWaMeLink, normalizeWhatsAppPhone } from '@/lib/wa-link';
+import LearnerAccountsTab from '@/components/fees/LearnerAccountsTab';
+import RecordPaymentTab from '@/components/fees/RecordPaymentTab';
+import FinanceDashboardTab from '@/components/fees/FinanceDashboardTab';
+import { BarChart3, CreditCard, UserCheck } from 'lucide-react';
 import { z } from 'zod';
 
 const FEE_TYPES = ['tuition', 'transport', 'lunch', 'boarding', 'activity', 'uniform', 'books', 'other'];
@@ -58,7 +62,8 @@ export default function FeesPage() {
   const currentYear = new Date().getFullYear();
   const grades = useSchoolGrades();
 
-  const [tab, setTab] = useState('records');
+  const [tab, setTab] = useState('accounts');
+  const [paymentLearnerId, setPaymentLearnerId] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState('all');
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
@@ -616,13 +621,43 @@ export default function FeesPage() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-5 w-full">
-            <TabsTrigger value="records" className="text-xs"><Receipt className="h-3.5 w-3.5 mr-1" />Records</TabsTrigger>
-            <TabsTrigger value="structures" className="text-xs"><Layers className="h-3.5 w-3.5 mr-1" />Structures</TabsTrigger>
-            <TabsTrigger value="bulk" className="text-xs"><Users className="h-3.5 w-3.5 mr-1" />Bulk Bill</TabsTrigger>
-            <TabsTrigger value="defaulters" className="text-xs"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Defaulters</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs"><FileDown className="h-3.5 w-3.5 mr-1" />Reports</TabsTrigger>
+          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
+            <TabsTrigger value="accounts" className="text-[10px] md:text-xs"><UserCheck className="h-3 w-3 mr-1" />Accounts</TabsTrigger>
+            <TabsTrigger value="payment" className="text-[10px] md:text-xs"><CreditCard className="h-3 w-3 mr-1" />Pay</TabsTrigger>
+            <TabsTrigger value="dashboard" className="text-[10px] md:text-xs"><BarChart3 className="h-3 w-3 mr-1" />Finance</TabsTrigger>
+            <TabsTrigger value="records" className="text-[10px] md:text-xs"><Receipt className="h-3 w-3 mr-1" />Records</TabsTrigger>
+            <TabsTrigger value="structures" className="text-[10px] md:text-xs"><Layers className="h-3 w-3 mr-1" />Structures</TabsTrigger>
+            <TabsTrigger value="bulk" className="text-[10px] md:text-xs"><Users className="h-3 w-3 mr-1" />Bulk Bill</TabsTrigger>
+            <TabsTrigger value="defaulters" className="text-[10px] md:text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Defaulters</TabsTrigger>
+            <TabsTrigger value="reports" className="text-[10px] md:text-xs"><FileDown className="h-3 w-3 mr-1" />Reports</TabsTrigger>
           </TabsList>
+
+          {/* ACCOUNTS TAB */}
+          <TabsContent value="accounts" className="space-y-3">
+            <LearnerAccountsTab
+              schoolId={schoolId!}
+              selectedGrade={selectedGrade}
+              schoolName={schoolMeta.name}
+              onRecordPayment={(id) => { setPaymentLearnerId(id); setTab('payment'); }}
+              onStatement={printStatement}
+            />
+          </TabsContent>
+
+          {/* RECORD PAYMENT TAB */}
+          <TabsContent value="payment" className="space-y-3">
+            <RecordPaymentTab
+              schoolId={schoolId!}
+              userId={user!.id}
+              schoolName={schoolMeta.name}
+              preselectLearnerId={paymentLearnerId}
+              onAfterPayment={(rec) => printReceipt(rec)}
+            />
+          </TabsContent>
+
+          {/* FINANCE DASHBOARD TAB */}
+          <TabsContent value="dashboard" className="space-y-3">
+            <FinanceDashboardTab schoolId={schoolId!} year={Number(selectedYear)} term={Number(selectedTerm)} />
+          </TabsContent>
 
           {/* RECORDS TAB */}
           <TabsContent value="records" className="space-y-3">
