@@ -1,50 +1,97 @@
-# Reports Module — UI/UX Redesign Plan
+# Fees Module Enhancement Plan
 
-## Already shipped this turn
-- **Fee receipt** now merges `fee_structures` with `fee_records`: every charged component appears with its amount, the payment received, and the per-component term balance — even if it has not been paid against yet. Overall outstanding balance and term balance remain at the bottom of the PDF.
-- **Parent fee reminder** in Parent Communication already auto-fills each learner's outstanding balance via the `{balance}` token (per-learner SMS), pulled live from `fee_records`. No change needed.
+This is a large upgrade scoped strictly to the Fees Module. No other modules are touched. The existing `fee_records` and `fee_structures` tables remain the source of truth — we add minimal columns and new UI on top, so existing data continues to work.
 
-## Reports redesign — scope
-Rebuild only the **selection/configuration panel** of `src/pages/ReportsPage.tsx`. The data hooks, generation logic, PDF/Excel exports, batch flows, WhatsApp send — all untouched. Same state variables (`selectedGrades`, `selectedStreams`, `selectedTerm`, `selectedAssessment`, `selectedGenderFilter`, `mergeCombinedSubjects`, `viewMode`) just rendered through a new mobile-first UI.
+## 1. Database (small additive migration only)
 
-### New component: `src/components/reports/ReportSelectionPanel.tsx`
-Receives current state + setters as props. Sections in order:
+Add to `public.fee_records` (all nullable, backward compatible):
+- `transaction_type text default 'charge'` — `charge | payment | adjustment | discount | waiver | refund`
+- `allocation_parent_id uuid` — links a payment row to the charge row it cleared (for auto-allocation history)
+- `allocation_mode text` — `auto | manual`
 
-1. **Report Type** — modern card-style `Select` mapping to existing `viewMode` (class / individual / school) plus virtual options (subject / gender / assessment) that toggle existing filters.
-2. **Grade Selection** — chip grid (`flex-wrap gap-2`), multi-select, PerformTrack-green when selected, instant update. Driven by `useSchoolGrades()`.
-3. **Classes / Streams** (label renamed) — card grid. Each card: grade-stream label + live learner count from a single `learners` count query keyed by selected grades. Selected = green border + check + light green bg. "Select All" checkbox top-right. Streams dynamically filtered to selected grades via existing `streams` table.
-4. **Term** — modern `Select`.
-5. **Assessment** — modern `Select` (Opener / Mid-term / End-term / Merged).
-6. **Combine Related Subjects** — `Switch` replacing existing checkbox; bound to `mergeCombinedSubjects`.
-7. **Gender** — `Select` (All / Male / Female).
-8. **Live Selection Summary** — sticky card showing grade(s), streams, term, assessment, gender, total learners (computed from cached learner counts).
-9. **Quick Filters** — chip row: Current Grade, Whole School, Lower Primary (PP1–G3), Upper Primary (G4–G6), Junior School (G7–G9), Custom. Each updates `selectedGrades` + `selectedStreams` via existing setters.
-10. **Generate Report** — full-width green button, sticky on mobile (`sticky bottom-0`), validates, then calls the existing generation entrypoint.
+Add `public.fee_audit_log` (id, school_id, actor_user_id, action, entity_type, entity_id, before jsonb, after jsonb, created_at) with RLS scoped to school admins.
 
-### Performance
-- Single batched `learners` query: `select('grade, stream', { count: 'exact', head: false })` filtered by selected grades, then grouped client-side for stream cards and totals. Cached via React Query keyed on `[schoolId, selectedGrades]`.
-- Stream cards rendered only after grade selection (lazy).
-- No duplicate fetches — share queries with the existing page through React Query keys.
+Receipt numbering already uses `generate_receipt_number` → format `RCP-YYYY-00001`. We'll keep that; UI label shows the same.
 
-### Mobile / a11y
-- All controls min 44 px tap target, `role` + `aria-pressed` on chips/cards, keyboard navigable (`tabIndex`, Enter/Space toggles).
-- Layout: single column on mobile, 2-col summary on tablet+, sticky generate button on mobile.
+No destructive changes. All current pages keep working.
 
-### Visual tokens
-Uses existing PerformTrack tokens (`bg-primary`, `border-primary`, `text-primary-foreground`). No hardcoded colors. Soft shadows via `shadow-card`, rounded-xl cards, `transition-colors` for chips.
+## 2. New page structure (under existing `/fees`)
 
-### Analytics
-Log each generation through existing `logActivity({ action: 'report_generated', metadata: { type, grades, streams, term, assessment, gender, learnerCount, durationMs } })`.
+Replace the current flat list with a tabbed layout inside `FeesPage.tsx`:
 
-## Files touched
-- **New**: `src/components/reports/ReportSelectionPanel.tsx`
-- **Edited**: `src/pages/ReportsPage.tsx` — replace the current top selection block (~lines 600–900 visual JSX only) with `<ReportSelectionPanel ... />`. All hooks, queries, generation functions, render results table, PDF exports left intact.
+```text
+Fees
+├─ Accounts        ← one row per learner (consolidated)
+├─ Record Payment  ← search learner, allocate, receipt
+├─ Fee Structures  ← CRUD by grade/stream/term/year (already partly exists)
+├─ Defaulters
+├─ Reports         ← collection/daily/defaulters/statements (PDF/XLSX/CSV)
+└─ Dashboard       ← finance KPIs + charts
+```
 
-## Database / logic guarantees
-No migrations. No table or column renames. No changes to `learners`, `streams`, `scores`, `learning_areas`, report generation, batch ZIP export, WhatsApp send, or PDF templates. Existing reports continue to generate identically.
+### Accounts tab
+- One card/row per active learner with: name, adm #, grade/stream, parent name, phone, alt phone, email, total charged, total paid, balance, status badge (Fully Paid / Partial / Unpaid).
+- Click → drawer with: fee items table (Item · Charged · Paid · Balance), ledger (Date · Description · Debit · Credit · Running Balance), quick actions (Record Payment, Statement PDF, Send SMS).
 
-## Out of scope (will not change)
-- Report generation algorithms, ranking, qualification rules.
-- PDF templates and styling.
-- WhatsApp/SMS flows beyond linking the already-working `{balance}` token.
-- KPSEA/KJSEA grading logic.
+### Record Payment
+- Search learner → shows outstanding balances per item.
+- Enter amount, method (Cash / M-Pesa / Bank / Cheque), reference, date.
+- Toggle Auto vs Manual allocation. Auto = FIFO across outstanding items (oldest first); Manual = per-item amount inputs.
+- On submit: insert payment row(s), update charges' `amount_paid`, generate receipt, optional auto-SMS confirmation.
+
+### Defaulters
+- Filter by grade/stream/min balance. Bulk-select → Send Reminder SMS. Export CSV/XLSX.
+
+### Finance Dashboard
+- KPIs: Total Charged, Collected, Outstanding, Collection Rate, # Defaulters, Today/Week/Month payments, SMS sent today.
+- Recharts: revenue line, collection trend, outstanding by class.
+
+## 3. Receipts & statements (extend existing `fee-pdf.ts`)
+- Receipt already includes school logo/name, receipt #, date, learner, class, method, breakdown, balance. Add: Payment Allocation Details section (which items this payment cleared and by how much). Actions: View / Download / Print / WhatsApp share link.
+- Statement already exists; add ledger column ordering and a Share button.
+
+## 4. SMS (uses existing `send-sms-v2` edge function + per-school provider)
+Three new templates resolved against the school's registered name:
+- Payment Confirmation (auto on payment, toggleable per school)
+- Fee Reminder (manual + bulk)
+- Full Clearance (auto when balance hits 0)
+
+Bulk SMS Center is reached from Defaulters and from Accounts (multi-select). All sends go through existing SMS credit system and logs to `sms_logs`.
+
+## 5. M-Pesa readiness
+Payment form already accepts `mpesa_reference`. We store transaction code, amount, date, payer phone (new optional column on the payment insert — reuse `mpesa_reference` + add `payer_phone` text in metadata-style by reusing an existing field; no schema bloat). Hook point for future Daraja callback already exists via the M-Pesa memory.
+
+## 6. Audit logs
+Every create/edit/payment/reversal/receipt-print/SMS call writes to `fee_audit_log` via a small `logFeeAction()` helper (mirrors existing `activity-log.ts`).
+
+## 7. Files touched
+
+New:
+- `supabase/migrations/<ts>_fees_module_upgrade.sql` — additive columns + audit table + grants/RLS
+- `src/pages/fees/AccountsTab.tsx`
+- `src/pages/fees/RecordPaymentTab.tsx`
+- `src/pages/fees/DefaultersTab.tsx`
+- `src/pages/fees/FinanceDashboardTab.tsx`
+- `src/pages/fees/FeeReportsTab.tsx`
+- `src/components/fees/LearnerAccountDrawer.tsx`
+- `src/components/fees/AllocationEditor.tsx`
+- `src/lib/fee-allocation.ts` (FIFO auto-allocator, pure fn + tests)
+- `src/lib/fee-audit.ts`
+
+Edited:
+- `src/pages/FeesPage.tsx` — convert to tabbed shell, keep current Fee Structures editor intact as one tab
+- `src/lib/fee-pdf.ts` — add allocation details section on receipt + Share helper
+
+Not touched: Reports, Parent portal, Grades, Streams, Classes, Marks, etc.
+
+## 8. Rollout order
+1. Migration (additive, safe).
+2. Accounts tab + drawer (read-only first).
+3. Record Payment with auto-allocation + receipt + audit + SMS confirmation.
+4. Defaulters + Bulk SMS.
+5. Finance Dashboard + Reports exports.
+
+## Confirmation needed
+- Proceed with the additive migration above (no breaking changes)?
+- Keep `RCP-YYYY-00001` receipt format (matches existing `generate_receipt_number`) instead of `RCPT-2025-000001`?
+- Auto-send Payment Confirmation SMS by default, with a per-school toggle in Settings?
