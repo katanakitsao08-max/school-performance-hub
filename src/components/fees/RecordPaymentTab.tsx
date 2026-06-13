@@ -48,7 +48,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
       if (!search.trim()) return [];
       const s = search.trim();
       const { data } = await supabase.from('learners')
-        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone, parent_email')
+        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone')
         .eq('school_id', schoolId).eq('is_active', true)
         .or(`full_name.ilike.%${s}%,admission_number.ilike.%${s}%`)
         .order('full_name').limit(15);
@@ -62,7 +62,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
     queryFn: async () => {
       if (!learnerId) return null;
       const { data } = await supabase.from('learners')
-        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone, parent_phone_2, parent_email')
+        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone, parent_phone_2')
         .eq('id', learnerId).maybeSingle();
       return data;
     },

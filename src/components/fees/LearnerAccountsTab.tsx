@@ -31,7 +31,7 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
     queryKey: ['accounts-learners', schoolId, selectedGrade],
     queryFn: async () => {
       let q = supabase.from('learners')
-        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone, parent_phone_2, parent_email')
+        .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone, parent_phone_2')
         .eq('school_id', schoolId).eq('is_active', true);
       if (selectedGrade !== 'all') q = q.eq('grade', selectedGrade);
       const { data } = await q.order('full_name');
@@ -163,8 +163,8 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                   {openLearner.learner.parent_phone_2 && (
                     <div className="flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" /> {openLearner.learner.parent_phone_2}</div>
                   )}
-                  {openLearner.learner.parent_email && (
-                    <div className="flex items-center gap-1 col-span-2"><Mail className="h-3 w-3 text-muted-foreground" /> {openLearner.learner.parent_email}</div>
+                  {openLearner.learner. && (
+                    <div className="flex items-center gap-1 col-span-2"><Mail className="h-3 w-3 text-muted-foreground" /> {openLearner.learner.}</div>
                   )}
                 </CardContent></Card>
 
