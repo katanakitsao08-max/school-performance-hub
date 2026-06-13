@@ -163,9 +163,6 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                   {openLearner.learner.parent_phone_2 && (
                     <div className="flex items-center gap-1"><Phone className="h-3 w-3 text-muted-foreground" /> {openLearner.learner.parent_phone_2}</div>
                   )}
-                  {openLearner.learner. && (
-                    <div className="flex items-center gap-1 col-span-2"><Mail className="h-3 w-3 text-muted-foreground" /> {openLearner.learner.}</div>
-                  )}
                 </CardContent></Card>
 
                 {/* Summary */}
