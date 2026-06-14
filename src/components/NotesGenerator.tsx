@@ -340,10 +340,10 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     writeTitle(notes.title, 16);
     writeText(`${grade} • ${subject} • ${difficulty.toUpperCase()}${groundedInKicd ? ' • KICD-grounded' : ''}`);
 
-    writeTitle('Learning Objectives'); writeList(notes.objectives);
     if (notes.keyVocabulary?.length) { writeTitle('Key Vocabulary'); writeVocab(notes.keyVocabulary); }
-    writeTitle('Introduction'); writeText(notes.introduction);
-    writeTitle('Main Content'); writeRich(notes.mainContent);
+    writeTitle('Notes');
+    if (notes.introduction) writeText(notes.introduction);
+    writeRich(notes.mainContent);
     writeTitle('Worked Examples'); writeList(notes.workedExamples);
     writeTitle('Class Activities'); writeList(notes.classActivities);
     if (notes.revisionSummary?.length) { writeTitle('Revision Summary'); writeList(notes.revisionSummary); }
