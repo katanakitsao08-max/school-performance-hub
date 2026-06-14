@@ -18,6 +18,7 @@ import { Send, AlertTriangle, MessageSquare, Eye } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { TERMS, getGradeForLevel, getGradePoints } from '@/lib/cbc-utils';
+import { isCharge } from '@/lib/fee-row-utils';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
 type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
@@ -130,11 +131,11 @@ export default function ParentCommunicationPage() {
     queryFn: async () => {
       if (!candidateIds.length) return {} as Record<string, number>;
       const { data } = await supabase.from('fee_records')
-        .select('learner_id, amount_charged, amount_paid, voided_at')
+        .select('learner_id, amount_charged, amount_paid, transaction_type, voided_at')
         .eq('school_id', schoolId!).in('learner_id', candidateIds);
       const map: Record<string, number> = {};
       for (const r of (data || []) as any[]) {
-        if (r.voided_at) continue;
+        if (r.voided_at || !isCharge(r)) continue;
         map[r.learner_id] = (map[r.learner_id] || 0) + (Number(r.amount_charged || 0) - Number(r.amount_paid || 0));
       }
       return map;

@@ -66,7 +66,7 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
       const paid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
       const balance = charged - paid;
       const status = charged === 0 ? 'No charges' : balance <= 0 ? 'Fully Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid';
-      return { learner: l, rows, charged, paid, balance, status };
+      return { learner: l, rows, chargeRows, charged, paid, balance, status };
     });
   }, [learners, allRecords]);
 
@@ -181,9 +181,9 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                     <TableHead className="text-xs">Item</TableHead><TableHead className="text-xs">Term</TableHead>
                     <TableHead className="text-xs text-right">Charged</TableHead><TableHead className="text-xs text-right">Paid</TableHead><TableHead className="text-xs text-right">Balance</TableHead>
                   </TableRow></TableHeader><TableBody>
-                    {openLearner.rows.length === 0 ? (
+                    {openLearner.chargeRows.length === 0 ? (
                       <TableRow><TableCell colSpan={5} className="text-center text-xs py-4 text-muted-foreground">No fee items yet</TableCell></TableRow>
-                    ) : openLearner.rows.map((r: any) => {
+                    ) : openLearner.chargeRows.map((r: any) => {
                       const bal = Number(r.amount_charged) - Number(r.amount_paid);
                       return (
                         <TableRow key={r.id}>
@@ -208,6 +208,7 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                     {(() => {
                       let running = 0;
                       const sorted = [...openLearner.rows].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                      const hasPaymentLedgerRows = sorted.some(isPaymentLedger);
                       const ledger: any[] = [];
                       sorted.forEach((r: any) => {
                         if (isPaymentLedger(r)) {
@@ -219,7 +220,7 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                             ledger.push({ date: new Date(r.created_at).toLocaleDateString(), desc: `Charge: ${r.fee_type} (T${r.term}/${r.year})`, debit: Number(r.amount_charged), credit: 0, running });
                           }
                           // Legacy combined rows (charge + payment on same row)
-                          if (Number(r.amount_paid) > 0 && Number(r.amount_charged) > 0 && r.payment_date) {
+                          if (!hasPaymentLedgerRows && Number(r.amount_paid) > 0 && Number(r.amount_charged) > 0 && r.payment_date) {
                             running -= Number(r.amount_paid);
                             ledger.push({ date: new Date(r.payment_date).toLocaleDateString(), desc: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`, debit: 0, credit: Number(r.amount_paid), running });
                           }

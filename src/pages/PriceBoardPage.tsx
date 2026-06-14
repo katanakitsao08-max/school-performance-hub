@@ -8,6 +8,7 @@ import { Wallet, TrendingUp, AlertTriangle, Building2, Crown } from 'lucide-reac
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { fetchAllPaged } from '@/lib/fetch-all';
+import { isCharge } from '@/lib/fee-row-utils';
 
 const fmt = (n: number) => `KES ${Number(n || 0).toLocaleString()}`;
 
@@ -37,9 +38,9 @@ export default function PriceBoardPage() {
     queryKey: ['priceboard-fees'],
     queryFn: async () => {
       const rows = await fetchAllPaged<any>(() =>
-        supabase.from('fee_records').select('school_id, amount_charged, amount_paid, voided_at')
+        supabase.from('fee_records').select('school_id, amount_charged, amount_paid, transaction_type, voided_at')
       );
-      return rows.filter(r => !r.voided_at);
+      return rows.filter(r => !r.voided_at && isCharge(r));
     },
   });
 

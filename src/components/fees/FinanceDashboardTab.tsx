@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, AlertTriangle, CheckCircle, Calendar, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
+import { isCharge, isCollectionReceiptRow, isPaymentLedger } from '@/lib/fee-row-utils';
 
 interface Props { schoolId: string; year: number; term: number; }
 
@@ -51,10 +51,7 @@ export default function FinanceDashboardTab({ schoolId, year, term }: Props) {
     const startWeek = new Date(now); startWeek.setDate(now.getDate() - 7);
     const startMonth = new Date(now); startMonth.setDate(now.getDate() - 30);
     // Use payment ledger rows (or legacy combined rows with both charge+paid+payment_date) as the canonical "collection" source
-    const collections = [
-      ...paymentRows,
-      ...chargeRows.filter(r => Number(r.amount_paid) > 0 && r.payment_date),
-    ];
+    const collections = live.filter(r => Number(r.amount_paid) > 0 && isCollectionReceiptRow(r));
     const sumIf = (since: Date) => collections.filter(r => new Date(r.payment_date || r.created_at) >= since).reduce((s, r) => s + Number(r.amount_paid), 0);
 
     // Monthly collection trend (this year) — Collected from collections only, Charged from charges only
