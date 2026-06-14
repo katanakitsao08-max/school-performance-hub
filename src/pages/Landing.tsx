@@ -521,6 +521,14 @@ export default function Landing() {
               <a href={`tel:${PHONE}`}>Talk to Us</a>
             </Button>
           </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <a href={`tel:${PHONE}`} className="inline-flex items-center gap-2 hover:text-foreground">
+              <Phone className="h-4 w-4 text-primary" /> {PHONE}
+            </a>
+            <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 hover:text-foreground">
+              <Mail className="h-4 w-4 text-primary" /> {EMAIL}
+            </a>
+          </div>
         </div>
       </section>
 
