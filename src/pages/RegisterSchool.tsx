@@ -27,10 +27,15 @@ export default function RegisterSchool() {
   const { data: plans = [] } = useQuery({
     queryKey: ['public-plans'],
     queryFn: async () => {
-      const { data } = await supabase.from('subscription_plans').select('id,name,price_monthly').eq('is_active', true).order('sort_order');
+      const { data } = await supabase.from('subscription_plans').select('id,name,price_monthly,price_term,price_annual,description').eq('is_active', true).order('sort_order');
       return data || [];
     },
   });
+
+  const selectedPlan: any = plans.find((p: any) => p.id === form.selected_plan_id);
+  const isPerLearner = selectedPlan && Number(selectedPlan.price_monthly || 0) === 0 && (Number(selectedPlan.price_term || 0) > 0 || Number(selectedPlan.price_annual || 0) > 0);
+  const termCost = isPerLearner ? Number(selectedPlan.price_term || 0) * (form.learners_count || 0) : 0;
+  const annualCost = isPerLearner ? Number(selectedPlan.price_annual || 0) * (form.learners_count || 0) : 0;
 
   const onChange = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
