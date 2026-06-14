@@ -74,10 +74,11 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
     queryFn: async () => {
       if (!learnerId) return [];
       const { data } = await supabase.from('fee_records')
-        .select('id, fee_type, amount_charged, amount_paid, created_at, term, year, description')
+        .select('id, fee_type, amount_charged, amount_paid, created_at, term, year, description, transaction_type')
         .eq('learner_id', learnerId).is('voided_at', null)
         .order('created_at', { ascending: true });
-      return data || [];
+      // Exclude payment ledger rows — they double-count amount_paid (which is already on the charge rows)
+      return (data || []).filter((r: any) => r.transaction_type !== 'payment');
     },
     enabled: !!learnerId,
   });
