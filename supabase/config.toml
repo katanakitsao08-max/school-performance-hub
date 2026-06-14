@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.mpesa-stk-callback]
 verify_jwt = false
+
+[functions.lock-expired-scores]
+verify_jwt = false
