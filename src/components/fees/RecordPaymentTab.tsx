@@ -169,7 +169,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
           : `Dear Parent,\n\nWe have received your payment of ${fmt(amt)} for ${learner.full_name}.\n\nReceipt No: ${receiptNumber}\n\nOutstanding Balance: ${fmt(Math.max(0, newBalance))}\n\nThank you.\n\n${schoolName} | PerformTrack.co.ke`;
         try {
           await supabase.functions.invoke('send-sms-v2', {
-            body: { school_id: schoolId, recipients: [{ phone: learner.parent_phone, learner_id: learnerId }], message: baseMsg, source: 'fee_payment' },
+            body: { school_id: schoolId, messages: [{ phone: learner.parent_phone, message: baseMsg, learner_id: learnerId }], source: 'fee_payment' },
           });
           await logFeeAudit({ schoolId, action: 'sms_sent', entityType: 'payment_confirmation', entityId: inserted.id });
         } catch {
