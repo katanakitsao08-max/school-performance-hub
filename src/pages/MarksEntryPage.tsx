@@ -745,9 +745,32 @@ export default function MarksEntryPage() {
                               }
                             };
                             const key = col.kind === 'single' ? col.subject.id : col.label;
+                            const meta = scoreMeta.get(`${learner.id}|${primary.id}`);
+                            const locked = !!meta?.locked;
                             return (
                               <TableCell key={key} className="p-0.5">
-                                {canEdit ? (
+                                {locked ? (
+                                  <div
+                                    className={`w-[60px] text-center mx-auto h-8 flex items-center justify-center gap-1 text-xs rounded border bg-muted/50 ${inputBorder}`}
+                                    title="Performance Locked (Editable period expired)"
+                                  >
+                                    <Lock className="h-3 w-3" />{val || '-'}
+                                    {isPrivileged && meta && (
+                                      <button
+                                        type="button"
+                                        className="ml-0.5 text-primary hover:opacity-80"
+                                        title="Admin override"
+                                        onClick={() => setOverride({
+                                          scoreId: meta.id,
+                                          learnerName: learner.full_name,
+                                          subjectName: primary.name,
+                                          currentScore: meta.row.score,
+                                          currentComment: meta.row.teacher_comment,
+                                        })}
+                                      ><Unlock className="h-3 w-3" /></button>
+                                    )}
+                                  </div>
+                                ) : canEdit ? (
                                   <Input
                                     type="number"
                                     min={0}
