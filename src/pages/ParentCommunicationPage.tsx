@@ -180,30 +180,46 @@ export default function ParentCommunicationPage() {
     enabled: template === 'results' && recipientGrades.length > 0,
   });
   const { data: resScores = [] } = useQuery({
-    queryKey: ['comm-scores', recipientIds.join(','), resTerm, resYear, resAssessment],
+    queryKey: ['comm-scores-all', recipientIds.join(','), resYear],
     queryFn: async () => {
       if (!recipientIds.length) return [];
-      const { data } = await supabase.from('scores').select('learner_id, learning_area_id, score')
-        .in('learner_id', recipientIds).eq('term', resTerm).eq('year', resYear).eq('assessment_type', resAssessment);
+      const { data } = await supabase.from('scores')
+        .select('learner_id, learning_area_id, score, term, assessment_type, created_at')
+        .in('learner_id', recipientIds).eq('year', resYear);
       return data || [];
     },
     enabled: template === 'results' && recipientIds.length > 0,
+    staleTime: 0,
   });
 
   const resultsByLearner = useMemo(() => {
-    // dedupe by (learner, subject) keep highest
-    const map = new Map<string, any>();
-    for (const s of resScores as any[]) {
-      const k = `${s.learner_id}::${s.learning_area_id}`;
-      const ex = map.get(k);
-      if (!ex || Number(s.score) > Number(ex.score)) map.set(k, s);
-    }
     const subjById: Record<string, any> = Object.fromEntries((resSubjects as any[]).map(s => [s.id, s]));
     const learnerById: Record<string, any> = Object.fromEntries(recipients.map((r: any) => [r.id, r]));
     const per: Record<string, { total: number; mean: number; grade: string; points: number; subjects: string }> = {};
+
     for (const id of recipientIds) {
       const learnerGrade = learnerById[id]?.grade || '';
-      const rows = Array.from(map.values()).filter((r: any) => r.learner_id === id && subjById[r.learning_area_id]);
+      const learnerScores = (resScores as any[]).filter(s => s.learner_id === id);
+
+      // Try the selected term/assessment first; if empty, fall back to the latest available
+      let filtered = learnerScores.filter(s => Number(s.term) === resTerm && s.assessment_type === resAssessment);
+      if (filtered.length === 0 && learnerScores.length > 0) {
+        const sorted = [...learnerScores].sort((a, b) => {
+          const ord: Record<string, number> = { opener: 1, mid_term: 2, end_term: 3 };
+          return (Number(b.term) - Number(a.term)) || ((ord[b.assessment_type] || 0) - (ord[a.assessment_type] || 0));
+        });
+        const t = sorted[0];
+        filtered = learnerScores.filter(s => Number(s.term) === Number(t.term) && s.assessment_type === t.assessment_type);
+      }
+
+      // Dedupe (learner, subject) — keep highest score
+      const dedup = new Map<string, any>();
+      for (const s of filtered) {
+        const ex = dedup.get(s.learning_area_id);
+        if (!ex || Number(s.score) > Number(ex.score)) dedup.set(s.learning_area_id, s);
+      }
+      const rows = Array.from(dedup.values()).filter((r: any) => subjById[r.learning_area_id]);
+
       const total = rows.reduce((s, r: any) => s + Number(r.score || 0), 0);
       const mean = rows.length ? total / rows.length : 0;
       const avgMax = rows.length
@@ -223,7 +239,7 @@ export default function ParentCommunicationPage() {
     const rankMap: Record<string, number> = {};
     ranked.forEach((id, i) => { rankMap[id] = i + 1; });
     return { per, rankMap, count: recipientIds.length };
-  }, [resScores, resSubjects, recipientIds, recipients]);
+  }, [resScores, resSubjects, recipientIds, recipients, resTerm, resAssessment]);
 
   const personalize = (tpl: string, l: any) => {
     const gradeStream = `${l.grade || ''}${l.stream ? ' ' + String(l.stream).toUpperCase() : ''}`.trim();
