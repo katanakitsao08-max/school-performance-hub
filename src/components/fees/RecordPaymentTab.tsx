@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { allocateFIFO, allocateManual, type OutstandingCharge } from '@/lib/fee-allocation';
 import { logFeeAudit } from '@/lib/fee-audit';
 import { buildWaMeLink, normalizeWhatsAppPhone } from '@/lib/wa-link';
+import { chargeTotals, isCharge } from '@/lib/fee-row-utils';
 
 interface Props {
   schoolId: string;
@@ -78,7 +79,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
         .eq('learner_id', learnerId).is('voided_at', null)
         .order('created_at', { ascending: true });
       // Exclude payment ledger rows — they double-count amount_paid (which is already on the charge rows)
-      return (data || []).filter((r: any) => r.transaction_type !== 'payment');
+      return (data || []).filter(isCharge);
     },
     enabled: !!learnerId,
   });
@@ -88,9 +89,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
     [charges]);
 
   const totals = useMemo(() => {
-    const charged = (charges as any[]).reduce((s, c) => s + Number(c.amount_charged), 0);
-    const paid = (charges as any[]).reduce((s, c) => s + Number(c.amount_paid), 0);
-    return { charged, paid, balance: charged - paid };
+    return chargeTotals(charges as any[]);
   }, [charges]);
 
   const plan = useMemo(() => {
