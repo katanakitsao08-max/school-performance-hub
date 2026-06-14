@@ -75,6 +75,8 @@ function classify(score: number) {
 // ---------- page ----------
 export default function SuperAdminAnalyticsPage() {
   const [tab, setTab] = useState('overview');
+  const queryClient = useQueryClient();
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Base data
   const { data: schools = [] } = useQuery({
