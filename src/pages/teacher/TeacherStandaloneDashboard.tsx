@@ -48,6 +48,7 @@ function gradeBand(pct: number, isJunior: boolean) {
 
 export default function TeacherStandaloneDashboard() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [klass, setKlass] = useState<Klass | null>(null);
   const [learners, setLearners] = useState<Learner[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
