@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.independent-learner-signup]
 verify_jwt = false
+
+[functions.mpesa-stk-callback]
+verify_jwt = false

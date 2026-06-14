@@ -70,6 +70,8 @@ const ClassTeacherPortal = lazy(() => import("./pages/ClassTeacherPortal"));
 const LmsPage = lazy(() => import("./pages/LmsPage"));
 const SuperAdminLmsPage = lazy(() => import("./pages/SuperAdminLmsPage"));
 const SuperAdminAnalyticsPage = lazy(() => import("./pages/SuperAdminAnalyticsPage"));
+const SchoolBillingPage = lazy(() => import("./pages/SchoolBillingPage"));
+const SuperAdminBillingPage = lazy(() => import("./pages/SuperAdminBillingPage"));
 
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -191,6 +193,8 @@ const App = () => (
                 <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
                 <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
                 <Route path="/price-board" element={<ProtectedRoute allowedRoles={['super_admin']}><PriceBoardPage /></ProtectedRoute>} />
+                <Route path="/admin/billing" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Billing"><SuperAdminBillingPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/billing" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Subscription"><SchoolBillingPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/curriculum-manager" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Curriculum Design Manager"><CurriculumDesignManagerPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/curriculum-library" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Curriculum Library"><CurriculumLibraryPage /></ErrorBoundary></ProtectedRoute>} />
