@@ -126,7 +126,7 @@ export default function SchoolBillingPage() {
                   <div className="flex justify-between"><span>Term</span><span className="font-semibold">{fmt(p.price_term)}</span></div>
                   <div className="flex justify-between"><span>Annual</span><span className="font-semibold">{fmt(p.price_annual)}</span></div>
                   <div className="pt-3 flex flex-col gap-2">
-                    <Button size="sm" className="w-full" onClick={() => openStk(p)}><Smartphone className="w-4 h-4 mr-1"/>Pay with M-Pesa</Button>
+                    <Button size="sm" className="w-full" disabled title="M-Pesa STK Push temporarily disabled"><Smartphone className="w-4 h-4 mr-1"/>M-Pesa (Coming Soon)</Button>
                     <Button size="sm" variant="outline" className="w-full" onClick={() => openManual(p)}><Upload className="w-4 h-4 mr-1"/>Manual Payment</Button>
                   </div>
                 </CardContent>
