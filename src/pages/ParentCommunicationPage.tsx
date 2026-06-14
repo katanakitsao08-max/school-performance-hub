@@ -163,15 +163,21 @@ export default function ParentCommunicationPage() {
 
   const recipientIds = useMemo(() => recipients.map(r => r.id), [recipients]);
 
-  // Results per learner — used for {avg} {grade} {total} {points} {rank}
-  const resultsGrade = mode === 'class' ? grade : (recipients[0]?.grade || '');
+  // Results per learner — fetch subjects across ALL recipient grades so multi-grade sends work
+  const recipientGrades = useMemo(
+    () => Array.from(new Set(recipients.map((r: any) => r.grade).filter(Boolean))),
+    [recipients]
+  );
   const { data: resSubjects = [] } = useQuery({
-    queryKey: ['comm-subjects', resultsGrade],
+    queryKey: ['comm-subjects', recipientGrades.join(',')],
     queryFn: async () => {
-      const { data } = await supabase.from('learning_areas').select('id, name, code, max_score, grade').eq('grade', resultsGrade);
+      if (!recipientGrades.length) return [];
+      const { data } = await supabase.from('learning_areas')
+        .select('id, name, code, max_score, grade')
+        .in('grade', recipientGrades);
       return data || [];
     },
-    enabled: template === 'results' && !!resultsGrade,
+    enabled: template === 'results' && recipientGrades.length > 0,
   });
   const { data: resScores = [] } = useQuery({
     queryKey: ['comm-scores', recipientIds.join(','), resTerm, resYear, resAssessment],
@@ -193,19 +199,21 @@ export default function ParentCommunicationPage() {
       if (!ex || Number(s.score) > Number(ex.score)) map.set(k, s);
     }
     const subjById: Record<string, any> = Object.fromEntries((resSubjects as any[]).map(s => [s.id, s]));
-    const avgMax = (resSubjects as any[]).length > 0
-      ? (resSubjects as any[]).reduce((s: number, sub: any) => s + Number(sub.max_score || 100), 0) / (resSubjects as any[]).length
-      : 100;
+    const learnerById: Record<string, any> = Object.fromEntries(recipients.map((r: any) => [r.id, r]));
     const per: Record<string, { total: number; mean: number; grade: string; points: number; subjects: string }> = {};
     for (const id of recipientIds) {
+      const learnerGrade = learnerById[id]?.grade || '';
       const rows = Array.from(map.values()).filter((r: any) => r.learner_id === id && subjById[r.learning_area_id]);
       const total = rows.reduce((s, r: any) => s + Number(r.score || 0), 0);
       const mean = rows.length ? total / rows.length : 0;
-      const g = rows.length ? getGradeForLevel(mean, avgMax, resultsGrade) : '-';
+      const avgMax = rows.length
+        ? rows.reduce((s, r: any) => s + Number(subjById[r.learning_area_id]?.max_score || 100), 0) / rows.length
+        : 100;
+      const g = rows.length ? getGradeForLevel(mean, avgMax, learnerGrade) : '-';
       const subjLines = rows.map((r: any) => {
         const sub = subjById[r.learning_area_id];
         const label = (sub?.code || sub?.name || '').toString().toUpperCase().slice(0, 12);
-        const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), resultsGrade);
+        const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), learnerGrade);
         return `${label}-${Math.round(Number(r.score || 0))}(${sg})`;
       }).join(', ');
       per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10), subjects: subjLines || '-' };
@@ -215,7 +223,7 @@ export default function ParentCommunicationPage() {
     const rankMap: Record<string, number> = {};
     ranked.forEach((id, i) => { rankMap[id] = i + 1; });
     return { per, rankMap, count: recipientIds.length };
-  }, [resScores, resSubjects, recipientIds, resultsGrade]);
+  }, [resScores, resSubjects, recipientIds, recipients]);
 
   const personalize = (tpl: string, l: any) => {
     const gradeStream = `${l.grade || ''}${l.stream ? ' ' + String(l.stream).toUpperCase() : ''}`.trim();
