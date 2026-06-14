@@ -257,11 +257,15 @@ export default function FeesPage() {
       toast({ title: 'No receipt', description: 'This record has no payment.', variant: 'destructive' });
       return;
     }
-    // Compute term + total balance for this learner, plus full breakdown
+    // Compute term + total balance for this learner, plus full breakdown.
+    // IMPORTANT: exclude pure payment-ledger rows from charged/paid sums —
+    // those rows are receipts; the FIFO allocator already incremented each
+    // charge's amount_paid, so summing both double-counts every payment.
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
     const allRows = (all || []) as any[];
-    const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
-    const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+    const chargeRows = allRows.filter(isCharge);
+    const termRows = chargeRows.filter(x => x.term === r.term && x.year === r.year);
+    const totalBal = chargeRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
 
     // Pull the full fee STRUCTURE so EVERY charged component appears on the
     // receipt — even ones the learner has not paid against yet.
