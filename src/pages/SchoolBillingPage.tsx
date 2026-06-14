@@ -72,11 +72,22 @@ export default function SchoolBillingPage() {
     },
   });
 
-  const plan = plans.find((p) => p.id === selectedPlan);
-  const amount = plan ? Number((plan as any)[`price_${cycle}`] || 0) : 0;
+  const { data: learnersCount = 0 } = useQuery({
+    queryKey: ['billing-learners-count', schoolId],
+    enabled: !!schoolId,
+    queryFn: async () => {
+      const { count } = await supabase.from('learners').select('id', { count: 'exact', head: true }).eq('school_id', schoolId!).eq('is_active', true);
+      return count || 0;
+    },
+  });
 
-  function openStk(p: any) { setSelectedPlan(p.id); setCycle('monthly'); setStkOpen(true); }
-  function openManual(p: any) { setSelectedPlan(p.id); setCycle('monthly'); setManualOpen(true); }
+  const plan = plans.find((p) => p.id === selectedPlan);
+  const perLearner = isPerLearner(plan);
+  const unit = plan ? Number((plan as any)[`price_${cycle}`] || 0) : 0;
+  const amount = perLearner ? unit * (learnersCount || 0) : unit;
+
+  function openStk(p: any) { setSelectedPlan(p.id); setCycle(isPerLearner(p) ? 'term' : 'monthly'); setStkOpen(true); }
+  function openManual(p: any) { setSelectedPlan(p.id); setCycle(isPerLearner(p) ? 'term' : 'monthly'); setManualOpen(true); }
 
   const statusBadge = (s?: string | null) => {
     const map: Record<string, string> = {
