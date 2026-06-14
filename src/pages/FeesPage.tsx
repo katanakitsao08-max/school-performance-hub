@@ -132,11 +132,12 @@ export default function FeesPage() {
 
   const summary = useMemo(() => {
     const live = feeRecords.filter(r => !r.voided_at);
-    const totalCharged = live.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = live.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const chargeRows = live.filter(isCharge);
+    const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     const balance = totalCharged - totalPaid;
     const byLearner: Record<string, number> = {};
-    live.forEach(r => { byLearner[r.learner_id] = (byLearner[r.learner_id] || 0) + (Number(r.amount_charged) - Number(r.amount_paid)); });
+    chargeRows.forEach(r => { byLearner[r.learner_id] = (byLearner[r.learner_id] || 0) + (Number(r.amount_charged) - Number(r.amount_paid)); });
     const defaulters = Object.values(byLearner).filter(v => v > 0).length;
     return { totalCharged, totalPaid, balance, defaulters };
   }, [feeRecords]);
