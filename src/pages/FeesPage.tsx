@@ -320,20 +320,31 @@ export default function FeesPage() {
   // ---------- Statement ----------
   const printStatement = async (learner: any) => {
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', learner.id).order('created_at');
-    const rows = ((all || []) as any[]).filter(r => !r.voided_at);
+    const live = ((all || []) as any[]).filter(r => !r.voided_at);
     let running = 0;
-    const stRows = rows.map(r => {
-      const charged = Number(r.amount_charged);
-      const paid = Number(r.amount_paid);
-      running += charged - paid;
-      return {
-        date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
-        description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
-        charged, paid, balance: running, receipt: r.receipt_number,
-      };
+    const stRows: any[] = [];
+    live.forEach(r => {
+      if (isPaymentLedger(r)) {
+        running -= Number(r.amount_paid);
+        stRows.push({
+          date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+          description: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`,
+          charged: 0, paid: Number(r.amount_paid), balance: running, receipt: r.receipt_number,
+        });
+      } else {
+        const charged = Number(r.amount_charged);
+        const paid = Number(r.amount_paid);
+        running += charged - paid;
+        stRows.push({
+          date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+          description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
+          charged, paid, balance: running, receipt: r.receipt_number,
+        });
+      }
     });
-    const totalCharged = rows.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = rows.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const chargeRows = live.filter(isCharge);
+    const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     generateFeeStatementPDF({
       learnerName: learner.full_name, admissionNumber: learner.admission_number,
       grade: learner.grade, stream: learner.stream,
