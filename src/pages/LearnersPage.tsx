@@ -291,11 +291,14 @@ export default function LearnersPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Stream</Label>
-                    <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Label>Stream <span className="text-destructive">*</span></Label>
+                    <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))} required>
+                      <SelectTrigger><SelectValue placeholder={availableStreams.length === 0 ? 'No streams configured' : 'Select a stream'} /></SelectTrigger>
                       <SelectContent>{availableStreams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
+                    {availableStreams.length === 0 && (
+                      <p className="text-xs text-destructive">No streams configured. Add streams under Academics → Streams before registering learners.</p>
+                    )}
                    </div>
                    <div className="space-y-2">
                      <Label>Gender</Label>
