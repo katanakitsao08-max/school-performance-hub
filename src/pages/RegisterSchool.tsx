@@ -129,10 +129,37 @@ export default function RegisterSchool() {
                   <Label>Subscription Plan</Label>
                   <Select value={form.selected_plan_id} onValueChange={v => onChange('selected_plan_id', v)}>
                     <SelectTrigger><SelectValue placeholder="Choose a plan" /></SelectTrigger>
-                    <SelectContent>{plans.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}{p.price_monthly ? ` — KES ${Number(p.price_monthly).toLocaleString()}/mo` : ''}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {plans.map((p: any) => {
+                        const perL = Number(p.price_monthly||0)===0 && (Number(p.price_term||0)>0 || Number(p.price_annual||0)>0);
+                        const label = perL
+                          ? `${p.name} — KES ${Number(p.price_term).toLocaleString()}/learner/term`
+                          : (p.price_monthly ? `${p.name} — KES ${Number(p.price_monthly).toLocaleString()}/mo` : p.name);
+                        return <SelectItem key={p.id} value={p.id}>{label}</SelectItem>;
+                      })}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {selectedPlan && (
+                <div className="rounded-lg border bg-primary/5 p-3 text-sm space-y-1">
+                  <div className="font-semibold">{selectedPlan.name}</div>
+                  {selectedPlan.description && <div className="text-muted-foreground text-xs">{selectedPlan.description}</div>}
+                  {isPerLearner && (
+                    <div className="pt-1">
+                      Estimated cost for <strong>{form.learners_count || 0}</strong> learners:
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Per term: <strong>KES {termCost.toLocaleString()}</strong></span>
+                        <span>Per year: <strong>KES {annualCost.toLocaleString()}</strong></span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-2 text-xs">
+                    After approval, pay via <strong>M-Pesa Send Money</strong> to <strong>0701594268</strong> (PerformTrack).
+                  </div>
+                </div>
+              )}
               <div className="flex items-start gap-2 pt-2">
                 <Checkbox id="terms" checked={form.terms_accepted} onCheckedChange={v => onChange('terms_accepted', !!v)} />
                 <Label htmlFor="terms" className="text-sm font-normal leading-snug">
