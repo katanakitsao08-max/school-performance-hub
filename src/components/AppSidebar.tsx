@@ -179,7 +179,7 @@ const parentSections: NavSection[] = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { role, profile, signOut } = useAuth();
   const { pathname } = useLocation();
