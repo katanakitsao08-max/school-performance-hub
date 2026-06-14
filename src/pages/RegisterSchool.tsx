@@ -62,10 +62,11 @@ export default function RegisterSchool() {
             </div>
             <h1 className="text-2xl font-display font-bold">Application Received</h1>
             <p className="text-muted-foreground">Thank you! Our team will review your registration and email your login credentials within 24 hours.</p>
+            <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-sm text-left">
+              <div className="font-semibold mb-1">Payment</div>
+              <div>Once approved, pay via <strong>M-Pesa Send Money</strong> to <strong>0701594268</strong> (PerformTrack) at <strong>KSh 15/learner/term</strong> or <strong>KSh 45/learner/year</strong>.</div>
+            </div>
             <Button asChild className="w-full"><Link to="/">Back to Home</Link></Button>
-          </CardContent>
-        </Card>
-      </div>
     );
   }
 
