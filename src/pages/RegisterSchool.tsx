@@ -66,6 +66,11 @@ export default function RegisterSchool() {
               <div className="font-semibold mb-1">Payment</div>
               <div>Once approved, pay via <strong>M-Pesa Send Money</strong> to <strong>0701594268</strong> (PerformTrack) at <strong>KSh 15/learner/term</strong> or <strong>KSh 45/learner/year</strong>.</div>
             </div>
+            <div className="rounded-md bg-muted/50 border p-3 text-sm text-left">
+              <div className="font-semibold mb-1">Need help or more information?</div>
+              <div>Call or WhatsApp <a href="tel:+254701594268" className="text-primary font-semibold hover:underline">0701594268</a> for inquiries.</div>
+              <div className="text-xs text-muted-foreground mt-1">Email: <a href="mailto:performtrackteam@gmail.com" className="hover:underline">performtrackteam@gmail.com</a></div>
+            </div>
             <Button asChild className="w-full"><Link to="/">Back to Home</Link></Button>
           </CardContent>
         </Card>
