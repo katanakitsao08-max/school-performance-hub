@@ -60,8 +60,9 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
     });
     return (learners as any[]).map(l => {
       const rows = byLearner.get(l.id) || [];
-      const charged = rows.reduce((s, r) => s + Number(r.amount_charged), 0);
-      const paid = rows.reduce((s, r) => s + Number(r.amount_paid), 0);
+      const chargeRows = rows.filter(isCharge);
+      const charged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+      const paid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
       const balance = charged - paid;
       const status = charged === 0 ? 'No charges' : balance <= 0 ? 'Fully Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid';
       return { learner: l, rows, charged, paid, balance, status };
