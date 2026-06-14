@@ -13,3 +13,16 @@ export const isPaymentLedger = (r: any): boolean =>
   || (Number(r?.amount_charged ?? 0) === 0 && Number(r?.amount_paid ?? 0) > 0);
 
 export const isCharge = (r: any): boolean => !isPaymentLedger(r);
+
+export const chargeRowsOnly = (rows: any[] = []): any[] => rows.filter(isCharge);
+
+export const chargeTotals = (rows: any[] = []) => {
+  const charges = chargeRowsOnly(rows).filter((r: any) => !r?.voided_at);
+  const charged = charges.reduce((sum, r) => sum + Number(r?.amount_charged ?? 0), 0);
+  const paid = charges.reduce((sum, r) => sum + Number(r?.amount_paid ?? 0), 0);
+  return { charged, paid, balance: charged - paid };
+};
+
+export const isCollectionReceiptRow = (r: any): boolean =>
+  isPaymentLedger(r)
+  || (isCharge(r) && Number(r?.amount_paid ?? 0) > 0 && !!r?.receipt_number);
