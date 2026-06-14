@@ -19,6 +19,7 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { TERMS, getGradeForLevel, getGradePoints } from '@/lib/cbc-utils';
 import { isCharge } from '@/lib/fee-row-utils';
+import { fetchAllPaged } from '@/lib/fetch-all';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
 type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
