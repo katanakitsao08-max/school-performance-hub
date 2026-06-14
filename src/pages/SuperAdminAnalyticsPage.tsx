@@ -372,6 +372,12 @@ export default function SuperAdminAnalyticsPage() {
             </Badge>
             <Button size="sm" variant="outline" onClick={() => { refetchActivity(); setLastUpdate(new Date()); }}><RefreshCcw className="h-4 w-4 mr-1" />Refresh</Button>
           </div>
+        </div>
+
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="flex flex-wrap h-auto">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="schools">Schools</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="live">Live Feed</TabsTrigger>
             <TabsTrigger value="comms">Comms</TabsTrigger>
