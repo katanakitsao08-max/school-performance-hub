@@ -340,10 +340,10 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
     writeTitle(notes.title, 16);
     writeText(`${grade} • ${subject} • ${difficulty.toUpperCase()}${groundedInKicd ? ' • KICD-grounded' : ''}`);
 
-    writeTitle('Learning Objectives'); writeList(notes.objectives);
     if (notes.keyVocabulary?.length) { writeTitle('Key Vocabulary'); writeVocab(notes.keyVocabulary); }
-    writeTitle('Introduction'); writeText(notes.introduction);
-    writeTitle('Main Content'); writeRich(notes.mainContent);
+    writeTitle('Notes');
+    if (notes.introduction) writeText(notes.introduction);
+    writeRich(notes.mainContent);
     writeTitle('Worked Examples'); writeList(notes.workedExamples);
     writeTitle('Class Activities'); writeList(notes.classActivities);
     if (notes.revisionSummary?.length) { writeTitle('Revision Summary'); writeList(notes.revisionSummary); }
@@ -533,9 +533,6 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
             <Section title="Topic Title" editing={status === 'editing'}
               value={notes.title} onChange={v => updateField('title', v)} isText />
 
-            <Section title="Learning Objectives" editing={status === 'editing'}
-              listValue={notes.objectives} onListChange={v => updateField('objectives', v)} />
-
             {(notes.keyVocabulary?.length || status === 'editing') && (
               <VocabSection
                 editing={status === 'editing'}
@@ -544,11 +541,10 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
               />
             )}
 
-            <Section title="Introduction" editing={status === 'editing'}
-              value={notes.introduction} onChange={v => updateField('introduction', v)} />
+            <Section title="Notes" editing={status === 'editing'}
+              value={[notes.introduction, notes.mainContent].filter(Boolean).join('\n\n')}
+              onChange={v => updateField('mainContent', v)} />
 
-            <Section title="Main Content" editing={status === 'editing'}
-              value={notes.mainContent} onChange={v => updateField('mainContent', v)} />
 
             <Section title="Worked Examples" editing={status === 'editing'}
               listValue={notes.workedExamples} onListChange={v => updateField('workedExamples', v)} />
