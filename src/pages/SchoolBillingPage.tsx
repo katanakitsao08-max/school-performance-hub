@@ -210,10 +210,6 @@ function StkDialog({ open, onOpenChange, plan, cycle, setCycle, amount, onDone }
       let tries = 0;
       const iv = setInterval(async () => {
         tries++;
-        const { data: s } = await supabase.functions.invoke('billing-stk-status', {
-          body: {}, // not used
-        }).catch(() => ({ data: null } as any));
-        // status endpoint uses query string — invoke wraps POST, so call manually:
         try {
           const session = (await supabase.auth.getSession()).data.session;
           const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/billing-stk-status?checkout_request_id=${encodeURIComponent(checkoutId)}`, {
@@ -223,7 +219,7 @@ function StkDialog({ open, onOpenChange, plan, cycle, setCycle, amount, onDone }
           if (j.status === 'approved') { clearInterval(iv); setStatus('success'); toast.success('Payment confirmed!'); onDone?.(); }
           else if (j.status === 'failed' || j.status === 'rejected') { clearInterval(iv); setStatus('failed'); setMessage(j.mpesa_result_desc || 'Payment failed'); }
         } catch {}
-        if (tries > 30) { clearInterval(iv); if (status !== 'success') { setStatus('failed'); setMessage('Timed out. If you paid, it will reflect shortly.'); } }
+        if (tries > 30) { clearInterval(iv); setStatus((s) => s === 'success' ? s : 'failed'); setMessage('Timed out. If you paid, it will reflect shortly.'); }
       }, 3000);
     } catch (e: any) {
       setStatus('failed'); setMessage(e.message || 'Failed to initiate');
