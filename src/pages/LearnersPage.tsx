@@ -105,6 +105,15 @@ export default function LearnersPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const formData: any = { ...form };
+      if (!formData.grade) {
+        throw new Error('Please select a grade.');
+      }
+      if (!formData.stream || !String(formData.stream).trim()) {
+        throw new Error('Stream allocation is required. Please assign the learner to a stream.');
+      }
+      if (availableStreams.length > 0 && !availableStreams.includes(formData.stream)) {
+        throw new Error(`Stream "${formData.stream}" is not configured for this school. Please pick a valid stream.`);
+      }
       if (!editing && !formData.admission_number) {
         formData.admission_number = generateAdmNumber();
       }
