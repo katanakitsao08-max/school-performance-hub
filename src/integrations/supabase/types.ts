@@ -68,6 +68,223 @@ export type Database = {
           },
         ]
       }
+      billing_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          school_id: string | null
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          school_id?: string | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          school_id?: string | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_audit_log_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          due_at: string | null
+          id: string
+          invoice_number: string
+          issued_at: string
+          metadata: Json | null
+          payment_id: string | null
+          pdf_url: string | null
+          school_id: string
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          school_id: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          school_id?: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "billing_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_invoices_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_payments: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          billing_cycle: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string
+          mpesa_checkout_request_id: string | null
+          mpesa_merchant_request_id: string | null
+          mpesa_phone: string | null
+          mpesa_raw: Json | null
+          mpesa_result_code: number | null
+          mpesa_result_desc: string | null
+          notes: string | null
+          payment_date: string | null
+          plan_id: string | null
+          proof_url: string | null
+          receipt_number: string | null
+          reference: string | null
+          rejected_reason: string | null
+          school_id: string
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          billing_cycle?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method: string
+          mpesa_checkout_request_id?: string | null
+          mpesa_merchant_request_id?: string | null
+          mpesa_phone?: string | null
+          mpesa_raw?: Json | null
+          mpesa_result_code?: number | null
+          mpesa_result_desc?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          plan_id?: string | null
+          proof_url?: string | null
+          receipt_number?: string | null
+          reference?: string | null
+          rejected_reason?: string | null
+          school_id: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          billing_cycle?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string
+          mpesa_checkout_request_id?: string | null
+          mpesa_merchant_request_id?: string | null
+          mpesa_phone?: string | null
+          mpesa_raw?: Json | null
+          mpesa_result_code?: number | null
+          mpesa_result_desc?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          plan_id?: string | null
+          proof_url?: string | null
+          receipt_number?: string | null
+          reference?: string | null
+          rejected_reason?: string | null
+          school_id?: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_payments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "school_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_teachers: {
         Row: {
           created_at: string
@@ -2820,6 +3037,69 @@ export type Database = {
         }
         Relationships: []
       }
+      school_subscriptions: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          grace_days: number
+          id: string
+          notes: string | null
+          plan_id: string | null
+          school_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_cycle: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          grace_days?: number
+          id?: string
+          notes?: string | null
+          plan_id?: string | null
+          school_id: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          grace_days?: number
+          id?: string
+          notes?: string | null
+          plan_id?: string | null
+          school_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_subscriptions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           contact_email: string
@@ -2831,6 +3111,7 @@ export type Database = {
           plan_id: string | null
           school_code: string
           school_name: string
+          subscription_grace_until: string | null
           subscription_status: string
           updated_at: string
         }
@@ -2844,6 +3125,7 @@ export type Database = {
           plan_id?: string | null
           school_code: string
           school_name: string
+          subscription_grace_until?: string | null
           subscription_status?: string
           updated_at?: string
         }
@@ -2857,6 +3139,7 @@ export type Database = {
           plan_id?: string | null
           school_code?: string
           school_name?: string
+          subscription_grace_until?: string | null
           subscription_status?: string
           updated_at?: string
         }
@@ -3216,36 +3499,48 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          allow_custom_pricing: boolean
           created_at: string
           description: string | null
           features: Json
           id: string
           is_active: boolean
           name: string
+          price_annual: number | null
           price_monthly: number
+          price_term: number | null
           sort_order: number
+          tier: string | null
           updated_at: string
         }
         Insert: {
+          allow_custom_pricing?: boolean
           created_at?: string
           description?: string | null
           features?: Json
           id?: string
           is_active?: boolean
           name: string
+          price_annual?: number | null
           price_monthly?: number
+          price_term?: number | null
           sort_order?: number
+          tier?: string | null
           updated_at?: string
         }
         Update: {
+          allow_custom_pricing?: boolean
           created_at?: string
           description?: string | null
           features?: Json
           id?: string
           is_active?: boolean
           name?: string
+          price_annual?: number | null
           price_monthly?: number
+          price_term?: number | null
           sort_order?: number
+          tier?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4167,6 +4462,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_school_subscription: {
+        Args: { _payment_id: string }
+        Returns: string
+      }
       check_attendance_alerts: { Args: never; Returns: undefined }
       check_performance_drops: { Args: never; Returns: undefined }
       create_notification: {
@@ -4189,6 +4488,7 @@ export type Database = {
         Args: { _name: string; _school_id: string }
         Returns: string
       }
+      generate_billing_invoice_number: { Args: never; Returns: string }
       generate_independent_learner_code: { Args: never; Returns: string }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_school_code: { Args: never; Returns: string }
@@ -4215,6 +4515,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_school_billing_active: {
+        Args: { _school_id: string }
         Returns: boolean
       }
       link_pending_school_to_school: {
