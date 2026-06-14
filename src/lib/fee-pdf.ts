@@ -151,11 +151,14 @@ export function generateFeeReceiptPDF(data: FeeReceiptData) {
       termPaid.toLocaleString(),
       termBal.toLocaleString(),
     ]],
-    headStyles: { fillColor: [26, 92, 46], textColor: 255, fontSize: 9 },
-    footStyles: { fillColor: [240, 248, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    headStyles: { fillColor: [26, 92, 46], textColor: 255, fontSize: 9, halign: 'right' },
+    footStyles: { fillColor: [240, 248, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'right' },
     styles: { fontSize: 9 },
     columnStyles: {
-      1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' },
+      0: { halign: 'left' },
+      1: { halign: 'right', cellWidth: 38 },
+      2: { halign: 'right', cellWidth: 38 },
+      3: { halign: 'right', fontStyle: 'bold', cellWidth: 38 },
     },
   });
 

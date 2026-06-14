@@ -30,6 +30,7 @@ import RecordPaymentTab from '@/components/fees/RecordPaymentTab';
 import FinanceDashboardTab from '@/components/fees/FinanceDashboardTab';
 import { BarChart3, CreditCard, UserCheck } from 'lucide-react';
 import { z } from 'zod';
+import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
 
 const FEE_TYPES = ['tuition', 'transport', 'lunch', 'boarding', 'activity', 'uniform', 'books', 'other'];
 const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
@@ -131,11 +132,12 @@ export default function FeesPage() {
 
   const summary = useMemo(() => {
     const live = feeRecords.filter(r => !r.voided_at);
-    const totalCharged = live.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = live.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const chargeRows = live.filter(isCharge);
+    const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     const balance = totalCharged - totalPaid;
     const byLearner: Record<string, number> = {};
-    live.forEach(r => { byLearner[r.learner_id] = (byLearner[r.learner_id] || 0) + (Number(r.amount_charged) - Number(r.amount_paid)); });
+    chargeRows.forEach(r => { byLearner[r.learner_id] = (byLearner[r.learner_id] || 0) + (Number(r.amount_charged) - Number(r.amount_paid)); });
     const defaulters = Object.values(byLearner).filter(v => v > 0).length;
     return { totalCharged, totalPaid, balance, defaulters };
   }, [feeRecords]);
@@ -256,11 +258,15 @@ export default function FeesPage() {
       toast({ title: 'No receipt', description: 'This record has no payment.', variant: 'destructive' });
       return;
     }
-    // Compute term + total balance for this learner, plus full breakdown
+    // Compute term + total balance for this learner, plus full breakdown.
+    // IMPORTANT: exclude pure payment-ledger rows from charged/paid sums —
+    // those rows are receipts; the FIFO allocator already incremented each
+    // charge's amount_paid, so summing both double-counts every payment.
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', r.learner_id).is('voided_at', null);
     const allRows = (all || []) as any[];
-    const termRows = allRows.filter(x => x.term === r.term && x.year === r.year);
-    const totalBal = allRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
+    const chargeRows = allRows.filter(isCharge);
+    const termRows = chargeRows.filter(x => x.term === r.term && x.year === r.year);
+    const totalBal = chargeRows.reduce((s, x) => s + (Number(x.amount_charged) - Number(x.amount_paid)), 0);
 
     // Pull the full fee STRUCTURE so EVERY charged component appears on the
     // receipt — even ones the learner has not paid against yet.
@@ -315,20 +321,31 @@ export default function FeesPage() {
   // ---------- Statement ----------
   const printStatement = async (learner: any) => {
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', learner.id).order('created_at');
-    const rows = ((all || []) as any[]).filter(r => !r.voided_at);
+    const live = ((all || []) as any[]).filter(r => !r.voided_at);
     let running = 0;
-    const stRows = rows.map(r => {
-      const charged = Number(r.amount_charged);
-      const paid = Number(r.amount_paid);
-      running += charged - paid;
-      return {
-        date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
-        description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
-        charged, paid, balance: running, receipt: r.receipt_number,
-      };
+    const stRows: any[] = [];
+    live.forEach(r => {
+      if (isPaymentLedger(r)) {
+        running -= Number(r.amount_paid);
+        stRows.push({
+          date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+          description: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`,
+          charged: 0, paid: Number(r.amount_paid), balance: running, receipt: r.receipt_number,
+        });
+      } else {
+        const charged = Number(r.amount_charged);
+        const paid = Number(r.amount_paid);
+        running += charged - paid;
+        stRows.push({
+          date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
+          description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
+          charged, paid, balance: running, receipt: r.receipt_number,
+        });
+      }
     });
-    const totalCharged = rows.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = rows.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const chargeRows = live.filter(isCharge);
+    const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     generateFeeStatementPDF({
       learnerName: learner.full_name, admissionNumber: learner.admission_number,
       grade: learner.grade, stream: learner.stream,
@@ -499,7 +516,7 @@ export default function FeesPage() {
   // ---------- Defaulters ----------
   const defaulters = useMemo(() => {
     const map = new Map<string, { learner: any; charged: number; paid: number; bal: number }>();
-    feeRecords.filter(r => !r.voided_at).forEach((r: any) => {
+    feeRecords.filter(r => !r.voided_at && isCharge(r)).forEach((r: any) => {
       const k = r.learner_id;
       const cur = map.get(k) || { learner: r.learners, charged: 0, paid: 0, bal: 0 };
       cur.charged += Number(r.amount_charged);
