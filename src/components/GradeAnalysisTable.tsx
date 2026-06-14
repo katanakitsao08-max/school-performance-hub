@@ -60,7 +60,7 @@ export function GradeAnalysisTable({ analysis }: Props) {
             <TableCell className="text-xs border-r">OVERALL</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{analysis.totalM}</TableCell>
             <TableCell className="text-center text-xs border-r px-1">{analysis.totalF}</TableCell>
-            <TableCell className="text-center text-xs border-r px-1 font-bold">{analysis.totalM + analysis.totalF}</TableCell>
+            <TableCell className="text-center text-xs border-r px-1 text-muted-foreground">—</TableCell>
             {SUB_LEVELS.map(lv => (
               <TableCell key={lv} colSpan={2} className="text-center text-xs border-r px-0">
                 <span className="inline-flex w-full">

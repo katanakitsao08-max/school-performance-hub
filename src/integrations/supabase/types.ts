@@ -2714,6 +2714,47 @@ export type Database = {
           },
         ]
       }
+      school_billing: {
+        Row: {
+          amount: number
+          billing_cycle: string
+          created_at: string
+          notes: string | null
+          plan: string
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: string
+          created_at?: string
+          notes?: string | null
+          plan?: string
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string
+          created_at?: string
+          notes?: string | null
+          plan?: string
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_billing_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_settings: {
         Row: {
           created_at: string
@@ -3116,6 +3157,59 @@ export type Database = {
             columns: ["strand_id"]
             isOneToOne: false
             referencedRelation: "strands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_payments: {
+        Row: {
+          amount: number
+          billing_cycle: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          paid_on: string
+          plan: string | null
+          receipt_number: string | null
+          recorded_by: string | null
+          school_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount: number
+          billing_cycle?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          plan?: string | null
+          receipt_number?: string | null
+          recorded_by?: string | null
+          school_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_on?: string
+          plan?: string | null
+          receipt_number?: string | null
+          recorded_by?: string | null
+          school_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]

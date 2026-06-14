@@ -13,8 +13,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown, Trash2 } from 'lucide-react';
 import CredentialsRevealDialog from '@/components/CredentialsRevealDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 export default function ManageSchoolsPage() {
@@ -49,6 +50,10 @@ export default function ManageSchoolsPage() {
 
   // Credentials reveal dialog (after creating an admin)
   const [credsReveal, setCredsReveal] = useState<null | { loginEmail: string; username: string; password: string; fullName: string }>(null);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
 
   const { data: plans = [] } = useQuery({
@@ -307,6 +312,28 @@ export default function ManageSchoolsPage() {
       toast({ title: 'Subscription updated' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Hard-delete a school and all tenant data (super_admin only, via Edge Function)
+  const deleteSchool = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { data, error } = await supabase.functions.invoke('delete-school', {
+        body: { school_id: schoolId },
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to delete school');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['school-admins'] });
+      toast({ title: 'School deleted', description: 'All tenant data was permanently removed.' });
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+    },
+    onError: (e: any) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
   });
 
   // Assign / update plan + expiry (Super Admin only)
@@ -695,6 +722,14 @@ export default function ManageSchoolsPage() {
                               <Ban className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setDeleteTarget(school); setDeleteConfirmText(''); }}
+                            title="Delete school permanently"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -722,6 +757,43 @@ export default function ManageSchoolsPage() {
           fullName={credsReveal.fullName}
         />
       )}
+
+      {/* Delete school confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Permanently delete this school?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will permanently remove <strong>{deleteTarget?.school_name}</strong> and ALL its data:
+                  learners, scores, attendance, fees, SMS logs, timetables, settings, parent links, and more.
+                  This action cannot be undone.
+                </p>
+                <p className="text-xs">
+                  Type the school name <code className="bg-muted px-1 py-0.5 rounded">{deleteTarget?.school_name}</code> to confirm.
+                </p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="School name"
+                  autoFocus
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteSchool.isPending || deleteConfirmText !== deleteTarget?.school_name}
+              onClick={() => deleteTarget && deleteSchool.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteSchool.isPending ? 'Deleting…' : 'Delete permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
 
   );

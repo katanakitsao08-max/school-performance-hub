@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +56,6 @@ type PlanInfo = {
   updatedAt?: string;
 };
 
-const STORAGE_PAYMENTS = 'subscriptionPayments';
-const STORAGE_PLANS = 'subscriptionPlans';
-
 const DEFAULT_PLAN_FEE: Record<string, number> = {
   free: 0, basic: 12000, standard: 24000, premium: 48000, enterprise: 96000,
 };
@@ -65,10 +64,6 @@ const CYCLE_LABEL: Record<BillingCycle, string> = {
   annual: 'Annual', termly: 'Termly', monthly: 'Monthly',
 };
 
-function readJSON<T>(key: string, fb: T): T {
-  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fb; } catch { return fb; }
-}
-function writeJSON<T>(key: string, v: T) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* ignore */ } }
 function fmtKES(n: number) { return `KES ${Math.round(n || 0).toLocaleString()}`; }
 
 // Compute total billable for a year given a billing cycle + per-cycle amount
@@ -81,10 +76,53 @@ function annualBillable(info: PlanInfo): number {
 
 export default function RevenueSubscriptionSection({ schools }: { schools: School[] }) {
   const { profile, user } = useAuth();
+  const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<string>(String(currentYear));
-  const [payments, setPayments] = useState<Payment[]>(() => readJSON<Payment[]>(STORAGE_PAYMENTS, []));
-  const [plans, setPlans] = useState<Record<string, PlanInfo>>(() => readJSON<Record<string, PlanInfo>>(STORAGE_PLANS, {}));
+
+  // Payments from DB
+  const { data: payments = [] } = useQuery<Payment[]>({
+    queryKey: ['subscription-payments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_payments')
+        .select('id, school_id, amount, paid_on, notes, created_at')
+        .order('paid_on', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        schoolId: r.school_id,
+        amount: Number(r.amount) || 0,
+        date: r.paid_on,
+        notes: r.notes || undefined,
+        createdAt: r.created_at,
+      }));
+    },
+    enabled: !!user,
+  });
+
+  // Per-school billing config from DB
+  const { data: plans = {} } = useQuery<Record<string, PlanInfo>>({
+    queryKey: ['school-billing'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('school_billing')
+        .select('school_id, plan, billing_cycle, amount, notes, updated_at');
+      if (error) throw error;
+      const map: Record<string, PlanInfo> = {};
+      (data || []).forEach((r: any) => {
+        map[r.school_id] = {
+          plan: r.plan,
+          billingCycle: (r.billing_cycle as BillingCycle) || 'annual',
+          amount: Number(r.amount) || 0,
+          notes: r.notes || undefined,
+          updatedAt: r.updated_at,
+        };
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editSchool, setEditSchool] = useState<School | null>(null);
@@ -99,10 +137,10 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
 
   const [openPreview, setOpenPreview] = useState(false);
   const [previewData, setPreviewData] = useState<SubscriptionReceiptData | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<Payment | null>(null);
-
-  useEffect(() => writeJSON(STORAGE_PAYMENTS, payments), [payments]);
-  useEffect(() => writeJSON(STORAGE_PLANS, plans), [plans]);
+  const [pendingPayment, setPendingPayment] = useState<{
+    schoolId: string; amount: number; date: string; notes?: string;
+    plan: string; billingCycle: BillingCycle; receiptNumber: string;
+  } | null>(null);
 
   const yearOptions = useMemo(() => {
     const set = new Set<number>([currentYear, currentYear - 1, currentYear + 1]);
@@ -205,7 +243,42 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
     }
   };
 
-  const saveEdit = () => {
+  // Upsert per-school billing config
+  const upsertBilling = useMutation({
+    mutationFn: async (info: PlanInfo & { schoolId: string }) => {
+      const { error } = await supabase.from('school_billing').upsert({
+        school_id: info.schoolId,
+        plan: info.plan,
+        billing_cycle: info.billingCycle,
+        amount: info.amount,
+        notes: info.notes || null,
+        updated_by: user?.id || null,
+      }, { onConflict: 'school_id' });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['school-billing'] }),
+  });
+
+  // Insert a payment row
+  const insertPayment = useMutation({
+    mutationFn: async (p: { schoolId: string; amount: number; date: string; notes?: string; plan: string; billingCycle: BillingCycle; receiptNumber: string }) => {
+      const { error } = await supabase.from('subscription_payments').insert({
+        school_id: p.schoolId,
+        amount: p.amount,
+        paid_on: p.date,
+        year: new Date(p.date).getFullYear(),
+        plan: p.plan,
+        billing_cycle: p.billingCycle,
+        notes: p.notes || null,
+        receipt_number: p.receiptNumber,
+        recorded_by: user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['subscription-payments'] }),
+  });
+
+  const saveEdit = async () => {
     if (!editSchool) return;
     const amt = Number(editAmount);
     if (Number.isNaN(amt) || amt < 0) { toast.error('Enter a valid subscription amount'); return; }
@@ -218,7 +291,12 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
       updatedBy: profile?.full_name || user?.email || 'Super Admin',
       updatedAt: new Date().toISOString(),
     };
-    setPlans(prev => ({ ...prev, [editSchool.id]: newInfo }));
+    try {
+      await upsertBilling.mutateAsync({ ...newInfo, schoolId: editSchool.id });
+    } catch (e: any) {
+      toast.error(`Failed to save plan: ${e.message}`);
+      return;
+    }
 
     const paid = Number(editPaid);
     if (paid > 0) {
@@ -230,14 +308,6 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
           .reduce((s, p) => s + p.amount, 0) + paid;
       const balanceAfter = Math.max(billable - paidThisYear, 0);
       const receiptNumber = `PT-${yearOfPayment}-${Date.now().toString().slice(-6)}`;
-      const newPayment: Payment = {
-        id: crypto.randomUUID(),
-        schoolId: editSchool.id,
-        amount: paid,
-        date: editPaidDate,
-        notes: editNotes || undefined,
-        createdAt: new Date().toISOString(),
-      };
       const receiptData: SubscriptionReceiptData = {
         receiptNumber,
         date: editPaidDate,
@@ -250,7 +320,15 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
         year: yearOfPayment,
         issuedBy: profile?.full_name || user?.email || 'Super Admin',
       };
-      setPendingPayment(newPayment);
+      setPendingPayment({
+        schoolId: editSchool.id,
+        amount: paid,
+        date: editPaidDate,
+        notes: editNotes || undefined,
+        plan: newInfo.plan,
+        billingCycle: newInfo.billingCycle,
+        receiptNumber,
+      });
       setPreviewData(receiptData);
       setOpenEdit(false);
       setOpenPreview(true);
@@ -262,20 +340,26 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
 
   const confirmAndDownload = async () => {
     if (!pendingPayment || !previewData) return;
-    setPayments(prev => [...prev, pendingPayment]);
+    try {
+      await insertPayment.mutateAsync(pendingPayment);
+    } catch (e: any) {
+      toast.error(`Failed to record payment: ${e.message}`);
+      return;
+    }
     const school = schools.find(s => s.id === pendingPayment.schoolId) || null;
     try {
       await generateSubscriptionReceiptPDF(previewData);
       toast.success(`Payment of ${fmtKES(previewData.amountPaid)} recorded · Receipt downloaded`);
     } catch (e) {
       console.error(e);
-      toast.error('Could not generate receipt PDF');
+      toast.error('Payment recorded, but receipt PDF failed to generate');
     }
     sendToAdmin(previewData, school);
     setOpenPreview(false);
     setPendingPayment(null);
     setPreviewData(null);
   };
+
 
   const cancelPreview = () => {
     setOpenPreview(false);
