@@ -76,10 +76,53 @@ function annualBillable(info: PlanInfo): number {
 
 export default function RevenueSubscriptionSection({ schools }: { schools: School[] }) {
   const { profile, user } = useAuth();
+  const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<string>(String(currentYear));
-  const [payments, setPayments] = useState<Payment[]>(() => readJSON<Payment[]>(STORAGE_PAYMENTS, []));
-  const [plans, setPlans] = useState<Record<string, PlanInfo>>(() => readJSON<Record<string, PlanInfo>>(STORAGE_PLANS, {}));
+
+  // Payments from DB
+  const { data: payments = [] } = useQuery<Payment[]>({
+    queryKey: ['subscription-payments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_payments')
+        .select('id, school_id, amount, paid_on, notes, created_at')
+        .order('paid_on', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        schoolId: r.school_id,
+        amount: Number(r.amount) || 0,
+        date: r.paid_on,
+        notes: r.notes || undefined,
+        createdAt: r.created_at,
+      }));
+    },
+    enabled: !!user,
+  });
+
+  // Per-school billing config from DB
+  const { data: plans = {} } = useQuery<Record<string, PlanInfo>>({
+    queryKey: ['school-billing'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('school_billing')
+        .select('school_id, plan, billing_cycle, amount, notes, updated_at');
+      if (error) throw error;
+      const map: Record<string, PlanInfo> = {};
+      (data || []).forEach((r: any) => {
+        map[r.school_id] = {
+          plan: r.plan,
+          billingCycle: (r.billing_cycle as BillingCycle) || 'annual',
+          amount: Number(r.amount) || 0,
+          notes: r.notes || undefined,
+          updatedAt: r.updated_at,
+        };
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editSchool, setEditSchool] = useState<School | null>(null);
@@ -94,10 +137,10 @@ export default function RevenueSubscriptionSection({ schools }: { schools: Schoo
 
   const [openPreview, setOpenPreview] = useState(false);
   const [previewData, setPreviewData] = useState<SubscriptionReceiptData | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<Payment | null>(null);
-
-  useEffect(() => writeJSON(STORAGE_PAYMENTS, payments), [payments]);
-  useEffect(() => writeJSON(STORAGE_PLANS, plans), [plans]);
+  const [pendingPayment, setPendingPayment] = useState<{
+    schoolId: string; amount: number; date: string; notes?: string;
+    plan: string; billingCycle: BillingCycle; receiptNumber: string;
+  } | null>(null);
 
   const yearOptions = useMemo(() => {
     const set = new Set<number>([currentYear, currentYear - 1, currentYear + 1]);
