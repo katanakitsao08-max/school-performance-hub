@@ -126,25 +126,45 @@ export default function SchoolBillingPage() {
         </Card>
 
         <div>
-          <h2 className="text-xl font-semibold mb-3">Choose a Plan</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {plans.map((p: any) => (
+          <h2 className="text-xl font-semibold mb-2">Choose a Plan</h2>
+          <div className="rounded-lg border bg-primary/5 p-3 mb-4 flex flex-wrap items-center gap-2 text-sm">
+            <Phone className="w-4 h-4 text-primary" />
+            <span>Pay via <strong>M-Pesa Send Money</strong> to <strong>{PAY_PHONE}</strong> (PerformTrack), then submit your reference below.</span>
+            <span className="text-muted-foreground">Active learners: <strong>{learnersCount}</strong></span>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plans.map((p: any) => {
+              const perL = isPerLearner(p);
+              return (
               <Card key={p.id} className={school?.plan_id === p.id ? 'border-primary border-2' : ''}>
                 <CardHeader>
                   <CardTitle>{p.name}</CardTitle>
                   <CardDescription>{p.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Monthly</span><span className="font-semibold">{fmt(p.price_monthly)}</span></div>
-                  <div className="flex justify-between"><span>Term</span><span className="font-semibold">{fmt(p.price_term)}</span></div>
-                  <div className="flex justify-between"><span>Annual</span><span className="font-semibold">{fmt(p.price_annual)}</span></div>
+                  {perL ? (
+                    <>
+                      <div className="flex justify-between"><span>Per learner / term</span><span className="font-semibold">{fmt(p.price_term)}</span></div>
+                      <div className="flex justify-between"><span>Per learner / year</span><span className="font-semibold">{fmt(p.price_annual)}</span></div>
+                      <div className="rounded-md bg-muted/50 p-2 text-xs">
+                        Your est. cost: <strong>{fmt(Number(p.price_term||0)*learnersCount)}/term</strong> · <strong>{fmt(Number(p.price_annual||0)*learnersCount)}/year</strong> for {learnersCount} learners
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between"><span>Monthly</span><span className="font-semibold">{fmt(p.price_monthly)}</span></div>
+                      <div className="flex justify-between"><span>Term</span><span className="font-semibold">{fmt(p.price_term)}</span></div>
+                      <div className="flex justify-between"><span>Annual</span><span className="font-semibold">{fmt(p.price_annual)}</span></div>
+                    </>
+                  )}
                   <div className="pt-3 flex flex-col gap-2">
-                    <Button size="sm" className="w-full" disabled title="M-Pesa STK Push temporarily disabled"><Smartphone className="w-4 h-4 mr-1"/>M-Pesa (Coming Soon)</Button>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => openManual(p)}><Upload className="w-4 h-4 mr-1"/>Manual Payment</Button>
+                    <Button size="sm" variant="outline" className="w-full" onClick={() => openManual(p)} disabled={Number(p.price_monthly||0)===0 && Number(p.price_term||0)===0 && Number(p.price_annual||0)===0}>
+                      <Upload className="w-4 h-4 mr-1"/>Submit M-Pesa Payment
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );})}
           </div>
         </div>
 
