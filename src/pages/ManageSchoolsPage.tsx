@@ -51,6 +51,10 @@ export default function ManageSchoolsPage() {
   // Credentials reveal dialog (after creating an admin)
   const [credsReveal, setCredsReveal] = useState<null | { loginEmail: string; username: string; password: string; fullName: string }>(null);
 
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
 
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans'],
@@ -308,6 +312,28 @@ export default function ManageSchoolsPage() {
       toast({ title: 'Subscription updated' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Hard-delete a school and all tenant data (super_admin only, via Edge Function)
+  const deleteSchool = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { data, error } = await supabase.functions.invoke('delete-school', {
+        body: { school_id: schoolId },
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to delete school');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      queryClient.invalidateQueries({ queryKey: ['school-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['school-admins'] });
+      toast({ title: 'School deleted', description: 'All tenant data was permanently removed.' });
+      setDeleteTarget(null);
+      setDeleteConfirmText('');
+    },
+    onError: (e: any) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
   });
 
   // Assign / update plan + expiry (Super Admin only)
