@@ -297,6 +297,114 @@ function buildResources(res: string[] | undefined, subject: string): string[] {
   ];
 }
 
+function gradeBand(grade: string): { band: 'lower' | 'upper' | 'junior' | 'senior'; minWords: number } {
+  const g = (grade || '').toUpperCase();
+  if (g.startsWith('PP') || g.includes('PRE')) return { band: 'lower', minWords: 1000 };
+  const n = parseInt(g.replace(/[^\d]/g, ''), 10);
+  if (!isNaN(n)) {
+    if (n <= 3) return { band: 'lower', minWords: 1000 };
+    if (n <= 6) return { band: 'upper', minWords: 1500 };
+    if (n <= 9) return { band: 'junior', minWords: 2000 };
+    return { band: 'senior', minWords: 2500 };
+  }
+  return { band: 'upper', minWords: 1500 };
+}
+
+function buildDeterministicNotes(grade: string, subject: string, topic: string, kicd: KicdContext | null | undefined, difficulty: 'basic' | 'standard' | 'advanced', title: string) {
+  return {
+    title,
+    objectives: objectivesFromSlos(kicd?.slos, topic),
+    keyVocabulary: buildVocabulary(topic, kicd?.strand),
+    introduction: buildIntroduction(grade, subject, topic, kicd),
+    mainContent: buildMainContent(grade, subject, topic, kicd, difficulty),
+    workedExamples: buildWorkedExamples(subject, topic, difficulty),
+    classActivities: buildActivities(kicd?.activities, topic),
+    revisionSummary: buildSummary(topic, kicd?.slos),
+    assessmentQuestions: buildAssessmentQuestions(topic, subject, kicd?.slos),
+    homeRevisionTasks: buildHomeRevision(topic),
+    teacherTips: buildTeacherTips(topic),
+    competenciesDeveloped: buildCompetencies(kicd?.competencies),
+    resources: buildResources(kicd?.resources, subject),
+  };
+}
+
+async function aiGenerate(grade: string, subject: string, topic: string, kicd: KicdContext | null | undefined, difficulty: 'basic' | 'standard' | 'advanced', title: string): Promise<any | null> {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return null;
+  const { band, minWords } = gradeBand(grade);
+
+  const subjectGuidance = (() => {
+    const s = subject.toLowerCase();
+    if (/math/.test(s)) return 'Include 3+ fully worked examples with step-by-step solutions and answers. Include practice questions with answers.';
+    if (/science|tech|integrated/.test(s)) return 'Include a simple experiment with materials, procedure, observations, conclusions and SAFETY PRECAUTIONS.';
+    if (/social/.test(s)) return 'Include maps/places, historical references and clear Kenyan contexts (counties, cultures, leaders, events).';
+    if (/english|language activit/.test(s)) return 'Include grammar examples, a short comprehension passage with questions, and language exercises.';
+    if (/kiswahili/.test(s)) return 'Andika sehemu kubwa kwa Kiswahili. Jumuisha msamiati, sentensi za mfano na shughuli za lugha.';
+    if (/creative|art|music|sport/.test(s)) return 'Include detailed practical activities and a small project work brief with steps and materials.';
+    if (/agric|nutrition/.test(s)) return 'Include practical farming examples from Kenya (crops, livestock, regions) and a hands-on activity.';
+    if (/religi|cre|ire|hre/.test(s)) return 'Include scripture/teaching references, moral lessons, values and real-life application.';
+    return 'Use clear, age-appropriate explanations with Kenyan examples.';
+  })();
+
+  const sys = `You are a senior CBC/KICD curriculum writer producing PRINT-READY lesson notes for Kenyan teachers.
+Audience: ${grade} learners. Subject: ${subject}. Topic / Sub-strand: ${topic}.
+Difficulty: ${difficulty}. Target band: ${band}. Minimum word count for mainContent: ${minWords} words.
+Subject-specific rules: ${subjectGuidance}
+
+Return ONLY a valid JSON object (no prose, no code fences) with EXACTLY this schema:
+{
+  "title": string,
+  "objectives": string[],            // 4-6 "By the end of the lesson..." SLOs
+  "keyVocabulary": [{ "term": string, "meaning": string }],  // 6-12 entries
+  "introduction": string,            // 120-220 words, warm hook + key inquiry question
+  "mainContent": string,             // VERY DETAILED, at least ${minWords} words. Plain text with these UPPERCASE headings on their own lines: STRAND, SUB-STRAND, KEY INQUIRY QUESTION, LESSON OBJECTIVES, KEY CONCEPTS (define, characteristics, importance, uses, examples, non-examples, step-by-step where relevant, diagram descriptions as [Diagram: ...]), REAL-LIFE KENYAN EXAMPLES, DISCUSSION QUESTIONS, GROUP ACTIVITIES, PRACTICAL ACTIVITIES, VALUES, CORE COMPETENCIES, PERTINENT & CONTEMPORARY ISSUES, SUMMARY. Use short paragraphs and bullet lines starting with '- '.
+  "workedExamples": string[],        // 3-6 multi-step worked examples (Step 1/2/3)
+  "classActivities": string[],       // 5-8 specific classroom activities
+  "revisionSummary": string[],       // 6-10 concise bullet recap points
+  "assessmentQuestions": [{ "question": string, "answer": string }],  // 8-12 with model answers
+  "homeRevisionTasks": string[],     // 4-6 home assignment tasks
+  "teacherTips": string[],           // 5-7 teacher notes / tips
+  "competenciesDeveloped": string[], // 4-6 CBC core competencies
+  "resources": string[]              // 5-8 KICD-aligned resources
+}
+
+Hard rules: weave provided KICD context naturally; never use markdown fences; never include keys outside the schema; ensure mainContent reaches the minimum word count; tone is professional yet learner-friendly.`;
+
+  const userPayload = {
+    grade, subject, topic, difficulty,
+    kicd: kicd || {},
+    instructions: `Title to use exactly: "${title}". Produce notes ready to print and teach without editing.`,
+  };
+
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: sys },
+          { role: 'user', content: JSON.stringify(userPayload) },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!res.ok) {
+      console.error('AI gateway non-ok', res.status, await res.text().catch(() => ''));
+      return null;
+    }
+    const data = await res.json();
+    let content = data?.choices?.[0]?.message?.content || '';
+    content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    const parsed = JSON.parse(content);
+    parsed.title = parsed.title || title;
+    return parsed;
+  } catch (e) {
+    console.error('AI generate failed', e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -311,27 +419,31 @@ Deno.serve(async (req) => {
     const title = `${upper(grade)} — ${upper(subject)} — ${upper(topic)}`;
 
     if (mainContentOnly) {
-      const mainContent = buildMainContent(grade, subject, topic, kicd, difficulty);
-      return json({ success: true, notes: { title, mainContent }, groundedInKicd: hasKicd });
+      const ai = await aiGenerate(grade, subject, topic, kicd, difficulty, title);
+      const mainContent = ai?.mainContent || buildMainContent(grade, subject, topic, kicd, difficulty);
+      return json({ success: true, notes: { title, mainContent }, groundedInKicd: hasKicd, source: ai ? 'ai' : 'template' });
     }
 
-    const notes = {
-      title,
-      objectives: objectivesFromSlos(kicd?.slos, topic),
-      keyVocabulary: buildVocabulary(topic, kicd?.strand),
-      introduction: buildIntroduction(grade, subject, topic, kicd),
-      mainContent: buildMainContent(grade, subject, topic, kicd, difficulty),
-      workedExamples: buildWorkedExamples(subject, topic, difficulty),
-      classActivities: buildActivities(kicd?.activities, topic),
-      revisionSummary: buildSummary(topic, kicd?.slos),
-      assessmentQuestions: buildAssessmentQuestions(topic, subject, kicd?.slos),
-      homeRevisionTasks: buildHomeRevision(topic),
-      teacherTips: buildTeacherTips(topic),
-      competenciesDeveloped: buildCompetencies(kicd?.competencies),
-      resources: buildResources(kicd?.resources, subject),
-    };
+    const ai = await aiGenerate(grade, subject, topic, kicd, difficulty, title);
+    const fb = buildDeterministicNotes(grade, subject, topic, kicd, difficulty, title);
 
-    return json({ success: true, notes, groundedInKicd: hasKicd });
+    const notes = ai ? {
+      title: ai.title || fb.title,
+      objectives: Array.isArray(ai.objectives) && ai.objectives.length ? ai.objectives : fb.objectives,
+      keyVocabulary: Array.isArray(ai.keyVocabulary) && ai.keyVocabulary.length ? ai.keyVocabulary : fb.keyVocabulary,
+      introduction: ai.introduction || fb.introduction,
+      mainContent: ai.mainContent || fb.mainContent,
+      workedExamples: Array.isArray(ai.workedExamples) && ai.workedExamples.length ? ai.workedExamples : fb.workedExamples,
+      classActivities: Array.isArray(ai.classActivities) && ai.classActivities.length ? ai.classActivities : fb.classActivities,
+      revisionSummary: Array.isArray(ai.revisionSummary) && ai.revisionSummary.length ? ai.revisionSummary : fb.revisionSummary,
+      assessmentQuestions: Array.isArray(ai.assessmentQuestions) && ai.assessmentQuestions.length ? ai.assessmentQuestions : fb.assessmentQuestions,
+      homeRevisionTasks: Array.isArray(ai.homeRevisionTasks) && ai.homeRevisionTasks.length ? ai.homeRevisionTasks : fb.homeRevisionTasks,
+      teacherTips: Array.isArray(ai.teacherTips) && ai.teacherTips.length ? ai.teacherTips : fb.teacherTips,
+      competenciesDeveloped: Array.isArray(ai.competenciesDeveloped) && ai.competenciesDeveloped.length ? ai.competenciesDeveloped : fb.competenciesDeveloped,
+      resources: Array.isArray(ai.resources) && ai.resources.length ? ai.resources : fb.resources,
+    } : fb;
+
+    return json({ success: true, notes, groundedInKicd: hasKicd, source: ai ? 'ai' : 'template' });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
