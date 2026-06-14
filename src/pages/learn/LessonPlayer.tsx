@@ -150,12 +150,20 @@ function Quiz({ lesson, onComplete, alreadyDone }: {
   onComplete: (score: number, total: number) => void;
   alreadyDone: boolean;
 }) {
+  // Shuffle questions + options once per attempt; reshuffle when user retries.
+  const [attempt, setAttempt] = useState(0);
+  const quiz: QuizQ[] = useMemo(
+    () => shuffleQuiz(lesson!.quiz),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson, attempt]
+  );
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const total = lesson!.quiz.length;
-  const score = useMemo(() =>
-    lesson!.quiz.reduce((s, q, i) => s + (answers[i] === q.correct ? 1 : 0), 0)
-  , [answers, lesson]);
+  const total = quiz.length;
+  const score = useMemo(
+    () => quiz.reduce((s, q, i) => s + (answers[i] === q.correct ? 1 : 0), 0),
+    [answers, quiz]
+  );
 
   function submit() {
     if (Object.keys(answers).length < total) {
@@ -166,13 +174,22 @@ function Quiz({ lesson, onComplete, alreadyDone }: {
     onComplete(score, total);
   }
 
+  function retry() {
+    setAnswers({});
+    setSubmitted(false);
+    setAttempt(a => a + 1);
+  }
+
   return (
     <Card><CardContent className="p-5 space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="font-bold">Quick Quiz</h2>
-        {submitted && <Badge variant="outline">{score} / {total}</Badge>}
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">Shuffled</Badge>
+          {submitted && <Badge variant="outline">{score} / {total}</Badge>}
+        </div>
       </div>
-      {lesson!.quiz.map((q, qi) => (
+      {quiz.map((q, qi) => (
         <div key={qi} className="space-y-2">
           <p className="font-medium text-sm">{qi + 1}. {q.q}</p>
           <div className="grid gap-1.5">
@@ -207,6 +224,7 @@ function Quiz({ lesson, onComplete, alreadyDone }: {
             {score === total ? "Perfect! 🌟" : score >= total * 0.6 ? "Great work! Keep going." : "Review the notes and try again — you've got this."}
           </p>
           {!alreadyDone && <p className="text-xs text-muted-foreground">Lesson marked as completed.</p>}
+          <Button variant="outline" size="sm" onClick={retry}>Try fresh questions</Button>
         </div>
       )}
     </CardContent></Card>
