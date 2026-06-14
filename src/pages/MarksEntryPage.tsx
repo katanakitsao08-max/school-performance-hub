@@ -225,6 +225,23 @@ export default function MarksEntryPage() {
     enabled: learners.length > 0,
   });
 
+  // Lock map keyed by `${learner_id}|${learning_area_id}` -> { id, locked, row }
+  const scoreMeta = useMemo(() => {
+    const m = new Map<string, { id: string; locked: boolean; row: any }>();
+    existingScores.forEach((s: any) => {
+      m.set(`${s.learner_id}|${s.learning_area_id}`, {
+        id: s.id,
+        locked: isScoreLocked(s),
+        row: s,
+      });
+    });
+    return m;
+  }, [existingScores]);
+
+  const [override, setOverride] = useState<null | {
+    scoreId: string; learnerName: string; subjectName: string; currentScore: any; currentComment?: string | null;
+  }>(null);
+
   useEffect(() => {
     const scoreMap: Record<string, Record<string, string>> = {};
     existingScores.forEach(s => {
