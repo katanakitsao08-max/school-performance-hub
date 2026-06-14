@@ -30,7 +30,7 @@ import RecordPaymentTab from '@/components/fees/RecordPaymentTab';
 import FinanceDashboardTab from '@/components/fees/FinanceDashboardTab';
 import { BarChart3, CreditCard, UserCheck } from 'lucide-react';
 import { z } from 'zod';
-import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
+import { isCharge, isCollectionReceiptRow, isPaymentLedger } from '@/lib/fee-row-utils';
 
 const FEE_TYPES = ['tuition', 'transport', 'lunch', 'boarding', 'activity', 'uniform', 'books', 'other'];
 const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
@@ -183,10 +183,11 @@ export default function FeesPage() {
       // Overpayment guard: total paid (across all live records for this learner)
       // must not exceed total charged unless explicitly confirmed as a credit.
       const { data: ledger } = await supabase.from('fee_records')
-        .select('amount_charged, amount_paid, id')
+        .select('amount_charged, amount_paid, id, transaction_type')
         .eq('learner_id', v.learner_id).is('voided_at', null);
-      const otherCharged = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_charged), 0);
-      const otherPaid = (ledger || []).filter((r: any) => r.id !== editingRecord?.id).reduce((s: number, r: any) => s + Number(r.amount_paid), 0);
+      const otherCharges = ((ledger || []) as any[]).filter((r: any) => r.id !== editingRecord?.id && isCharge(r));
+      const otherCharged = otherCharges.reduce((s: number, r: any) => s + Number(r.amount_charged), 0);
+      const otherPaid = otherCharges.reduce((s: number, r: any) => s + Number(r.amount_paid), 0);
       const newTotalCharged = otherCharged + v.amount_charged;
       const newTotalPaid = otherPaid + v.amount_paid;
       if (newTotalPaid > newTotalCharged) {
@@ -322,6 +323,7 @@ export default function FeesPage() {
   const printStatement = async (learner: any) => {
     const { data: all } = await supabase.from('fee_records').select('*').eq('learner_id', learner.id).order('created_at');
     const live = ((all || []) as any[]).filter(r => !r.voided_at);
+    const hasPaymentLedgerRows = live.some(isPaymentLedger);
     let running = 0;
     const stRows: any[] = [];
     live.forEach(r => {
@@ -334,7 +336,7 @@ export default function FeesPage() {
         });
       } else {
         const charged = Number(r.amount_charged);
-        const paid = Number(r.amount_paid);
+        const paid = hasPaymentLedgerRows ? 0 : Number(r.amount_paid);
         running += charged - paid;
         stRows.push({
           date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
@@ -551,7 +553,7 @@ export default function FeesPage() {
 
   // ---------- Reports export ----------
   const exportCollections = (kind: 'pdf' | 'xlsx') => {
-    const live = feeRecords.filter((r: any) => !r.voided_at && Number(r.amount_paid) > 0);
+    const live = feeRecords.filter((r: any) => !r.voided_at && Number(r.amount_paid) > 0 && isCollectionReceiptRow(r));
     if (live.length === 0) { toast({ title: 'No payments to export' }); return; }
     const rows: CollectionReportRow[] = live.map((r: any) => ({
       date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
