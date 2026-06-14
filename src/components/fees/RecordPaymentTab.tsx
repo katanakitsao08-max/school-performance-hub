@@ -202,7 +202,7 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
         <CardContent className="space-y-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by name or admission #" value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-9 text-xs" />
+            <Input placeholder="Search by name, admission # or parent phone" value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-9 text-xs" />
           </div>
           {search.length > 1 && matches.length > 0 && !learnerId && (
             <div className="max-h-48 overflow-y-auto border rounded-md">
