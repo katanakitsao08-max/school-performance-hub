@@ -516,7 +516,7 @@ export default function FeesPage() {
   // ---------- Defaulters ----------
   const defaulters = useMemo(() => {
     const map = new Map<string, { learner: any; charged: number; paid: number; bal: number }>();
-    feeRecords.filter(r => !r.voided_at).forEach((r: any) => {
+    feeRecords.filter(r => !r.voided_at && isCharge(r)).forEach((r: any) => {
       const k = r.learner_id;
       const cur = map.get(k) || { learner: r.learners, charged: 0, paid: 0, bal: 0 };
       cur.charged += Number(r.amount_charged);
