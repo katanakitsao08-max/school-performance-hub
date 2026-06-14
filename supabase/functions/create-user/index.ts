@@ -44,7 +44,23 @@ serve(async (req) => {
       }
     }
 
-    // Create user – if email already exists, look up the existing user
+    const buildProfileUpdate = async () => {
+      const profileUpdate: any = { school_id: resolvedSchoolId };
+      if (role === 'admin') {
+        // Admin gets all grades dynamically - fetch from school settings
+        const { data: gradeSetting } = await supabaseAdmin.from('school_settings')
+          .select('value').eq('key', 'available_grades').eq('school_id', resolvedSchoolId).maybeSingle();
+        let grades = ['1','2','3','4','5','6','7','8','9'];
+        if (gradeSetting?.value) {
+          try { const parsed = JSON.parse(gradeSetting.value); if (parsed.length > 0) grades = parsed; } catch {}
+        }
+        profileUpdate.assigned_grades = grades;
+        profileUpdate.assigned_streams = [];
+      }
+      return profileUpdate;
+    };
+
+    // Create user – if an admin email already exists, attach and reset that existing admin instead of failing
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -63,6 +79,38 @@ serve(async (req) => {
           if (!listData.users.length || listData.users.length < 1000) break;
         }
 
+        if (existingUser && role === 'admin' && resolvedSchoolId) {
+          const profileUpdate = await buildProfileUpdate();
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+            password,
+            email_confirm: true,
+            user_metadata: { ...(existingUser.user_metadata || {}), full_name },
+          });
+          if (updateError) throw updateError;
+
+          const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+            user_id: existingUser.id,
+            full_name,
+            ...profileUpdate,
+          }, { onConflict: 'user_id' });
+          if (profileError) throw profileError;
+
+          const { error: roleError } = await supabaseAdmin.from('user_roles').upsert({
+            user_id: existingUser.id,
+            role,
+          }, { onConflict: 'user_id,role' });
+          if (roleError) throw roleError;
+
+          return new Response(JSON.stringify({
+            success: true,
+            user_id: existingUser.id,
+            login_email: email,
+            existing_user: true,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         return new Response(JSON.stringify({ 
           success: false, 
           error: `A user with email "${email}" already exists.`,
@@ -76,28 +124,22 @@ serve(async (req) => {
     }
 
     // Assign role
-    const { error: roleError } = await supabaseAdmin.from('user_roles').insert({
+    const { error: roleError } = await supabaseAdmin.from('user_roles').upsert({
       user_id: authData.user.id,
       role,
-    });
+    }, { onConflict: 'user_id,role' });
 
     if (roleError) throw roleError;
 
     // Update profile with school_id and grades for admin
-    const profileUpdate: any = { school_id: resolvedSchoolId };
-    if (role === 'admin') {
-      // Admin gets all grades dynamically - fetch from school settings
-      const { data: gradeSetting } = await supabaseAdmin.from('school_settings')
-        .select('value').eq('key', 'available_grades').eq('school_id', resolvedSchoolId).maybeSingle();
-      let grades = ['1','2','3','4','5','6','7','8','9'];
-      if (gradeSetting?.value) {
-        try { const parsed = JSON.parse(gradeSetting.value); if (parsed.length > 0) grades = parsed; } catch {}
-      }
-      profileUpdate.assigned_grades = grades;
-      profileUpdate.assigned_streams = [];
-    }
+    const profileUpdate = await buildProfileUpdate();
 
-    await supabaseAdmin.from('profiles').update(profileUpdate).eq('user_id', authData.user.id);
+    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+      user_id: authData.user.id,
+      full_name,
+      ...profileUpdate,
+    }, { onConflict: 'user_id' });
+    if (profileError) throw profileError;
 
     return new Response(JSON.stringify({ success: true, user_id: authData.user.id, login_email: email }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
