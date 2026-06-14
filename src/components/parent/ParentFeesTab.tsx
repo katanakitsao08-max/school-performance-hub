@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { generateFeeStatementPDF } from '@/lib/fee-pdf';
 import { toast } from '@/hooks/use-toast';
+import { chargeTotals, isCharge, isCollectionReceiptRow, isPaymentLedger } from '@/lib/fee-row-utils';
 
 interface Props {
   child: { id: string; full_name: string };
@@ -48,26 +49,29 @@ export default function ParentFeesTab({ child }: Props) {
   });
 
   const summary = useMemo(() => {
-    const totalCharged = feeRecords.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = feeRecords.reduce((s, r) => s + Number(r.amount_paid), 0);
-    const balance = totalCharged - totalPaid;
-    return { totalCharged, totalPaid, balance };
+    const totals = chargeTotals(feeRecords as any[]);
+    return { totalCharged: totals.charged, totalPaid: totals.paid, balance: totals.balance };
   }, [feeRecords]);
 
-  const payments = useMemo(() => feeRecords.filter(r => Number(r.amount_paid) > 0), [feeRecords]);
+  const chargeRows = useMemo(() => (feeRecords as any[]).filter(isCharge), [feeRecords]);
+  const payments = useMemo(() => (feeRecords as any[]).filter(r => Number(r.amount_paid) > 0 && isCollectionReceiptRow(r)), [feeRecords]);
 
   const formatAmount = (n: number) => `KES ${n.toLocaleString()}`;
 
   const downloadStatement = () => {
     if (!learnerInfo) return;
     const sorted = [...feeRecords].reverse();
+    const hasPaymentLedgerRows = sorted.some(isPaymentLedger);
     let running = 0;
     const rows = sorted.map((r: any) => {
-      const charged = Number(r.amount_charged), paid = Number(r.amount_paid);
+      const charged = isPaymentLedger(r) ? 0 : Number(r.amount_charged);
+      const paid = isPaymentLedger(r) || !hasPaymentLedgerRows ? Number(r.amount_paid) : 0;
       running += charged - paid;
       return {
         date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
-        description: `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
+        description: isPaymentLedger(r)
+          ? `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · ' + r.receipt_number : ''}`
+          : `T${r.term}/${r.year} ${r.fee_type}${r.description ? ' — ' + r.description : ''}`,
         charged, paid, balance: running, receipt: r.receipt_number,
       };
     });
@@ -133,12 +137,12 @@ export default function ParentFeesTab({ child }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {feeRecords.length === 0 ? (
+          {chargeRows.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No fee records found.</p>
           ) : (
             (() => {
               const byType: Record<string, { charged: number; paid: number }> = {};
-              feeRecords.forEach(r => {
+              chargeRows.forEach(r => {
                 const t = r.fee_type;
                 if (!byType[t]) byType[t] = { charged: 0, paid: 0 };
                 byType[t].charged += Number(r.amount_charged);
