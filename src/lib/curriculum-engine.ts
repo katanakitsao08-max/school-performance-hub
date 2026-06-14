@@ -209,7 +209,7 @@ export async function generateCurriculumScheme(
       }
 
       const ss = item.subStrand;
-      const baseExperiences = ss.activities.join('; ');
+      const baseExperiences = ss.activities.slice(0, 6).join('; ');
       const baseResources = (ss.resources && ss.resources.length > 0
         ? ss.resources
         : ['Course book', 'Charts']
