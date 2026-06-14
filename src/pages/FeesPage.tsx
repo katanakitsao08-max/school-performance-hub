@@ -30,6 +30,7 @@ import RecordPaymentTab from '@/components/fees/RecordPaymentTab';
 import FinanceDashboardTab from '@/components/fees/FinanceDashboardTab';
 import { BarChart3, CreditCard, UserCheck } from 'lucide-react';
 import { z } from 'zod';
+import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
 
 const FEE_TYPES = ['tuition', 'transport', 'lunch', 'boarding', 'activity', 'uniform', 'books', 'other'];
 const PAYMENT_METHODS = ['cash', 'mpesa', 'bank', 'cheque'];
