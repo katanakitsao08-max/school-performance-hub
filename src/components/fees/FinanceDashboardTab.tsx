@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, AlertTriangle, CheckCircle, Calendar, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { isCharge, isCollectionReceiptRow, isPaymentLedger } from '@/lib/fee-row-utils';
+import { isCharge, isCollectionReceiptRow } from '@/lib/fee-row-utils';
 
 interface Props { schoolId: string; year: number; term: number; }
 
@@ -36,7 +36,6 @@ export default function FinanceDashboardTab({ schoolId, year, term }: Props) {
   const stats = useMemo(() => {
     const live = records as any[];
     const chargeRows = live.filter(isCharge);
-    const paymentRows = live.filter(isPaymentLedger);
     const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
     const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     const balance = totalCharged - totalPaid;

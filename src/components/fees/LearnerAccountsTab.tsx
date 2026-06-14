@@ -220,7 +220,7 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                             ledger.push({ date: new Date(r.created_at).toLocaleDateString(), desc: `Charge: ${r.fee_type} (T${r.term}/${r.year})`, debit: Number(r.amount_charged), credit: 0, running });
                           }
                           // Legacy combined rows (charge + payment on same row)
-                          if (!hasPaymentLedgerRows && Number(r.amount_paid) > 0 && Number(r.amount_charged) > 0 && r.payment_date) {
+                          if ((!hasPaymentLedgerRows || r.receipt_number) && Number(r.amount_paid) > 0 && Number(r.amount_charged) > 0 && r.payment_date) {
                             running -= Number(r.amount_paid);
                             ledger.push({ date: new Date(r.payment_date).toLocaleDateString(), desc: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`, debit: 0, credit: Number(r.amount_paid), running });
                           }
