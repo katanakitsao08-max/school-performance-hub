@@ -700,7 +700,8 @@ export default function FeesPage() {
                     {filteredRecords.length === 0 ? (
                       <TableRow><TableCell colSpan={8} className="text-center py-8 text-sm text-muted-foreground">No records</TableCell></TableRow>
                     ) : filteredRecords.map((r: any) => {
-                      const bal = Number(r.amount_charged) - Number(r.amount_paid);
+                      const paymentRow = isPaymentLedger(r);
+                      const bal = paymentRow ? null : Number(r.amount_charged) - Number(r.amount_paid);
                       const voided = !!r.voided_at;
                       return (
                         <TableRow key={r.id} className={voided ? 'opacity-50' : ''}>
@@ -708,16 +709,18 @@ export default function FeesPage() {
                             {r.learners?.full_name || '-'}
                             <br /><span className="text-muted-foreground">{r.learners?.admission_number} · G{r.learners?.grade}{r.learners?.stream}</span>
                           </TableCell>
-                          <TableCell className="text-xs capitalize">{r.fee_type}</TableCell>
-                          <TableCell className="text-xs text-right">{Number(r.amount_charged).toLocaleString()}</TableCell>
+                          <TableCell className="text-xs capitalize">{paymentRow ? 'Payment receipt' : r.fee_type}</TableCell>
+                          <TableCell className="text-xs text-right">{paymentRow ? '-' : Number(r.amount_charged).toLocaleString()}</TableCell>
                           <TableCell className="text-xs text-right text-success">{Number(r.amount_paid).toLocaleString()}</TableCell>
-                          <TableCell className={cn('text-xs text-right font-bold', bal > 0 ? 'text-destructive' : 'text-success')}>{bal.toLocaleString()}</TableCell>
+                          <TableCell className={cn('text-xs text-right font-bold', bal === null ? 'text-muted-foreground' : bal > 0 ? 'text-destructive' : 'text-success')}>{bal === null ? '-' : bal.toLocaleString()}</TableCell>
                           <TableCell className="text-xs capitalize">{r.payment_method}{r.mpesa_reference && <span className="text-muted-foreground ml-1">({r.mpesa_reference})</span>}</TableCell>
                           <TableCell className="text-xs">
                             {voided ? <Badge variant="destructive" className="text-[9px]">VOID</Badge> : (
                               <div className="flex flex-col gap-0.5">
                                 <span>{r.receipt_number || '-'}</span>
-                                {bal <= 0 ? (
+                                {paymentRow ? (
+                                  <Badge variant="outline" className="text-[9px] w-fit border-primary/40 text-primary">Receipt</Badge>
+                                ) : bal! <= 0 ? (
                                   <Badge variant="outline" className="text-[9px] w-fit border-success/40 text-success">Cleared</Badge>
                                 ) : Number(r.amount_paid) > 0 ? (
                                   <Badge variant="outline" className="text-[9px] w-fit border-warning/40 text-warning">Partial</Badge>
