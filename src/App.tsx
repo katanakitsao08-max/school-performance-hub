@@ -73,6 +73,7 @@ const SuperAdminAnalyticsPage = lazy(() => import("./pages/SuperAdminAnalyticsPa
 const SchoolBillingPage = lazy(() => import("./pages/SchoolBillingPage"));
 const SuperAdminBillingPage = lazy(() => import("./pages/SuperAdminBillingPage"));
 const ScoreAuditPage = lazy(() => import("./pages/ScoreAuditPage"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -111,7 +112,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
 function SmartRedirect() {
   const { user, role, profile, loading } = useAuth();
   if (loading) return <PageSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Landing />;
   if (role === 'super_admin') return <Navigate to="/super-admin" replace />;
   if (role === 'parent') return <Navigate to="/parent" replace />;
   if (role === 'independent_learner') return <Navigate to="/learn" replace />;
