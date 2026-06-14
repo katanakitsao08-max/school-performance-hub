@@ -365,13 +365,13 @@ export default function SuperAdminAnalyticsPage() {
             <h1 className="text-2xl md:text-3xl font-display font-bold">Platform Analytics</h1>
             <p className="text-sm text-muted-foreground">360° view of school engagement, usage and health</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => refetchActivity()}><RefreshCcw className="h-4 w-4 mr-1" />Refresh</Button>
-        </div>
-
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex flex-wrap h-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="schools">Schools</TabsTrigger>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="gap-1.5 border-success/30 bg-success/10 text-success">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+              Live · {lastUpdate.toLocaleTimeString()}
+            </Badge>
+            <Button size="sm" variant="outline" onClick={() => { refetchActivity(); setLastUpdate(new Date()); }}><RefreshCcw className="h-4 w-4 mr-1" />Refresh</Button>
+          </div>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="live">Live Feed</TabsTrigger>
             <TabsTrigger value="comms">Comms</TabsTrigger>
