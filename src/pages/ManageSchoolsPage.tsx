@@ -722,6 +722,14 @@ export default function ManageSchoolsPage() {
                               <Ban className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setDeleteTarget(school); setDeleteConfirmText(''); }}
+                            title="Delete school permanently"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -749,6 +757,43 @@ export default function ManageSchoolsPage() {
           fullName={credsReveal.fullName}
         />
       )}
+
+      {/* Delete school confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Permanently delete this school?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will permanently remove <strong>{deleteTarget?.school_name}</strong> and ALL its data:
+                  learners, scores, attendance, fees, SMS logs, timetables, settings, parent links, and more.
+                  This action cannot be undone.
+                </p>
+                <p className="text-xs">
+                  Type the school name <code className="bg-muted px-1 py-0.5 rounded">{deleteTarget?.school_name}</code> to confirm.
+                </p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="School name"
+                  autoFocus
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteSchool.isPending || deleteConfirmText !== deleteTarget?.school_name}
+              onClick={() => deleteTarget && deleteSchool.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteSchool.isPending ? 'Deleting…' : 'Delete permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
 
   );
