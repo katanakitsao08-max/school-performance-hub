@@ -67,6 +67,9 @@ export default function RegisterSchool() {
               <div>Once approved, pay via <strong>M-Pesa Send Money</strong> to <strong>0701594268</strong> (PerformTrack) at <strong>KSh 15/learner/term</strong> or <strong>KSh 45/learner/year</strong>.</div>
             </div>
             <Button asChild className="w-full"><Link to="/">Back to Home</Link></Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
