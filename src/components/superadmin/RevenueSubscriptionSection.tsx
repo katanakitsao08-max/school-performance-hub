@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +56,6 @@ type PlanInfo = {
   updatedAt?: string;
 };
 
-const STORAGE_PAYMENTS = 'subscriptionPayments';
-const STORAGE_PLANS = 'subscriptionPlans';
-
 const DEFAULT_PLAN_FEE: Record<string, number> = {
   free: 0, basic: 12000, standard: 24000, premium: 48000, enterprise: 96000,
 };
@@ -65,10 +64,6 @@ const CYCLE_LABEL: Record<BillingCycle, string> = {
   annual: 'Annual', termly: 'Termly', monthly: 'Monthly',
 };
 
-function readJSON<T>(key: string, fb: T): T {
-  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fb; } catch { return fb; }
-}
-function writeJSON<T>(key: string, v: T) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* ignore */ } }
 function fmtKES(n: number) { return `KES ${Math.round(n || 0).toLocaleString()}`; }
 
 // Compute total billable for a year given a billing cycle + per-cycle amount
