@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import {
   BarChart3, MessageSquare, FileText, Shield, ArrowRight, Phone, Mail,
   CheckCircle2, GraduationCap, Users, Sparkles, ClipboardList, BookOpenCheck,
   LineChart, Lock, Globe, Menu, X, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const SITE_URL = 'https://performtrack.co.ke/';
+const OG_IMAGE = 'https://storage.googleapis.com/gpt-engineer-file-uploads/MOT7WAFDL2gOZBx4pFodyXMiRLz2/social-images/social-1776523937737-apple-touch-icon.webp';
+const SEO_TITLE = 'PerformTrack — Run Your School Smarter | CBC School Management';
+const SEO_DESC = 'PerformTrack helps Kenyan CBC schools track learner performance, send SMS to parents, generate KPSEA/KJSEA reports instantly, and manage operations in one secure platform.';
 
 const PHONE = '0701594268';
 const PHONE_INTL = '254701594268';
