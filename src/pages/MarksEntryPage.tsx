@@ -267,6 +267,8 @@ export default function MarksEntryPage() {
               score: Number(score),
               school_id: schoolId,
               assessment_type: selectedAssessment,
+              submitted_at: new Date().toISOString(),
+              status: 'submitted',
             });
           }
         });
