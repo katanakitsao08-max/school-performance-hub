@@ -82,6 +82,34 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
+      <Helmet>
+        <title>{SEO_TITLE}</title>
+        <meta name="description" content={SEO_DESC} />
+        <link rel="canonical" href={SITE_URL} />
+        <meta name="robots" content="index,follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="PerformTrack" />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:title" content={SEO_TITLE} />
+        <meta property="og:description" content={SEO_DESC} />
+        <meta property="og:image" content={OG_IMAGE} />
+        <meta property="og:image:alt" content="PerformTrack — CBC school management platform" />
+        <meta property="og:locale" content="en_KE" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_TITLE} />
+        <meta name="twitter:description" content={SEO_DESC} />
+        <meta name="twitter:image" content={OG_IMAGE} />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'PerformTrack',
+          applicationCategory: 'EducationalApplication',
+          operatingSystem: 'Web',
+          url: SITE_URL,
+          description: SEO_DESC,
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'KES' },
+        })}</script>
+      </Helmet>
       {/* NAV */}
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/85 backdrop-blur-lg border-b border-border shadow-sm' : 'bg-transparent'}`}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
