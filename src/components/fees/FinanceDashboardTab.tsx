@@ -35,35 +35,42 @@ export default function FinanceDashboardTab({ schoolId, year, term }: Props) {
 
   const stats = useMemo(() => {
     const live = records as any[];
-    const totalCharged = live.reduce((s, r) => s + Number(r.amount_charged), 0);
-    const totalPaid = live.reduce((s, r) => s + Number(r.amount_paid), 0);
+    const chargeRows = live.filter(isCharge);
+    const paymentRows = live.filter(isPaymentLedger);
+    const totalCharged = chargeRows.reduce((s, r) => s + Number(r.amount_charged), 0);
+    const totalPaid = chargeRows.reduce((s, r) => s + Number(r.amount_paid), 0);
     const balance = totalCharged - totalPaid;
     const collectionRate = totalCharged > 0 ? Math.round((totalPaid / totalCharged) * 100) : 0;
 
     const byLearner = new Map<string, number>();
-    live.forEach(r => byLearner.set(r.learner_id, (byLearner.get(r.learner_id) || 0) + Number(r.amount_charged) - Number(r.amount_paid)));
+    chargeRows.forEach(r => byLearner.set(r.learner_id, (byLearner.get(r.learner_id) || 0) + Number(r.amount_charged) - Number(r.amount_paid)));
     const defaulters = Array.from(byLearner.values()).filter(v => v > 0).length;
 
     const now = new Date();
     const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
     const startWeek = new Date(now); startWeek.setDate(now.getDate() - 7);
     const startMonth = new Date(now); startMonth.setDate(now.getDate() - 30);
-    const payments = live.filter(r => Number(r.amount_paid) > 0);
-    const sumIf = (since: Date) => payments.filter(r => new Date(r.payment_date || r.created_at) >= since).reduce((s, r) => s + Number(r.amount_paid), 0);
+    // Use payment ledger rows (or legacy combined rows with both charge+paid+payment_date) as the canonical "collection" source
+    const collections = [
+      ...paymentRows,
+      ...chargeRows.filter(r => Number(r.amount_paid) > 0 && r.payment_date),
+    ];
+    const sumIf = (since: Date) => collections.filter(r => new Date(r.payment_date || r.created_at) >= since).reduce((s, r) => s + Number(r.amount_paid), 0);
 
-    // Monthly collection trend (this year)
+    // Monthly collection trend (this year) — Collected from collections only, Charged from charges only
     const monthly = Array.from({ length: 12 }, (_, i) => ({ month: new Date(year, i, 1).toLocaleString('en-US', { month: 'short' }), Collected: 0, Charged: 0 }));
-    live.forEach(r => {
+    collections.forEach(r => {
       const dt = new Date(r.payment_date || r.created_at);
-      if (dt.getFullYear() === year) {
-        monthly[dt.getMonth()].Collected += Number(r.amount_paid);
-        monthly[dt.getMonth()].Charged += Number(r.amount_charged);
-      }
+      if (dt.getFullYear() === year) monthly[dt.getMonth()].Collected += Number(r.amount_paid);
+    });
+    chargeRows.forEach(r => {
+      const dt = new Date(r.created_at);
+      if (dt.getFullYear() === year) monthly[dt.getMonth()].Charged += Number(r.amount_charged);
     });
 
     // By grade
     const gradeMap = new Map<string, { Charged: number; Collected: number; Outstanding: number }>();
-    live.forEach(r => {
+    chargeRows.forEach(r => {
       const g = `G${r.learners?.grade || '?'}`;
       const cur = gradeMap.get(g) || { Charged: 0, Collected: 0, Outstanding: 0 };
       cur.Charged += Number(r.amount_charged);
