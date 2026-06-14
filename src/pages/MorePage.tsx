@@ -52,6 +52,7 @@ const adminMenuSections = [
     title: "Administration",
     items: [
       { title: "Users", icon: Users, to: "/users" },
+      { title: "Subscription & Billing", icon: Wallet, to: "/billing" },
       { title: "Promotion", icon: ArrowUpCircle, to: "/promotion" },
       { title: "Settings", icon: Settings, to: "/settings" },
     ],
@@ -95,6 +96,7 @@ const superAdminMenuSections = [
     title: "Platform",
     items: [
       { title: "Manage Schools", icon: Building2, to: "/manage-schools" },
+      { title: "Billing & Collections", icon: Wallet, to: "/admin/billing" },
       { title: "Curriculum Designs", icon: BookMarked, to: "/curriculum-manager" },
       { title: "LMS Catalog", icon: BookOpen, to: "/super-admin/lms" },
       { title: "Platform Analytics", icon: BarChart3, to: "/super-admin/analytics" },
