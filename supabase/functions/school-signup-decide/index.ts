@@ -82,7 +82,17 @@ serve(async (req) => {
       throw cErr || new Error('Admin user creation failed');
     }
     const uid = created.user.id;
-    await admin.from('profiles').upsert({ user_id: uid, full_name: signup.admin_full_name, school_id: newSchool.id }, { onConflict: 'user_id' });
+    // Auto-attach admin signup details to profile (full name, phone as WhatsApp number, school)
+    // Admin gets all grades by default so they can manage the whole school
+    const defaultGrades = ['1','2','3','4','5','6','7','8','9'];
+    await admin.from('profiles').upsert({
+      user_id: uid,
+      full_name: signup.admin_full_name,
+      school_id: newSchool.id,
+      whatsapp_number: signup.admin_phone || null,
+      assigned_grades: defaultGrades,
+      assigned_streams: [],
+    }, { onConflict: 'user_id' });
     await admin.from('user_roles').upsert({ user_id: uid, role: 'admin' }, { onConflict: 'user_id,role' });
 
     await admin.from('school_signups').update({
