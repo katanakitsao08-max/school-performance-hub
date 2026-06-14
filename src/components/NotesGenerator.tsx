@@ -533,9 +533,6 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
             <Section title="Topic Title" editing={status === 'editing'}
               value={notes.title} onChange={v => updateField('title', v)} isText />
 
-            <Section title="Learning Objectives" editing={status === 'editing'}
-              listValue={notes.objectives} onListChange={v => updateField('objectives', v)} />
-
             {(notes.keyVocabulary?.length || status === 'editing') && (
               <VocabSection
                 editing={status === 'editing'}
@@ -544,11 +541,10 @@ export function NotesGenerator({ schoolName }: { schoolName?: string }) {
               />
             )}
 
-            <Section title="Introduction" editing={status === 'editing'}
-              value={notes.introduction} onChange={v => updateField('introduction', v)} />
+            <Section title="Notes" editing={status === 'editing'}
+              value={[notes.introduction, notes.mainContent].filter(Boolean).join('\n\n')}
+              onChange={v => updateField('mainContent', v)} />
 
-            <Section title="Main Content" editing={status === 'editing'}
-              value={notes.mainContent} onChange={v => updateField('mainContent', v)} />
 
             <Section title="Worked Examples" editing={status === 'editing'}
               listValue={notes.workedExamples} onListChange={v => updateField('workedExamples', v)} />
