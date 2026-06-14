@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import {
   BarChart3, MessageSquare, FileText, Shield, ArrowRight, Phone, Mail,
   CheckCircle2, GraduationCap, Users, Sparkles, ClipboardList, BookOpenCheck,
   LineChart, Lock, Globe, Menu, X, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const SITE_URL = 'https://performtrack.co.ke/';
+const OG_IMAGE = 'https://storage.googleapis.com/gpt-engineer-file-uploads/MOT7WAFDL2gOZBx4pFodyXMiRLz2/social-images/social-1776523937737-apple-touch-icon.webp';
+const SEO_TITLE = 'PerformTrack — Run Your School Smarter | CBC School Management';
+const SEO_DESC = 'PerformTrack helps Kenyan CBC schools track learner performance, send SMS to parents, generate KPSEA/KJSEA reports instantly, and manage operations in one secure platform.';
 
 const PHONE = '0701594268';
 const PHONE_INTL = '254701594268';
@@ -69,19 +75,6 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    document.title = 'PerformTrack — Run Your School Smarter';
-    const setMeta = (name: string, content: string, attr: 'name' | 'property' = 'name') => {
-      let tag = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-      if (!tag) { tag = document.createElement('meta'); tag.setAttribute(attr, name); document.head.appendChild(tag); }
-      tag.content = content;
-    };
-    setMeta('description', 'PerformTrack helps Kenyan CBC schools track performance, send SMS to parents, generate reports instantly, and manage operations in one secure platform.');
-    setMeta('og:title', 'PerformTrack — Run Your School Smarter', 'property');
-    setMeta('og:description', 'CBC-ready school management. Performance tracking, parent SMS, smart reports.', 'property');
-    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
-    link.href = 'https://performtrack.co.ke/';
-
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -89,6 +82,34 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
+      <Helmet>
+        <title>{SEO_TITLE}</title>
+        <meta name="description" content={SEO_DESC} />
+        <link rel="canonical" href={SITE_URL} />
+        <meta name="robots" content="index,follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="PerformTrack" />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:title" content={SEO_TITLE} />
+        <meta property="og:description" content={SEO_DESC} />
+        <meta property="og:image" content={OG_IMAGE} />
+        <meta property="og:image:alt" content="PerformTrack — CBC school management platform" />
+        <meta property="og:locale" content="en_KE" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_TITLE} />
+        <meta name="twitter:description" content={SEO_DESC} />
+        <meta name="twitter:image" content={OG_IMAGE} />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'PerformTrack',
+          applicationCategory: 'EducationalApplication',
+          operatingSystem: 'Web',
+          url: SITE_URL,
+          description: SEO_DESC,
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'KES' },
+        })}</script>
+      </Helmet>
       {/* NAV */}
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/85 backdrop-blur-lg border-b border-border shadow-sm' : 'bg-transparent'}`}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
