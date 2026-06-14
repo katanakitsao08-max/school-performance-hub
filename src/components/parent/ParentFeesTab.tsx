@@ -65,7 +65,7 @@ export default function ParentFeesTab({ child }: Props) {
     let running = 0;
     const rows = sorted.map((r: any) => {
       const charged = isPaymentLedger(r) ? 0 : Number(r.amount_charged);
-      const paid = isPaymentLedger(r) || !hasPaymentLedgerRows ? Number(r.amount_paid) : 0;
+      const paid = isPaymentLedger(r) || !hasPaymentLedgerRows || r.receipt_number ? Number(r.amount_paid) : 0;
       running += charged - paid;
       return {
         date: new Date(r.payment_date || r.created_at).toLocaleDateString(),

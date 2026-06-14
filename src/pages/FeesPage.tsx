@@ -336,7 +336,7 @@ export default function FeesPage() {
         });
       } else {
         const charged = Number(r.amount_charged);
-        const paid = hasPaymentLedgerRows ? 0 : Number(r.amount_paid);
+        const paid = hasPaymentLedgerRows && !r.receipt_number ? 0 : Number(r.amount_paid);
         running += charged - paid;
         stRows.push({
           date: new Date(r.payment_date || r.created_at).toLocaleDateString(),
