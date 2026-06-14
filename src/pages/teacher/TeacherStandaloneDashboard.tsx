@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Plus, LogOut, GraduationCap, Users, ClipboardList, FileText, CalendarCheck, BookOpen, Download, Loader2 } from "lucide-react";
+import { Plus, LogOut, GraduationCap, Users, ClipboardList, FileText, CalendarCheck, BookOpen, Download, Loader2, FileEdit, Library, Calendar as CalendarIcon, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import JSZip from "jszip";
