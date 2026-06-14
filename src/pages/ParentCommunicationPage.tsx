@@ -19,6 +19,7 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { TERMS, getGradeForLevel, getGradePoints } from '@/lib/cbc-utils';
 import { isCharge } from '@/lib/fee-row-utils';
+import { fetchAllPaged } from '@/lib/fetch-all';
 
 type Mode = 'individual' | 'class' | 'multi_class' | 'whole_school';
 type TemplateKey = 'custom' | 'fees' | 'results' | 'communication' | 'updates';
@@ -184,10 +185,11 @@ export default function ParentCommunicationPage() {
     queryKey: ['comm-scores-all', recipientIds.join(','), resYear],
     queryFn: async () => {
       if (!recipientIds.length) return [];
-      const { data } = await supabase.from('scores')
+      // Page through results — large classes easily exceed Supabase's 1000-row cap.
+      const rows = await fetchAllPaged(() => supabase.from('scores')
         .select('learner_id, learning_area_id, score, term, assessment_type, created_at')
-        .in('learner_id', recipientIds).eq('year', resYear);
-      return data || [];
+        .in('learner_id', recipientIds).eq('year', resYear));
+      return rows;
     },
     enabled: template === 'results' && recipientIds.length > 0,
     staleTime: 0,
