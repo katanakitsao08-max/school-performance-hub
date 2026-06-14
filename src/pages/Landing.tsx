@@ -241,6 +241,16 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+            {/* Floating badges */}
+            <div className="hidden sm:flex absolute -left-4 top-10 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Faster Reporting
+            </div>
+            <div className="hidden sm:flex absolute -right-4 top-1/2 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in" style={{ animationDelay: '120ms' }}>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Parent Communication
+            </div>
+            <div className="hidden sm:flex absolute -left-2 -bottom-4 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in" style={{ animationDelay: '240ms' }}>
+              <Shield className="h-4 w-4 text-primary" /> Secure Records
+            </div>
           </div>
         </div>
       </section>
