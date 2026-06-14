@@ -52,7 +52,7 @@ const adminMenuSections = [
     title: "Administration",
     items: [
       { title: "Users", icon: Users, to: "/users" },
-      { title: "Subscription & Billing", icon: Wallet, to: "/billing" },
+      // { title: "Subscription & Billing", icon: Wallet, to: "/billing" },
       { title: "Promotion", icon: ArrowUpCircle, to: "/promotion" },
       { title: "Settings", icon: Settings, to: "/settings" },
     ],
