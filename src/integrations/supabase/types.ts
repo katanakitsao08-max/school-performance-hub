@@ -3153,43 +3153,121 @@ export type Database = {
           },
         ]
       }
+      score_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          id: string
+          learner_id: string | null
+          learning_area_id: string | null
+          new_value: Json | null
+          previous_value: Json | null
+          reason: string | null
+          school_id: string
+          score_id: string
+          score_table: string
+          strand_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          id?: string
+          learner_id?: string | null
+          learning_area_id?: string | null
+          new_value?: Json | null
+          previous_value?: Json | null
+          reason?: string | null
+          school_id: string
+          score_id: string
+          score_table: string
+          strand_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          id?: string
+          learner_id?: string | null
+          learning_area_id?: string | null
+          new_value?: Json | null
+          previous_value?: Json | null
+          reason?: string | null
+          school_id?: string
+          score_id?: string
+          score_table?: string
+          strand_id?: string | null
+        }
+        Relationships: []
+      }
       scores: {
         Row: {
           assessment_type: string
           created_at: string
+          edited_at: string | null
+          edited_by: string | null
           id: string
           learner_id: string
           learning_area_id: string
+          locked_at: string | null
+          locked_by: string | null
           school_id: string | null
           score: number
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
           teacher_comment: string | null
           term: number
+          unlock_reason: string | null
+          unlocked_at: string | null
+          unlocked_by: string | null
           updated_at: string
           year: number
         }
         Insert: {
           assessment_type?: string
           created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
           id?: string
           learner_id: string
           learning_area_id: string
+          locked_at?: string | null
+          locked_by?: string | null
           school_id?: string | null
           score: number
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           teacher_comment?: string | null
           term: number
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
           updated_at?: string
           year: number
         }
         Update: {
           assessment_type?: string
           created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
           id?: string
           learner_id?: string
           learning_area_id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           school_id?: string | null
           score?: number
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           teacher_comment?: string | null
           term?: number
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
           updated_at?: string
           year?: number
         }
@@ -3273,14 +3351,24 @@ export type Database = {
           assessment_type: string
           competency_level: string
           created_at: string
+          edited_at: string | null
+          edited_by: string | null
           id: string
           learner_id: string
+          locked_at: string | null
+          locked_by: string | null
           max_score: number
           school_id: string | null
           score: number
+          status: string
           strand_id: string
+          submitted_at: string | null
+          submitted_by: string | null
           teacher_comment: string | null
           term: number
+          unlock_reason: string | null
+          unlocked_at: string | null
+          unlocked_by: string | null
           updated_at: string
           year: number
         }
@@ -3288,14 +3376,24 @@ export type Database = {
           assessment_type?: string
           competency_level?: string
           created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
           id?: string
           learner_id: string
+          locked_at?: string | null
+          locked_by?: string | null
           max_score?: number
           school_id?: string | null
           score?: number
+          status?: string
           strand_id: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           teacher_comment?: string | null
           term: number
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
           updated_at?: string
           year: number
         }
@@ -3303,14 +3401,24 @@ export type Database = {
           assessment_type?: string
           competency_level?: string
           created_at?: string
+          edited_at?: string | null
+          edited_by?: string | null
           id?: string
           learner_id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           max_score?: number
           school_id?: string | null
           score?: number
+          status?: string
           strand_id?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           teacher_comment?: string | null
           term?: number
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
           updated_at?: string
           year?: number
         }
@@ -4519,6 +4627,10 @@ export type Database = {
       }
       is_school_billing_active: {
         Args: { _school_id: string }
+        Returns: boolean
+      }
+      is_score_locked: {
+        Args: { _status: string; _submitted_at: string }
         Returns: boolean
       }
       link_pending_school_to_school: {

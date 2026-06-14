@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2, Layers } from 'lucide-react';
+import { Save, TrendingUp, TrendingDown, Award, AlertTriangle, BookOpen, CheckCircle2, Layers, Lock, Unlock } from 'lucide-react';
+import { isScoreLocked } from '@/lib/score-lock';
+import { AdminScoreOverrideDialog } from '@/components/AdminScoreOverrideDialog';
 import { TERMS, ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS, type AssessmentType, getGradeForLevel, type AnyGrade, isKJSEAGradeLevel } from '@/lib/cbc-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StrandMarksEntry from '@/components/StrandMarksEntry';
@@ -223,6 +225,23 @@ export default function MarksEntryPage() {
     enabled: learners.length > 0,
   });
 
+  // Lock map keyed by `${learner_id}|${learning_area_id}` -> { id, locked, row }
+  const scoreMeta = useMemo(() => {
+    const m = new Map<string, { id: string; locked: boolean; row: any }>();
+    existingScores.forEach((s: any) => {
+      m.set(`${s.learner_id}|${s.learning_area_id}`, {
+        id: s.id,
+        locked: isScoreLocked(s),
+        row: s,
+      });
+    });
+    return m;
+  }, [existingScores]);
+
+  const [override, setOverride] = useState<null | {
+    scoreId: string; learnerName: string; subjectName: string; currentScore: any; currentComment?: string | null;
+  }>(null);
+
   useEffect(() => {
     const scoreMap: Record<string, Record<string, string>> = {};
     existingScores.forEach(s => {
@@ -267,6 +286,8 @@ export default function MarksEntryPage() {
               score: Number(score),
               school_id: schoolId,
               assessment_type: selectedAssessment,
+              submitted_at: new Date().toISOString(),
+              status: 'submitted',
             });
           }
         });
@@ -370,6 +391,8 @@ export default function MarksEntryPage() {
               score: Number(raw),
               school_id: schoolId,
               assessment_type: selectedAssessment,
+              submitted_at: new Date().toISOString(),
+              status: 'submitted',
             });
           }
         }
@@ -722,9 +745,32 @@ export default function MarksEntryPage() {
                               }
                             };
                             const key = col.kind === 'single' ? col.subject.id : col.label;
+                            const meta = scoreMeta.get(`${learner.id}|${primary.id}`);
+                            const locked = !!meta?.locked;
                             return (
                               <TableCell key={key} className="p-0.5">
-                                {canEdit ? (
+                                {locked ? (
+                                  <div
+                                    className={`w-[60px] text-center mx-auto h-8 flex items-center justify-center gap-1 text-xs rounded border bg-muted/50 ${inputBorder}`}
+                                    title="Performance Locked (Editable period expired)"
+                                  >
+                                    <Lock className="h-3 w-3" />{val || '-'}
+                                    {isPrivileged && meta && (
+                                      <button
+                                        type="button"
+                                        className="ml-0.5 text-primary hover:opacity-80"
+                                        title="Admin override"
+                                        onClick={() => setOverride({
+                                          scoreId: meta.id,
+                                          learnerName: learner.full_name,
+                                          subjectName: primary.name,
+                                          currentScore: meta.row.score,
+                                          currentComment: meta.row.teacher_comment,
+                                        })}
+                                      ><Unlock className="h-3 w-3" /></button>
+                                    )}
+                                  </div>
+                                ) : canEdit ? (
                                   <Input
                                     type="number"
                                     min={0}
@@ -795,6 +841,19 @@ export default function MarksEntryPage() {
           </TabsContent>
         </Tabs>
       </div>
+      {override && (
+        <AdminScoreOverrideDialog
+          open={!!override}
+          onOpenChange={(v) => !v && setOverride(null)}
+          table="scores"
+          scoreId={override.scoreId}
+          learnerName={override.learnerName}
+          subjectName={override.subjectName}
+          currentScore={override.currentScore}
+          currentComment={override.currentComment}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['scores'] })}
+        />
+      )}
     </DashboardLayout>
   );
 }

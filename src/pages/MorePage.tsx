@@ -54,6 +54,7 @@ const adminMenuSections = [
       { title: "Users", icon: Users, to: "/users" },
       // { title: "Subscription & Billing", icon: Wallet, to: "/billing" },
       { title: "Promotion", icon: ArrowUpCircle, to: "/promotion" },
+      { title: "Performance Audit Log", icon: Activity, to: "/audit/scores" },
       { title: "Settings", icon: Settings, to: "/settings" },
     ],
   },
