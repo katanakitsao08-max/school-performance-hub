@@ -46,11 +46,11 @@ export default function RecordPaymentTab({ schoolId, userId, schoolName, presele
     queryKey: ['rp-search', schoolId, search],
     queryFn: async () => {
       if (!search.trim()) return [];
-      const s = search.trim();
+      const s = search.trim().replace(/'/g, "''");
       const { data } = await supabase.from('learners')
         .select('id, full_name, admission_number, grade, stream, parent_name, parent_phone')
         .eq('school_id', schoolId).eq('is_active', true)
-        .or(`full_name.ilike.%${s}%,admission_number.ilike.%${s}%`)
+        .or(`full_name.ilike.%${s}%,admission_number.ilike.%${s}%,parent_phone.ilike.%${s}%,parent_name.ilike.%${s}%`)
         .order('full_name').limit(15);
       return data || [];
     },
