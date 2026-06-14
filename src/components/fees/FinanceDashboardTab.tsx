@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, AlertTriangle, CheckCircle, Calendar, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
 
 interface Props { schoolId: string; year: number; term: number; }
 
