@@ -210,13 +210,19 @@ export default function LearnerAccountsTab({ schoolId, selectedGrade, schoolName
                       const sorted = [...openLearner.rows].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
                       const ledger: any[] = [];
                       sorted.forEach((r: any) => {
-                        if (Number(r.amount_charged) > 0) {
-                          running += Number(r.amount_charged);
-                          ledger.push({ date: new Date(r.created_at).toLocaleDateString(), desc: `Charge: ${r.fee_type} (T${r.term}/${r.year})`, debit: Number(r.amount_charged), credit: 0, running });
-                        }
-                        if (Number(r.amount_paid) > 0) {
+                        if (isPaymentLedger(r)) {
                           running -= Number(r.amount_paid);
-                          ledger.push({ date: new Date(r.payment_date || r.created_at).toLocaleDateString(), desc: `Payment ${r.payment_method?.toUpperCase()}${r.receipt_number ? ' · '+r.receipt_number : ''}`, debit: 0, credit: Number(r.amount_paid), running });
+                          ledger.push({ date: new Date(r.payment_date || r.created_at).toLocaleDateString(), desc: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`, debit: 0, credit: Number(r.amount_paid), running });
+                        } else {
+                          if (Number(r.amount_charged) > 0) {
+                            running += Number(r.amount_charged);
+                            ledger.push({ date: new Date(r.created_at).toLocaleDateString(), desc: `Charge: ${r.fee_type} (T${r.term}/${r.year})`, debit: Number(r.amount_charged), credit: 0, running });
+                          }
+                          // Legacy combined rows (charge + payment on same row)
+                          if (Number(r.amount_paid) > 0 && Number(r.amount_charged) > 0 && r.payment_date) {
+                            running -= Number(r.amount_paid);
+                            ledger.push({ date: new Date(r.payment_date).toLocaleDateString(), desc: `Payment ${r.payment_method?.toUpperCase() || ''}${r.receipt_number ? ' · '+r.receipt_number : ''}`, debit: 0, credit: Number(r.amount_paid), running });
+                          }
                         }
                       });
                       if (ledger.length === 0) return <TableRow><TableCell colSpan={5} className="text-center py-4 text-xs text-muted-foreground">No transactions</TableCell></TableRow>;
