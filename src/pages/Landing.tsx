@@ -568,16 +568,26 @@ export default function Landing() {
         </div>
       </footer>
 
-      {/* WhatsApp floating button */}
-      <a
-        href={`https://wa.me/${PHONE_INTL}?text=${encodeURIComponent('Hi PerformTrack, I would like a demo for my school.')}`}
-        target="_blank" rel="noreferrer"
-        aria-label="Chat on WhatsApp"
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl shadow-emerald-500/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
-      >
-        <MessageCircle className="h-7 w-7" />
-        <span className="sr-only">WhatsApp</span>
-      </a>
+      {/* Floating action buttons */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <a
+          href={`https://wa.me/${PHONE_INTL}?text=${encodeURIComponent('Hi PerformTrack, I would like a demo for my school.')}`}
+          target="_blank" rel="noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl shadow-emerald-500/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
+        >
+          <MessageCircle className="h-7 w-7" />
+          <span className="sr-only">WhatsApp</span>
+        </a>
+        <a
+          href={`tel:${PHONE}`}
+          aria-label="Call PerformTrack"
+          className="md:hidden h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
+        >
+          <Phone className="h-6 w-6" />
+          <span className="sr-only">Call</span>
+        </a>
+      </div>
     </div>
   );
 }
