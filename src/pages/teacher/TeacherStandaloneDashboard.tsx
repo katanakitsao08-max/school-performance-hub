@@ -287,6 +287,35 @@ export default function TeacherStandaloneDashboard() {
           <Card><CardHeader className="pb-2"><CardDescription>Grade</CardDescription><CardTitle className="text-xl">{klass?.class_name || "—"}</CardTitle></CardHeader></Card>
         </div>
 
+        {/* Teaching Tools — full menu for class teachers */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Teaching Tools</CardTitle>
+            <CardDescription>Everything you need for your class</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {[
+              { label: 'Content Generator', icon: FileEdit, to: '/content-generation' },
+              { label: 'Curriculum Library', icon: Library, to: '/curriculum-library' },
+              { label: 'Lesson Notes', icon: BookOpen, to: '/content-generation?tab=notes' },
+              { label: 'Schemes of Work', icon: FileText, to: '/content-generation?tab=scheme' },
+              { label: 'Lesson Plans', icon: ClipboardList, to: '/content-generation?tab=plan' },
+              { label: 'Timetable', icon: CalendarIcon, to: '/timetable' },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={() => navigate(item.to)}
+                className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors text-center"
+              >
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <span className="text-xs font-medium leading-tight">{item.label}</span>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="roster">
           <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="roster"><Users className="h-4 w-4 mr-1 hidden sm:inline" />Roster</TabsTrigger>
