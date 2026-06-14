@@ -105,6 +105,15 @@ export default function LearnersPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const formData: any = { ...form };
+      if (!formData.grade) {
+        throw new Error('Please select a grade.');
+      }
+      if (!formData.stream || !String(formData.stream).trim()) {
+        throw new Error('Stream allocation is required. Please assign the learner to a stream.');
+      }
+      if (availableStreams.length > 0 && !availableStreams.includes(formData.stream)) {
+        throw new Error(`Stream "${formData.stream}" is not configured for this school. Please pick a valid stream.`);
+      }
       if (!editing && !formData.admission_number) {
         formData.admission_number = generateAdmNumber();
       }
@@ -282,11 +291,14 @@ export default function LearnersPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Stream</Label>
-                    <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Label>Stream <span className="text-destructive">*</span></Label>
+                    <Select value={form.stream} onValueChange={v => setForm(f => ({ ...f, stream: v }))} required>
+                      <SelectTrigger><SelectValue placeholder={availableStreams.length === 0 ? 'No streams configured' : 'Select a stream'} /></SelectTrigger>
                       <SelectContent>{availableStreams.map((s: string) => <SelectItem key={s} value={s}>Stream {s}</SelectItem>)}</SelectContent>
                     </Select>
+                    {availableStreams.length === 0 && (
+                      <p className="text-xs text-destructive">No streams configured. Add streams under Academics → Streams before registering learners.</p>
+                    )}
                    </div>
                    <div className="space-y-2">
                      <Label>Gender</Label>
