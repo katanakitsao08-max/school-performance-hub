@@ -75,19 +75,6 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    document.title = 'PerformTrack — Run Your School Smarter';
-    const setMeta = (name: string, content: string, attr: 'name' | 'property' = 'name') => {
-      let tag = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-      if (!tag) { tag = document.createElement('meta'); tag.setAttribute(attr, name); document.head.appendChild(tag); }
-      tag.content = content;
-    };
-    setMeta('description', 'PerformTrack helps Kenyan CBC schools track performance, send SMS to parents, generate reports instantly, and manage operations in one secure platform.');
-    setMeta('og:title', 'PerformTrack — Run Your School Smarter', 'property');
-    setMeta('og:description', 'CBC-ready school management. Performance tracking, parent SMS, smart reports.', 'property');
-    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
-    link.href = 'https://performtrack.co.ke/';
-
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
