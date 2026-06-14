@@ -53,17 +53,20 @@ serve(async (req) => {
     });
 
     if (authError) {
-      if (authError.message?.includes('already been registered')) {
-        // Find existing user by email
-        const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        if (listError) throw listError;
-        const existingUser = listData.users.find(u => u.email === email);
-        if (!existingUser) throw new Error('User exists but could not be found');
+      if (authError.message?.includes('already been registered') || (authError as any).code === 'email_exists') {
+        // Find existing user by email — paginate since listUsers defaults to first page only
+        let existingUser: any = null;
+        for (let page = 1; page <= 20 && !existingUser; page++) {
+          const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+          if (listError) throw listError;
+          existingUser = listData.users.find(u => (u.email || '').toLowerCase() === email);
+          if (!listData.users.length || listData.users.length < 1000) break;
+        }
 
         return new Response(JSON.stringify({ 
           success: false, 
           error: `A user with email "${email}" already exists.`,
-          existing_user_id: existingUser.id 
+          existing_user_id: existingUser?.id ?? null
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
