@@ -14,10 +14,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Smartphone, Upload, Receipt, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Smartphone, Upload, Receipt, Clock, CheckCircle2, XCircle, Loader2, Phone } from 'lucide-react';
 
 type Cycle = 'monthly' | 'term' | 'annual';
+const PAY_PHONE = '0701594268';
 const fmt = (n: number) => `KES ${Number(n || 0).toLocaleString()}`;
+const isPerLearner = (p: any) => Number(p?.price_monthly || 0) === 0 && (Number(p?.price_term || 0) > 0 || Number(p?.price_annual || 0) > 0);
 
 export default function SchoolBillingPage() {
   const { profile } = useAuth();
