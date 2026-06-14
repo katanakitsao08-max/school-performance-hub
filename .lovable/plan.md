@@ -1,97 +1,79 @@
-# Fees Module Enhancement Plan
+# STK Push + Auto-Renew Reminders
 
-This is a large upgrade scoped strictly to the Fees Module. No other modules are touched. The existing `fee_records` and `fee_structures` tables remain the source of truth — we add minimal columns and new UI on top, so existing data continues to work.
+Replace manual M-Pesa code entry with one-tap STK Push for both **Learning Path (parent + independent learner)** and **school subscription plans**, and send automatic 3-day pre-expiry reminders on both channels.
 
-## 1. Database (small additive migration only)
+## 1. Daraja secrets & shared engine
 
-Add to `public.fee_records` (all nullable, backward compatible):
-- `transaction_type text default 'charge'` — `charge | payment | adjustment | discount | waiver | refund`
-- `allocation_parent_id uuid` — links a payment row to the charge row it cleared (for auto-allocation history)
-- `allocation_mode text` — `auto | manual`
+Add secrets (one-time, user supplies):
+- `MPESA_CONSUMER_KEY`
+- `MPESA_CONSUMER_SECRET`
+- `MPESA_SHORTCODE` (Paybill/Till — default 174379 sandbox)
+- `MPESA_PASSKEY`
+- `MPESA_ENV` (`sandbox` | `production`)
+- `MPESA_CALLBACK_BASE` (optional override; defaults to project functions URL)
 
-Add `public.fee_audit_log` (id, school_id, actor_user_id, action, entity_type, entity_id, before jsonb, after jsonb, created_at) with RLS scoped to school admins.
+New shared module `supabase/functions/_shared/mpesa.ts`:
+- `getAccessToken()` — OAuth, 50min cache
+- `stkPush({ phone, amount, accountRef, description, callbackUrl })` — returns `CheckoutRequestID`
+- `normalizeMsisdn()` — 07.. / 01.. / 254.. / +254.. → 2547XXXXXXXX
 
-Receipt numbering already uses `generate_receipt_number` → format `RCP-YYYY-00001`. We'll keep that; UI label shows the same.
+## 2. Database
 
-No destructive changes. All current pages keep working.
-
-## 2. New page structure (under existing `/fees`)
-
-Replace the current flat list with a tabbed layout inside `FeesPage.tsx`:
+New migration:
 
 ```text
-Fees
-├─ Accounts        ← one row per learner (consolidated)
-├─ Record Payment  ← search learner, allocate, receipt
-├─ Fee Structures  ← CRUD by grade/stream/term/year (already partly exists)
-├─ Defaulters
-├─ Reports         ← collection/daily/defaulters/statements (PDF/XLSX/CSV)
-└─ Dashboard       ← finance KPIs + charts
+mpesa_transactions
+  id, created_at, updated_at
+  purpose: 'lp_parent' | 'lp_independent' | 'school_subscription'
+  status: 'pending' | 'success' | 'failed' | 'timeout'
+  checkout_request_id (unique), merchant_request_id
+  phone, amount, account_ref
+  mpesa_receipt, result_code, result_desc, raw_callback jsonb
+  -- linkage (nullable, only one set)
+  learner_id, parent_user_id, independent_user_id, school_id, plan_id, weeks, months
+  requested_by uuid
+
+renewal_reminders_log
+  id, kind ('lp'|'school_subscription'), target_id, channel ('sms'|'whatsapp'),
+  sent_at, days_before
 ```
 
-### Accounts tab
-- One card/row per active learner with: name, adm #, grade/stream, parent name, phone, alt phone, email, total charged, total paid, balance, status badge (Fully Paid / Partial / Unpaid).
-- Click → drawer with: fee items table (Item · Charged · Paid · Balance), ledger (Date · Description · Debit · Credit · Running Balance), quick actions (Record Payment, Statement PDF, Send SMS).
+RLS: insert/select scoped to owner (parent/independent/school admin); service_role full.
 
-### Record Payment
-- Search learner → shows outstanding balances per item.
-- Enter amount, method (Cash / M-Pesa / Bank / Cheque), reference, date.
-- Toggle Auto vs Manual allocation. Auto = FIFO across outstanding items (oldest first); Manual = per-item amount inputs.
-- On submit: insert payment row(s), update charges' `amount_paid`, generate receipt, optional auto-SMS confirmation.
+## 3. Edge functions
 
-### Defaulters
-- Filter by grade/stream/min balance. Bulk-select → Send Reminder SMS. Export CSV/XLSX.
+- `mpesa-stk-initiate` — validates input, writes pending `mpesa_transactions` row, calls Daraja STK Push, returns `checkout_request_id`.
+- `mpesa-stk-callback` — public (verify_jwt=false), parses Safaricom callback, marks row success/failed, on success:
+  - LP parent → insert `learning_path_entitlements` (active, `expires_at = now + weeks*7d`)
+  - LP independent → insert `independent_subscriptions` (active)
+  - School subscription → update `schools.plan_id` + `plan_expires_at`, insert `subscription_payments`
+- `mpesa-stk-status` — client polls by `checkout_request_id` for UI feedback.
+- `renewal-reminders` — scheduled (pg_cron daily): finds entitlements/subscriptions expiring in ~3 days with no reminder logged, sends SMS via `send-sms-v2` + WhatsApp via `whatsapp-send`, logs to `renewal_reminders_log`. Templates seeded: `LP Renewal Reminder`, `School Subscription Renewal`.
 
-### Finance Dashboard
-- KPIs: Total Charged, Collected, Outstanding, Collection Rate, # Defaulters, Today/Week/Month payments, SMS sent today.
-- Recharts: revenue line, collection trend, outstanding by class.
+## 4. Frontend wiring
 
-## 3. Receipts & statements (extend existing `fee-pdf.ts`)
-- Receipt already includes school logo/name, receipt #, date, learner, class, method, breakdown, balance. Add: Payment Allocation Details section (which items this payment cleared and by how much). Actions: View / Download / Print / WhatsApp share link.
-- Statement already exists; add ledger column ordering and a Share button.
+- `LearningPathPaywall.tsx` (parent) — replace manual code form with: phone input + weeks + **"Pay KES X with M-Pesa"** button → calls `mpesa-stk-initiate` → shows "Check your phone, enter PIN" → polls `mpesa-stk-status` every 3s up to 90s → success toast and refetch. Keep manual-code fallback collapsed under "Paid manually? Submit code".
+- `IndependentSubscribe.tsx` — same STK flow.
+- New `src/components/superadmin/SchoolPlanCheckout.tsx` (and hook into existing plan-assignment UI) — school admin picks plan + months → STK Push to school admin phone.
+- Shared hook `useStkPush()` to centralize initiate + poll.
 
-## 4. SMS (uses existing `send-sms-v2` edge function + per-school provider)
-Three new templates resolved against the school's registered name:
-- Payment Confirmation (auto on payment, toggleable per school)
-- Fee Reminder (manual + bulk)
-- Full Clearance (auto when balance hits 0)
+## 5. Cron
 
-Bulk SMS Center is reached from Defaulters and from Accounts (multi-select). All sends go through existing SMS credit system and logs to `sms_logs`.
+Insert (via supabase--insert, not migration) a `pg_cron` job calling `renewal-reminders` daily at 08:00 Africa/Nairobi.
 
-## 5. M-Pesa readiness
-Payment form already accepts `mpesa_reference`. We store transaction code, amount, date, payer phone (new optional column on the payment insert — reuse `mpesa_reference` + add `payer_phone` text in metadata-style by reusing an existing field; no schema bloat). Hook point for future Daraja callback already exists via the M-Pesa memory.
+## Technical notes
 
-## 6. Audit logs
-Every create/edit/payment/reversal/receipt-print/SMS call writes to `fee_audit_log` via a small `logFeeAction()` helper (mirrors existing `activity-log.ts`).
+- Callback URL must be HTTPS and publicly reachable — use `https://<project-ref>.supabase.co/functions/v1/mpesa-stk-callback`. Set `verify_jwt = false` for the callback function in `supabase/config.toml`.
+- Sandbox testing uses shortcode 174379, passkey from Daraja portal, test MSISDN 254708374149.
+- Idempotency: `checkout_request_id` unique; callback handler is no-op if row already terminal.
+- Reminder de-dupe via `renewal_reminders_log` unique (kind, target_id, days_before).
+- Keep manual M-Pesa code path as fallback for users whose STK times out — no regression for existing pending submissions.
 
-## 7. Files touched
+## Out of scope (next iteration)
+- C2B Paybill auto-reconciliation
+- B2C refunds
+- WhatsApp pay-link buttons
 
-New:
-- `supabase/migrations/<ts>_fees_module_upgrade.sql` — additive columns + audit table + grants/RLS
-- `src/pages/fees/AccountsTab.tsx`
-- `src/pages/fees/RecordPaymentTab.tsx`
-- `src/pages/fees/DefaultersTab.tsx`
-- `src/pages/fees/FinanceDashboardTab.tsx`
-- `src/pages/fees/FeeReportsTab.tsx`
-- `src/components/fees/LearnerAccountDrawer.tsx`
-- `src/components/fees/AllocationEditor.tsx`
-- `src/lib/fee-allocation.ts` (FIFO auto-allocator, pure fn + tests)
-- `src/lib/fee-audit.ts`
+---
 
-Edited:
-- `src/pages/FeesPage.tsx` — convert to tabbed shell, keep current Fee Structures editor intact as one tab
-- `src/lib/fee-pdf.ts` — add allocation details section on receipt + Share helper
-
-Not touched: Reports, Parent portal, Grades, Streams, Classes, Marks, etc.
-
-## 8. Rollout order
-1. Migration (additive, safe).
-2. Accounts tab + drawer (read-only first).
-3. Record Payment with auto-allocation + receipt + audit + SMS confirmation.
-4. Defaulters + Bulk SMS.
-5. Finance Dashboard + Reports exports.
-
-## Confirmation needed
-- Proceed with the additive migration above (no breaking changes)?
-- Keep `RCP-YYYY-00001` receipt format (matches existing `generate_receipt_number`) instead of `RCPT-2025-000001`?
-- Auto-send Payment Confirmation SMS by default, with a per-school toggle in Settings?
+**Question before I build:** do you have Daraja **production** credentials ready, or should I configure for **sandbox** first so you can test end-to-end? Either way I'll need the 5 secrets listed in section 1.
