@@ -11,6 +11,7 @@ import { Search, FileDown, MessageCircle, Wallet, Phone, Mail } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { buildWaMeLink, normalizeWhatsAppPhone } from '@/lib/wa-link';
 import { toast } from '@/hooks/use-toast';
+import { isCharge, isPaymentLedger } from '@/lib/fee-row-utils';
 
 interface Props {
   schoolId: string;
