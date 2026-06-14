@@ -11,3 +11,10 @@ verify_jwt = false
 
 [functions.lock-expired-scores]
 verify_jwt = false
+
+[functions.subscription-lifecycle]
+verify_jwt = false
+
+[functions.school-signup-submit]
+verify_jwt = false
+
