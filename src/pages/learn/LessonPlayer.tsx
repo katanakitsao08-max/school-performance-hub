@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, BookOpen, ListChecks, Sparkles, Send, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSubject, type SubjectSlug } from "./subjects";
-import { getLesson } from "./content";
+import { getLesson, shuffleQuiz, type QuizQ } from "./content";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
