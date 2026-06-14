@@ -3007,6 +3007,84 @@ export type Database = {
           },
         ]
       }
+      school_signups: {
+        Row: {
+          admin_email: string
+          admin_full_name: string
+          admin_phone: string
+          county: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          learners_count: number
+          notes: string | null
+          provisioned_school_id: string | null
+          rejection_reason: string | null
+          school_name: string
+          school_type: string
+          selected_plan_id: string | null
+          status: string
+          terms_accepted: boolean
+          updated_at: string
+        }
+        Insert: {
+          admin_email: string
+          admin_full_name: string
+          admin_phone: string
+          county?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          learners_count?: number
+          notes?: string | null
+          provisioned_school_id?: string | null
+          rejection_reason?: string | null
+          school_name: string
+          school_type?: string
+          selected_plan_id?: string | null
+          status?: string
+          terms_accepted?: boolean
+          updated_at?: string
+        }
+        Update: {
+          admin_email?: string
+          admin_full_name?: string
+          admin_phone?: string
+          county?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          learners_count?: number
+          notes?: string | null
+          provisioned_school_id?: string | null
+          rejection_reason?: string | null
+          school_name?: string
+          school_type?: string
+          selected_plan_id?: string | null
+          status?: string
+          terms_accepted?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_signups_provisioned_school_id_fkey"
+            columns: ["provisioned_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_signups_selected_plan_id_fkey"
+            columns: ["selected_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_sms_credits: {
         Row: {
           balance: number

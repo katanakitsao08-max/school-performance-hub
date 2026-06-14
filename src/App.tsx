@@ -74,6 +74,8 @@ const SchoolBillingPage = lazy(() => import("./pages/SchoolBillingPage"));
 const SuperAdminBillingPage = lazy(() => import("./pages/SuperAdminBillingPage"));
 const ScoreAuditPage = lazy(() => import("./pages/ScoreAuditPage"));
 const Landing = lazy(() => import("./pages/Landing"));
+const RegisterSchool = lazy(() => import("./pages/RegisterSchool"));
+const SchoolSignupsPage = lazy(() => import("./pages/SchoolSignupsPage"));
 
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -196,6 +198,8 @@ const App = () => (
                 <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
                 <Route path="/price-board" element={<ProtectedRoute allowedRoles={['super_admin']}><PriceBoardPage /></ProtectedRoute>} />
                 <Route path="/admin/billing" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Billing"><SuperAdminBillingPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/school-signups" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="School Sign-ups"><SchoolSignupsPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/register-school" element={<RegisterSchool />} />
                 <Route path="/billing" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Subscription"><SchoolBillingPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/audit/scores" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'super_admin']}><ErrorBoundary inline label="Performance Audit"><ScoreAuditPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />

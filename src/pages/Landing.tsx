@@ -129,7 +129,7 @@ export default function Landing() {
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="sm"><Link to="/login">Sign in</Link></Button>
             <Button asChild variant="outline" size="sm"><a href={`tel:${PHONE}`}>Book Demo</a></Button>
-            <Button asChild size="sm" className="shadow-md"><Link to="/login">Start Free</Link></Button>
+            <Button asChild size="sm" className="shadow-md"><Link to="/register-school">Start Free</Link></Button>
           </div>
           <button
             className="md:hidden p-2 rounded-md hover:bg-muted"
@@ -147,7 +147,7 @@ export default function Landing() {
                   {s === 'why' ? 'Why us' : s === 'how' ? 'How it works' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </ScrollLink>
               ))}
-              <Button asChild size="sm" className="mt-2"><Link to="/login">Start Free</Link></Button>
+              <Button asChild size="sm" className="mt-2"><Link to="/register-school">Start Free</Link></Button>
             </div>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-                <Link to="/login">Start Free <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                <Link to="/register-school">Start Free <ArrowRight className="ml-1 h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <a href={`tel:${PHONE}`}>Book Demo</a>
@@ -515,7 +515,7 @@ export default function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-              <Link to="/login">Get Started <ArrowRight className="ml-1 h-4 w-4" /></Link>
+              <Link to="/register-school">Get Started <ArrowRight className="ml-1 h-4 w-4" /></Link>
             </Button>
             <Button asChild size="lg" variant="outline">
               <a href={`tel:${PHONE}`}>Talk to Us</a>
