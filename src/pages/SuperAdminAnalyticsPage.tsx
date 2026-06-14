@@ -132,14 +132,41 @@ export default function SuperAdminAnalyticsPage() {
     setLiveFeed(activity.slice(0, 50));
   }, [activity]);
   useEffect(() => {
+    const bump = () => setLastUpdate(new Date());
     const ch = supabase
-      .channel('analytics-live')
+      .channel('ssa-analytics-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_activity_log' }, (p) => {
         setLiveFeed((prev) => [p.new as any, ...prev].slice(0, 100));
+        queryClient.invalidateQueries({ queryKey: ['ssa-activity-30d'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-scores-60d'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sms_logs' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-sms-90d'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-schools'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_alerts' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-alerts'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-learners-count'] });
+        bump();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ssa-users-count'] });
+        bump();
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [queryClient]);
 
   // ---------- derived overview metrics ----------
   const overview = useMemo(() => {
