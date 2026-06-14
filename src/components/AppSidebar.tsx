@@ -179,7 +179,7 @@ const parentSections: NavSection[] = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const { role, profile, signOut } = useAuth();
   const { pathname } = useLocation();
@@ -262,6 +262,7 @@ export function AppSidebar() {
                           <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
                             <NavLink
                               to={item.url}
+                              onClick={() => { if (isMobile) setOpenMobile(false); }}
                               end={item.url === '/dashboard' || item.url === '/super-admin' || item.url === '/parent'}
                               className={({ isActive }) =>
                                 cn(
