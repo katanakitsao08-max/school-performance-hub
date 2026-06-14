@@ -128,6 +128,7 @@ export default function Landing() {
           </nav>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="sm"><Link to="/login">Sign in</Link></Button>
+            <Button asChild variant="outline" size="sm"><a href={`tel:${PHONE}`}>Book Demo</a></Button>
             <Button asChild size="sm" className="shadow-md"><Link to="/login">Start Free</Link></Button>
           </div>
           <button
@@ -240,6 +241,16 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+            {/* Floating badges */}
+            <div className="hidden sm:flex absolute -left-4 top-10 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Faster Reporting
+            </div>
+            <div className="hidden sm:flex absolute -right-4 top-1/2 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in" style={{ animationDelay: '120ms' }}>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Parent Communication
+            </div>
+            <div className="hidden sm:flex absolute -left-2 -bottom-4 items-center gap-2 rounded-full bg-card border border-border shadow-lg px-3 py-2 text-xs font-medium animate-fade-in" style={{ animationDelay: '240ms' }}>
+              <Shield className="h-4 w-4 text-primary" /> Secure Records
+            </div>
           </div>
         </div>
       </section>
@@ -291,6 +302,103 @@ export default function Landing() {
                 </div>
                 <div className="font-display font-semibold">{c.t}</div>
                 <div className="text-sm text-muted-foreground mt-1">{c.d}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SEE IN ACTION — device mockups */}
+      <section id="screenshots" className="py-20 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <div className="text-xs uppercase tracking-[0.2em] text-primary font-semibold mb-3">Product tour</div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">See PerformTrack in Action</h2>
+            <p className="mt-3 text-muted-foreground">A quick look at the screens your team will use every day.</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { t: 'Dashboard', d: 'At-a-glance school KPIs, trends and alerts.', accent: 'from-primary/25', body: (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {['74%', '1.2k', '98%'].map((v, i) => (
+                      <div key={i} className="rounded bg-background/80 border border-border p-1.5 text-center">
+                        <div className="text-[8px] text-muted-foreground">KPI</div>
+                        <div className="text-[10px] font-bold">{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-end gap-1 h-10">
+                    {[40,55,48,68,72,80].map((h,i) => <div key={i} className="flex-1 rounded-t bg-primary/70" style={{height:`${h}%`}}/>)}
+                  </div>
+                </div>
+              )},
+              { t: 'Results Entry', d: 'Spreadsheet-style scoring with auto-grade.', accent: 'from-blue-400/25', body: (
+                <div className="space-y-1">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <div className="h-2 w-12 bg-muted-foreground/30 rounded" />
+                      <div className="h-4 flex-1 bg-background/80 border border-border rounded" />
+                      <div className="h-4 w-6 bg-primary/30 rounded" />
+                    </div>
+                  ))}
+                </div>
+              )},
+              { t: 'Report Cards', d: 'KNEC-style PDFs ready to print or send.', accent: 'from-amber-400/25', body: (
+                <div className="space-y-1.5">
+                  <div className="h-2 w-3/4 bg-primary/50 rounded" />
+                  <div className="h-1.5 w-1/2 bg-muted-foreground/30 rounded" />
+                  <div className="grid grid-cols-4 gap-1 mt-2">
+                    {Array.from({length:8}).map((_,i) => <div key={i} className="h-3 bg-background/80 border border-border rounded" />)}
+                  </div>
+                </div>
+              )},
+              { t: 'SMS Module', d: 'Bulk send results and alerts to parents.', accent: 'from-emerald-400/25', body: (
+                <div className="space-y-1.5">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="flex items-center gap-1.5 rounded bg-background/80 border border-border p-1.5">
+                      <MessageSquare className="h-3 w-3 text-primary" />
+                      <div className="h-1.5 flex-1 bg-muted-foreground/30 rounded" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                    </div>
+                  ))}
+                </div>
+              )},
+              { t: 'Analytics', d: 'Top, bottom and most-improved learners.', accent: 'from-purple-400/25', body: (
+                <div className="space-y-2">
+                  <div className="flex items-end gap-1 h-12">
+                    {[30,55,42,68,80,72,90].map((h,i) => <div key={i} className="flex-1 rounded-t bg-gradient-to-t from-primary/40 to-primary" style={{height:`${h}%`}}/>)}
+                  </div>
+                  <div className="h-1.5 w-2/3 bg-muted-foreground/30 rounded" />
+                </div>
+              )},
+              { t: 'Parent Portal', d: 'Secure links — no app install needed.', accent: 'from-pink-400/25', body: (
+                <div className="space-y-1.5">
+                  <div className="h-6 rounded bg-background/80 border border-border flex items-center px-1.5">
+                    <Lock className="h-3 w-3 text-primary mr-1" />
+                    <div className="h-1.5 flex-1 bg-muted-foreground/30 rounded" />
+                  </div>
+                  <div className="h-2 w-full bg-muted-foreground/20 rounded" />
+                  <div className="h-2 w-3/4 bg-muted-foreground/20 rounded" />
+                </div>
+              )},
+            ].map((s, i) => (
+              <div key={i} className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+                {/* Browser-style device mockup */}
+                <div className={`relative bg-gradient-to-br ${s.accent} to-transparent p-4`}>
+                  <div className="rounded-lg border border-border bg-background shadow-md overflow-hidden">
+                    <div className="flex items-center gap-1 border-b border-border px-2 py-1.5 bg-muted/40">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-400/70" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400/70" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70" />
+                    </div>
+                    <div className="p-3 min-h-[110px]">{s.body}</div>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="font-display font-semibold text-lg">{s.t}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{s.d}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -413,6 +521,14 @@ export default function Landing() {
               <a href={`tel:${PHONE}`}>Talk to Us</a>
             </Button>
           </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <a href={`tel:${PHONE}`} className="inline-flex items-center gap-2 hover:text-foreground">
+              <Phone className="h-4 w-4 text-primary" /> {PHONE}
+            </a>
+            <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 hover:text-foreground">
+              <Mail className="h-4 w-4 text-primary" /> {EMAIL}
+            </a>
+          </div>
         </div>
       </section>
 
@@ -452,16 +568,26 @@ export default function Landing() {
         </div>
       </footer>
 
-      {/* WhatsApp floating button */}
-      <a
-        href={`https://wa.me/${PHONE_INTL}?text=${encodeURIComponent('Hi PerformTrack, I would like a demo for my school.')}`}
-        target="_blank" rel="noreferrer"
-        aria-label="Chat on WhatsApp"
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl shadow-emerald-500/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
-      >
-        <MessageCircle className="h-7 w-7" />
-        <span className="sr-only">WhatsApp</span>
-      </a>
+      {/* Floating action buttons */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+        <a
+          href={`https://wa.me/${PHONE_INTL}?text=${encodeURIComponent('Hi PerformTrack, I would like a demo for my school.')}`}
+          target="_blank" rel="noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-2xl shadow-emerald-500/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
+        >
+          <MessageCircle className="h-7 w-7" />
+          <span className="sr-only">WhatsApp</span>
+        </a>
+        <a
+          href={`tel:${PHONE}`}
+          aria-label="Call PerformTrack"
+          className="md:hidden h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 grid place-items-center transition-transform hover:scale-110 animate-fade-in"
+        >
+          <Phone className="h-6 w-6" />
+          <span className="sr-only">Call</span>
+        </a>
+      </div>
     </div>
   );
 }
