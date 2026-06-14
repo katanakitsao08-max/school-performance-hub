@@ -218,7 +218,12 @@ export default function ParentCommunicationPage() {
   }, [resScores, resSubjects, recipientIds, resultsGrade]);
 
   const personalize = (tpl: string, l: any) => {
-    let out = tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+    const gradeStream = `${l.grade || ''}${l.stream ? ' ' + String(l.stream).toUpperCase() : ''}`.trim();
+    let out = tpl
+      .replace(/\{name\}/g, (l.full_name || '').toUpperCase())
+      .replace(/\{parent\}/g, l.parent_name || 'Parent')
+      .replace(/\{grade_stream\}/g, gradeStream)
+      .replace(/\{stream\}/g, l.stream || '');
     if (template === 'fees') {
       const bal = feeBalances[l.id] ?? 0;
       out = out.replace(/\{balance\}/g, bal.toLocaleString());
@@ -227,7 +232,7 @@ export default function ParentCommunicationPage() {
       const r = resultsByLearner.per[l.id];
       out = out
         .replace(/\{subjects\}/g, r ? r.subjects : '-')
-        .replace(/\{avg\}/g, r ? r.mean.toFixed(1) : '-')
+        .replace(/\{avg\}/g, r ? r.mean.toFixed(2) : '-')
         .replace(/\{grade\}/g, r ? r.grade : '-')
         .replace(/\{total\}/g, r ? String(Math.round(r.total)) : '-')
         .replace(/\{points\}/g, r ? String(r.points) : '-')
