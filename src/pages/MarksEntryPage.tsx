@@ -841,6 +841,19 @@ export default function MarksEntryPage() {
           </TabsContent>
         </Tabs>
       </div>
+      {override && (
+        <AdminScoreOverrideDialog
+          open={!!override}
+          onOpenChange={(v) => !v && setOverride(null)}
+          table="scores"
+          scoreId={override.scoreId}
+          learnerName={override.learnerName}
+          subjectName={override.subjectName}
+          currentScore={override.currentScore}
+          currentComment={override.currentComment}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['scores'] })}
+        />
+      )}
     </DashboardLayout>
   );
 }
