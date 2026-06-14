@@ -198,6 +198,8 @@ const App = () => (
                 <Route path="/manage-schools" element={<ProtectedRoute allowedRoles={['super_admin']}><ManageSchoolsPage /></ProtectedRoute>} />
                 <Route path="/price-board" element={<ProtectedRoute allowedRoles={['super_admin']}><PriceBoardPage /></ProtectedRoute>} />
                 <Route path="/admin/billing" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Billing"><SuperAdminBillingPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/school-signups" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="School Sign-ups"><SchoolSignupsPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/register-school" element={<RegisterSchool />} />
                 <Route path="/billing" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Subscription"><SchoolBillingPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/audit/scores" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'super_admin']}><ErrorBoundary inline label="Performance Audit"><ScoreAuditPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />
