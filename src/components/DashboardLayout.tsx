@@ -45,8 +45,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b border-border/60 bg-card/70 backdrop-blur-xl px-4 no-print sticky top-0 z-30 supports-[backdrop-filter]:bg-card/60">
-            <div className="flex items-center gap-3 min-w-0">
-              <SidebarTrigger className="mr-1 hover:bg-accent/50 rounded-lg h-9 w-9 md:h-8 md:w-8" />
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="flex flex-col items-center justify-center shrink-0 -my-1">
+                <SidebarTrigger
+                  aria-label="Open menu"
+                  className="hover:bg-accent/50 rounded-lg h-9 w-9 md:h-8 md:w-8"
+                />
+                <span className="mt-1 text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+                  Menu
+                </span>
+              </div>
               <div className="min-w-0">
                 <h2 className="text-sm font-display font-bold text-foreground truncate tracking-tight">
                   {isMobile ? 'PerformTrack' : (profile?.full_name || 'Dashboard')}
