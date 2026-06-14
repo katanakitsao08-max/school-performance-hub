@@ -206,8 +206,8 @@ export default function ParentCommunicationPage() {
         const sub = subjById[r.learning_area_id];
         const label = (sub?.code || sub?.name || '').toString().toUpperCase().slice(0, 12);
         const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), resultsGrade);
-        return `${label}: ${Math.round(Number(r.score || 0))} (${sg})`;
-      }).join('\n');
+        return `${label}-${Math.round(Number(r.score || 0))}(${sg})`;
+      }).join(', ');
       per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10), subjects: subjLines || '-' };
     }
     // ranking among recipients by total desc
