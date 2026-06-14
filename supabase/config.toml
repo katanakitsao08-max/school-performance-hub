@@ -19,5 +19,5 @@ verify_jwt = false
 verify_jwt = false
 
 
-[functions._bootstrap_reset_sa]
+[functions.bootstrap-reset-sa]
 verify_jwt = false
