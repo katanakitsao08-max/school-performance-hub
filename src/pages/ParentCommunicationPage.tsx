@@ -29,7 +29,7 @@ const TEMPLATE_PRESETS: Record<Exclude<TemplateKey, 'custom'>, { label: string; 
   },
   results: {
     label: 'Results Notice',
-    body: 'Dear {parent}, results for {name}:\n{subjects}\nTOTAL: {total} | AVG: {avg} | GRADE: {grade} ({points}pts) | RANK: {rank}',
+    body: '{name}, Grade {grade_stream}\n\n{subjects}\n\nTOTAL: {total} | AVG: {avg} | GRADE: {grade} | POINTS: {points} | RANK: {rank}',
   },
   communication: {
     label: 'General Communication',
@@ -206,8 +206,8 @@ export default function ParentCommunicationPage() {
         const sub = subjById[r.learning_area_id];
         const label = (sub?.code || sub?.name || '').toString().toUpperCase().slice(0, 12);
         const sg = getGradeForLevel(Number(r.score || 0), Number(sub?.max_score || 100), resultsGrade);
-        return `${label}: ${Math.round(Number(r.score || 0))} (${sg})`;
-      }).join('\n');
+        return `${label}-${Math.round(Number(r.score || 0))}(${sg})`;
+      }).join(', ');
       per[id] = { total, mean, grade: g, points: getGradePoints(g as any) || Math.round(mean / 10), subjects: subjLines || '-' };
     }
     // ranking among recipients by total desc
@@ -218,7 +218,12 @@ export default function ParentCommunicationPage() {
   }, [resScores, resSubjects, recipientIds, resultsGrade]);
 
   const personalize = (tpl: string, l: any) => {
-    let out = tpl.replace(/\{name\}/g, l.full_name).replace(/\{parent\}/g, l.parent_name || 'Parent');
+    const gradeStream = `${l.grade || ''}${l.stream ? ' ' + String(l.stream).toUpperCase() : ''}`.trim();
+    let out = tpl
+      .replace(/\{name\}/g, (l.full_name || '').toUpperCase())
+      .replace(/\{parent\}/g, l.parent_name || 'Parent')
+      .replace(/\{grade_stream\}/g, gradeStream)
+      .replace(/\{stream\}/g, l.stream || '');
     if (template === 'fees') {
       const bal = feeBalances[l.id] ?? 0;
       out = out.replace(/\{balance\}/g, bal.toLocaleString());
@@ -227,7 +232,7 @@ export default function ParentCommunicationPage() {
       const r = resultsByLearner.per[l.id];
       out = out
         .replace(/\{subjects\}/g, r ? r.subjects : '-')
-        .replace(/\{avg\}/g, r ? r.mean.toFixed(1) : '-')
+        .replace(/\{avg\}/g, r ? r.mean.toFixed(2) : '-')
         .replace(/\{grade\}/g, r ? r.grade : '-')
         .replace(/\{total\}/g, r ? String(Math.round(r.total)) : '-')
         .replace(/\{points\}/g, r ? String(r.points) : '-')
