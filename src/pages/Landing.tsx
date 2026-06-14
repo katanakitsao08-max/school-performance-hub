@@ -128,6 +128,7 @@ export default function Landing() {
           </nav>
           <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="sm"><Link to="/login">Sign in</Link></Button>
+            <Button asChild variant="outline" size="sm"><a href={`tel:${PHONE}`}>Book Demo</a></Button>
             <Button asChild size="sm" className="shadow-md"><Link to="/login">Start Free</Link></Button>
           </div>
           <button
