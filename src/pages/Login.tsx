@@ -191,6 +191,23 @@ export default function Login() {
             </div>
           </Link>
 
+          {/* School self-registration CTA */}
+          <Link
+            to="/register-school"
+            className="mt-3 block rounded-xl border border-primary/20 bg-background hover:bg-muted/40 transition-colors p-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-foreground">Register your school</p>
+                <p className="text-xs text-muted-foreground">Get your school onto PerformTrack in under 24 hours.</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+            </div>
+          </Link>
+
           <p className="text-center text-xs text-muted-foreground mt-4">
             Already an independent learner? <Link to="/learn/login" className="text-primary font-medium hover:underline">Learner sign in</Link>
           </p>
