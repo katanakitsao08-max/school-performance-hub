@@ -179,11 +179,33 @@ serve(async (req) => {
       provisioned_school_id: newSchool.id,
     }).eq('id', signup_id);
 
-    // Send SMS with sign-in details to the admin's phone from signup
+    // Verify the new admin can actually sign in with the issued credentials.
+    // If sign-in fails, reset the password via service role and use the verified one.
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
+    const verifyClient = createClient(Deno.env.get('SUPABASE_URL')!, anonKey);
+    let verifiedPassword = password;
+    let verified = false;
+    try {
+      const { error: signInErr } = await verifyClient.auth.signInWithPassword({ email: loginEmail, password });
+      if (!signInErr) verified = true;
+    } catch { /* fall through to reset */ }
+    if (!verified) {
+      const fresh = tempPassword(10);
+      const { error: updErr } = await admin.auth.admin.updateUserById(uid, { password: fresh, email_confirm: true });
+      if (!updErr) {
+        try {
+          const { error: e2 } = await verifyClient.auth.signInWithPassword({ email: loginEmail, password: fresh });
+          if (!e2) { verifiedPassword = fresh; verified = true; }
+        } catch { /* ignore */ }
+      }
+    }
+    try { await verifyClient.auth.signOut(); } catch { /* ignore */ }
+
+    // Send SMS with the VERIFIED credentials
     const smsMessage =
       `${signup.school_name} has been approved on PerformTrack!\n` +
       `Username: ${username}\n` +
-      `Password: ${password}\n` +
+      `Password: ${verifiedPassword}\n` +
       `School code: ${school_code}\n` +
       `Sign in at: https://performtrack.app/login`;
     const smsResult = await sendApprovalSms(admin, newSchool.id, signup.admin_phone, smsMessage);
@@ -191,7 +213,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       school: newSchool,
-      credentials: { loginEmail, username, password, fullName: signup.admin_full_name },
+      credentials: { loginEmail, username, password: verifiedPassword, fullName: signup.admin_full_name },
+      sign_in_verified: verified,
       sms: smsResult,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
