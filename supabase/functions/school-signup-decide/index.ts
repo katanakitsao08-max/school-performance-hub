@@ -126,16 +126,25 @@ serve(async (req) => {
     }).select('*').single();
     if (schErr) throw schErr;
 
-    // Create admin user — username@<school_code lower>.local
+    // Create admin user — username@school.local (matches Login.tsx convention)
     const baseUsername = usernameFromName(signup.admin_full_name);
-    const domain = `${school_code.toLowerCase()}.local`;
+    const domain = `school.local`;
     let username = baseUsername;
     let loginEmail = `${username}@${domain}`;
-    // Ensure unique
-    for (let i = 0; i < 5; i++) {
-      const { data: ex } = await admin.auth.admin.listUsers();
-      if (!ex.users.find(u => u.email === loginEmail)) break;
-      username = `${baseUsername}${Math.floor(Math.random() * 90 + 10)}`;
+    // Ensure unique across all auth users (paginate)
+    const emailExists = async (target: string): Promise<boolean> => {
+      const t = target.toLowerCase();
+      for (let page = 1; page <= 20; page++) {
+        const { data: listData } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (!listData?.users?.length) return false;
+        if (listData.users.find(u => (u.email || '').toLowerCase() === t)) return true;
+        if (listData.users.length < 1000) return false;
+      }
+      return false;
+    };
+    for (let i = 0; i < 8; i++) {
+      if (!(await emailExists(loginEmail))) break;
+      username = `${baseUsername}${Math.floor(Math.random() * 900 + 100)}`;
       loginEmail = `${username}@${domain}`;
     }
     const password = tempPassword(10);
