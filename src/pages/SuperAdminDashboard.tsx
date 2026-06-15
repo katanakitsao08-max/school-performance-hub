@@ -11,6 +11,7 @@ import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
 import SuperAdminSmsRemindersSection from '@/components/superadmin/SuperAdminSmsRemindersSection';
 import PlatformMonitoringSection from '@/components/superadmin/PlatformMonitoringSection';
+import SchoolEngagementInsights from '@/components/superadmin/SchoolEngagementInsights';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
