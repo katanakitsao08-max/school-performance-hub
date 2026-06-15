@@ -141,10 +141,20 @@ serve(async (req) => {
       provisioned_school_id: newSchool.id,
     }).eq('id', signup_id);
 
+    // Send SMS with sign-in details to the admin's phone from signup
+    const smsMessage =
+      `${signup.school_name} has been approved on PerformTrack!\n` +
+      `Username: ${username}\n` +
+      `Password: ${password}\n` +
+      `School code: ${school_code}\n` +
+      `Sign in at: https://performtrack.app/login`;
+    const smsResult = await sendApprovalSms(admin, newSchool.id, signup.admin_phone, smsMessage);
+
     return new Response(JSON.stringify({
       ok: true,
       school: newSchool,
       credentials: { loginEmail, username, password, fullName: signup.admin_full_name },
+      sms: smsResult,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message || 'Decision failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
