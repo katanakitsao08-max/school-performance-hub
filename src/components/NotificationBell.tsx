@@ -47,7 +47,7 @@ export function NotificationBell() {
         .select('*')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(500);
       return (data || []) as Notification[];
     },
     enabled: !!user,
