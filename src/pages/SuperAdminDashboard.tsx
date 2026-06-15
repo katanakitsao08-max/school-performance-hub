@@ -11,6 +11,7 @@ import SuperAdminSmsSection from '@/components/superadmin/SuperAdminSmsSection';
 import SubscriptionRemindersSection from '@/components/superadmin/SubscriptionRemindersSection';
 import SuperAdminSmsRemindersSection from '@/components/superadmin/SuperAdminSmsRemindersSection';
 import PlatformMonitoringSection from '@/components/superadmin/PlatformMonitoringSection';
+import SchoolEngagementInsights from '@/components/superadmin/SchoolEngagementInsights';
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
@@ -142,6 +143,9 @@ export default function SuperAdminDashboard() {
 
         {/* Platform monitoring (revenue this month, upcoming renewals, SMS usage, DAU) */}
         <PlatformMonitoringSection />
+
+        {/* Active schools + most-used pages (for product improvement insights) */}
+        <SchoolEngagementInsights schools={schools} />
 
         {/* New: Revenue & Subscriptions (additive, non-destructive) */}
         <RevenueSubscriptionSection schools={schools} />
