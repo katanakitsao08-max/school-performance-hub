@@ -130,7 +130,8 @@ export default function SuperAdminAnalyticsPage() {
   // Realtime live feed
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   useEffect(() => {
-    setLiveFeed(activity.slice(0, 50));
+    const sorted = [...activity].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setLiveFeed(sorted.slice(0, 100));
   }, [activity]);
   useEffect(() => {
     const bump = () => setLastUpdate(new Date());
