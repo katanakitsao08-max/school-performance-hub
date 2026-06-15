@@ -36,20 +36,49 @@ async function sendApprovalSms(admin: any, schoolId: string, phone: string, mess
     const apiToken: string = (cfg.api_key || Deno.env.get('OTS_API_KEY') || '').trim();
     const senderId: string = ((cfg.sender_id || '').toString().trim() || 'PERFORMTRK').slice(0, 11);
     const endpoint: string = (cfg.endpoint || 'https://sms.ots.co.ke/api/v3/sms/send').trim();
+    const msgType: string = (cfg.body_template?.type) || 'plain';
     if (!apiToken) return { ok: false, error: 'no_api_token' };
     const to = formatPhone(phone);
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ sender_id: senderId, type: 'plain', message, recipients: [{ recipient: to }] }),
-    });
-    const data = await res.json().catch(() => ({}));
+    // Match send-sms-v2 payload shape (single recipient top-level fields)
+    const payload = { recipient: to, sender_id: senderId, type: msgType, message };
+    let httpOk = false; let data: any = null;
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      httpOk = res.ok;
+      try { data = await res.json(); } catch { data = await res.text(); }
+    } catch (e: any) { data = String(e?.message || e); }
+
+    // Parse provider response (mirrors send-sms-v2 parseResult)
+    let ok = false; let errorText: string | null = null; let messageId: string | null = null;
+    if (httpOk) {
+      if (typeof data === 'string') { ok = true; }
+      else {
+        const topStatus = String(data?.status || '').toLowerCase();
+        const inner = data?.data || {};
+        const innerStatus = String(inner?.status || '').toLowerCase();
+        messageId = inner?.queue_uid || inner?.messageid || inner?.message_id || inner?.id || null;
+        errorText = data?.message || inner?.message || null;
+        if (topStatus === 'success' || ['accepted','queued','sent','submitted','ok','success'].includes(innerStatus) || messageId) ok = true;
+        else if (topStatus === 'error' || topStatus === 'failed') ok = false;
+        else ok = true; // 2xx with no error indicator
+      }
+    } else {
+      errorText = typeof data === 'string' ? data : (data?.message || JSON.stringify(data));
+    }
+
     await admin.from('sms_logs').insert({
-      school_id: schoolId, recipient: to, message,
-      status: res.ok ? 'sent' : 'failed',
-      provider_response: data, error_message: res.ok ? null : (data?.message || `HTTP ${res.status}`),
+      school_id: schoolId, recipient: to, message, sender_id: senderId,
+      provider: 'olympus_teleserve', status: ok ? 'sent' : 'failed',
+      provider_message_id: messageId, error: ok ? null : (errorText || `HTTP error`),
+      segments: message.length <= 160 ? 1 : Math.ceil(message.length / 153),
+      used_global_fallback: true, phone_source: 'direct',
     }).then(() => null, () => null);
-    return { ok: res.ok, data };
+
+    return ok ? { ok: true, messageId } : { ok: false, error: errorText || 'send_failed' };
   } catch (e: any) {
     return { ok: false, error: e?.message || 'send_failed' };
   }
