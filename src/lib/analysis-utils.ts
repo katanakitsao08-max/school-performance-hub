@@ -22,11 +22,24 @@ export function computeAnalysis(
   allScores: any[],
 ): AnalysisResult {
   const subjectAnalyses: SubjectAnalysis[] = gradeSubjects.map(sub => {
-    const scores = allScores.filter((s: any) => s.learning_area_id === sub.id && Number(s.score) > 0);
-    const mean = scores.length > 0 ? scores.reduce((a: number, s: any) => a + s.score, 0) / scores.length : 0;
+    // Derive mean from the SAME values used in the Class Report table — so
+    // combined/merged subjects (id = "id1+id2") match exactly, and we never
+    // fall back to 0 when learners genuinely have data for that column.
+    const reportCells = reportData
+      .map(l => l.subjectData?.find((d: any) => d.id === sub.id))
+      .filter((d: any) => d && Number(d.score) > 0) as any[];
+
+    let mean = 0;
+    if (reportCells.length > 0) {
+      mean = reportCells.reduce((a, d) => a + Number(d.score), 0) / reportCells.length;
+    } else {
+      // Fallback for school-wide / non-merged contexts: aggregate raw scores.
+      const raw = allScores.filter((s: any) => s.learning_area_id === sub.id && Number(s.score) > 0);
+      mean = raw.length > 0 ? raw.reduce((a: number, s: any) => a + Number(s.score), 0) / raw.length : 0;
+    }
     const grade = getGradeForLevel(mean, sub.max_score, sub.grade || '1');
 
-    // Top 5 learners for this subject
+    // Top 5 learners for this subject (use the same cell values)
     const learnerScores = reportData
       .map(l => {
         const sd = l.subjectData?.find((d: any) => d.id === sub.id);
@@ -38,6 +51,7 @@ export function computeAnalysis(
 
     return { name: sub.name, mean: Number(mean.toFixed(1)), maxScore: sub.max_score, grade, top5: learnerScores };
   });
+
 
   const classMean = reportData.length > 0
     ? reportData.reduce((s, l) => s + l.mean, 0) / reportData.length
