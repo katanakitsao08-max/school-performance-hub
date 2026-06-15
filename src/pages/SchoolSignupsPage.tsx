@@ -36,6 +36,8 @@ export default function SchoolSignupsPage() {
       if (error) throw error;
       if (action === 'approve' && data?.credentials) {
         setCreds(data.credentials);
+        if (data?.sms?.ok) toast.success('Approved — sign-in SMS sent to admin');
+        else toast.warning(`Approved, but SMS not sent${data?.sms?.error ? `: ${data.sms.error}` : ''}`);
       } else {
         toast.success(action === 'approve' ? 'School approved' : 'Application rejected');
       }
