@@ -213,7 +213,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       school: newSchool,
-      credentials: { loginEmail, username, password, fullName: signup.admin_full_name },
+      credentials: { loginEmail, username, password: verifiedPassword, fullName: signup.admin_full_name },
+      sign_in_verified: verified,
       sms: smsResult,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
