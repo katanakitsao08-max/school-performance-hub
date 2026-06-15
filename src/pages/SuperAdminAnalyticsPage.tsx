@@ -89,7 +89,8 @@ export default function SuperAdminAnalyticsPage() {
 
   const { data: activity = [], refetch: refetchActivity } = useQuery({
     queryKey: ['ssa-activity-30d'],
-    queryFn: async () => fetchAllPaged<any>(() => supabase.from('user_activity_log').select('*').gte('created_at', daysAgo(60).toISOString())),
+    queryFn: async () => fetchAllPaged<any>(() => supabase.from('user_activity_log').select('*').gte('created_at', daysAgo(60).toISOString()).order('created_at', { ascending: false })),
+    refetchInterval: 30000,
   });
 
   const { data: smsLogs = [] } = useQuery({
