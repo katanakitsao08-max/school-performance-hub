@@ -131,13 +131,17 @@ export default function Landing() {
             <Button asChild variant="outline" size="sm"><a href={`tel:${PHONE}`}>Book Demo</a></Button>
             <Button asChild size="sm" className="shadow-md"><Link to="/register-school">Start Free</Link></Button>
           </div>
-          <button
-            className="md:hidden p-2 rounded-md hover:bg-muted"
-            onClick={() => setMenuOpen(m => !m)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <Button asChild variant="outline" size="sm"><Link to="/login">Sign in</Link></Button>
+            <button
+              className="p-2 rounded-md hover:bg-muted"
+              onClick={() => setMenuOpen(m => !m)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+
         </div>
         {menuOpen && (
           <div className="md:hidden border-t border-border bg-background/95 backdrop-blur">
@@ -147,7 +151,8 @@ export default function Landing() {
                   {s === 'why' ? 'Why us' : s === 'how' ? 'How it works' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </ScrollLink>
               ))}
-              <Button asChild size="sm" className="mt-2"><Link to="/register-school">Start Free</Link></Button>
+              <Button asChild variant="outline" size="sm" className="mt-2"><Link to="/login" onClick={() => setMenuOpen(false)}>Sign in</Link></Button>
+              <Button asChild size="sm"><Link to="/register-school" onClick={() => setMenuOpen(false)}>Start Free</Link></Button>
             </div>
           </div>
         )}
