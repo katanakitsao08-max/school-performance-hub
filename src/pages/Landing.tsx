@@ -151,7 +151,8 @@ export default function Landing() {
                   {s === 'why' ? 'Why us' : s === 'how' ? 'How it works' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </ScrollLink>
               ))}
-              <Button asChild size="sm" className="mt-2"><Link to="/register-school">Start Free</Link></Button>
+              <Button asChild variant="outline" size="sm" className="mt-2"><Link to="/login" onClick={() => setMenuOpen(false)}>Sign in</Link></Button>
+              <Button asChild size="sm"><Link to="/register-school" onClick={() => setMenuOpen(false)}>Start Free</Link></Button>
             </div>
           </div>
         )}
