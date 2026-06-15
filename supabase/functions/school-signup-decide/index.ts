@@ -16,6 +16,45 @@ function tempPassword(len = 10) {
 function usernameFromName(name: string) {
   return (name || 'admin').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 18) || 'admin';
 }
+function formatPhone(phone: string): string {
+  let p = (phone || '').toString().trim().replace(/\D/g, '');
+  if (p.startsWith('254')) return p;
+  if (p.startsWith('0')) return '254' + p.slice(1);
+  if (p.startsWith('7') || p.startsWith('1')) return '254' + p;
+  return p;
+}
+function isValidPhone(raw?: string | null): boolean {
+  if (!raw) return false;
+  const p = formatPhone(String(raw));
+  return /^254[71]\d{8}$/.test(p);
+}
+async function sendApprovalSms(admin: any, schoolId: string, phone: string, message: string) {
+  try {
+    if (!isValidPhone(phone)) return { ok: false, error: 'invalid_phone' };
+    const { data: cfg } = await admin.from('global_sms_config').select('*').eq('is_active', true).maybeSingle();
+    if (!cfg) return { ok: false, error: 'sms_not_configured' };
+    const apiToken: string = (cfg.api_key || Deno.env.get('OTS_API_KEY') || '').trim();
+    const senderId: string = ((cfg.sender_id || '').toString().trim() || 'PERFORMTRK').slice(0, 11);
+    const endpoint: string = (cfg.endpoint || 'https://sms.ots.co.ke/api/v3/sms/send').trim();
+    if (!apiToken) return { ok: false, error: 'no_api_token' };
+    const to = formatPhone(phone);
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ sender_id: senderId, type: 'plain', message, recipients: [{ recipient: to }] }),
+    });
+    const data = await res.json().catch(() => ({}));
+    await admin.from('sms_logs').insert({
+      school_id: schoolId, recipient: to, message,
+      status: res.ok ? 'sent' : 'failed',
+      provider_response: data, error_message: res.ok ? null : (data?.message || `HTTP ${res.status}`),
+    }).then(() => null, () => null);
+    return { ok: res.ok, data };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'send_failed' };
+  }
+}
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -102,10 +141,20 @@ serve(async (req) => {
       provisioned_school_id: newSchool.id,
     }).eq('id', signup_id);
 
+    // Send SMS with sign-in details to the admin's phone from signup
+    const smsMessage =
+      `${signup.school_name} has been approved on PerformTrack!\n` +
+      `Username: ${username}\n` +
+      `Password: ${password}\n` +
+      `School code: ${school_code}\n` +
+      `Sign in at: https://performtrack.app/login`;
+    const smsResult = await sendApprovalSms(admin, newSchool.id, signup.admin_phone, smsMessage);
+
     return new Response(JSON.stringify({
       ok: true,
       school: newSchool,
       credentials: { loginEmail, username, password, fullName: signup.admin_full_name },
+      sms: smsResult,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message || 'Decision failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
