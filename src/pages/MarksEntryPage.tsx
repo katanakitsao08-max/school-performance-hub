@@ -829,6 +829,18 @@ export default function MarksEntryPage() {
             )}
           </TabsContent>
 
+          <TabsContent value="by-subject">
+            <MarksEntryBySubject
+              subjects={subjects as any}
+              editableSubjectIds={editableSubjectIds}
+              learners={learners as any}
+              selectedGrade={selectedGrade}
+              scores={scores}
+              existingScores={existingScores as any}
+              onScoreChange={handleScoreChange}
+            />
+          </TabsContent>
+
           <TabsContent value="strands">
             <StrandMarksEntry
               schoolId={schoolId!}
