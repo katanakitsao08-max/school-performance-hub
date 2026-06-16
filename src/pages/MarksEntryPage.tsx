@@ -23,6 +23,8 @@ import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
 import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
+import MarksEntryBySubject from '@/components/MarksEntryBySubject';
+import { ListChecks } from 'lucide-react';
 import { addToOfflineQueue, isOnline } from '@/lib/offline-queue';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
 
@@ -619,6 +621,7 @@ export default function MarksEntryPage() {
         <Tabs defaultValue="subjects" className="space-y-3">
           <TabsList>
             <TabsTrigger value="subjects">Subject Scores</TabsTrigger>
+            <TabsTrigger value="by-subject" className="gap-1.5"><ListChecks className="h-3.5 w-3.5" /> Pending / Completed</TabsTrigger>
             <TabsTrigger value="strands" className="gap-1.5"><Layers className="h-3.5 w-3.5" /> Strand Scores</TabsTrigger>
           </TabsList>
 
@@ -824,6 +827,18 @@ export default function MarksEntryPage() {
                 </Button>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="by-subject">
+            <MarksEntryBySubject
+              subjects={subjects as any}
+              editableSubjectIds={editableSubjectIds}
+              learners={learners as any}
+              selectedGrade={selectedGrade}
+              scores={scores}
+              existingScores={existingScores as any}
+              onScoreChange={handleScoreChange}
+            />
           </TabsContent>
 
           <TabsContent value="strands">
