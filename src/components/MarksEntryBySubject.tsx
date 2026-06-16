@@ -56,11 +56,13 @@ export default function MarksEntryBySubject({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState<string>('');
 
-  // Default subject
-  if (!subjectId && editableSubjects.length > 0) {
-    // Use setState in render-safe way via microtask
-    setTimeout(() => setSubjectId(editableSubjects[0].id), 0);
-  }
+  // Default / re-sync subject when editable list changes
+  useEffect(() => {
+    if (editableSubjects.length === 0) { setSubjectId(''); return; }
+    if (!editableSubjects.some(s => s.id === subjectId)) {
+      setSubjectId(editableSubjects[0].id);
+    }
+  }, [editableSubjects, subjectId]);
 
   const subject = editableSubjects.find(s => s.id === subjectId);
 
