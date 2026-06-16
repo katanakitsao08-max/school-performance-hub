@@ -621,6 +621,7 @@ export default function MarksEntryPage() {
         <Tabs defaultValue="subjects" className="space-y-3">
           <TabsList>
             <TabsTrigger value="subjects">Subject Scores</TabsTrigger>
+            <TabsTrigger value="by-subject" className="gap-1.5"><ListChecks className="h-3.5 w-3.5" /> Pending / Completed</TabsTrigger>
             <TabsTrigger value="strands" className="gap-1.5"><Layers className="h-3.5 w-3.5" /> Strand Scores</TabsTrigger>
           </TabsList>
 
