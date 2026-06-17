@@ -55,18 +55,20 @@ export default function MarksEntrySubjectWorkspace({
   const [completedSearch, setCompletedSearch] = useState('');
   const [minScore, setMinScore] = useState('');
   const [maxScore, setMaxScore] = useState('');
+  // Edit state for completed scores dialog
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [completedOpen, setCompletedOpen] = useState(false);
-  const [localValues, setLocalValues] = useState<Record<string, string>>({}); // for pending inputs (UX only)
+  // Pending entry: local draft values per learner (not committed until Save / Enter)
+  const [pendingDrafts, setPendingDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (editableSubjects.length === 0) { setSubjectId(''); return; }
     if (!editableSubjects.some(s => s.id === subjectId)) setSubjectId(editableSubjects[0].id);
   }, [editableSubjects, subjectId]);
 
-  // Clear local pending values when subject changes
-  useEffect(() => { setLocalValues({}); }, [subjectId]);
+  // Clear pending drafts when subject changes
+  useEffect(() => { setPendingDrafts({}); }, [subjectId]);
 
   const subject = editableSubjects.find(s => s.id === subjectId);
 
@@ -140,14 +142,30 @@ export default function MarksEntrySubjectWorkspace({
     );
   }
 
+  // --- Completed scores: edit handlers ---
   const saveDraftEdit = () => {
     if (editingId && subject) onScoreChange(editingId, subject.id, draftValue);
     setEditingId(null);
   };
 
-  const handlePendingInput = (learnerId: string, value: string) => {
-    setLocalValues(prev => ({ ...prev, [learnerId]: value }));
+  // --- Pending entry: explicit save per row ---
+  const commitPendingScore = (learnerId: string) => {
+    const value = pendingDrafts[learnerId];
+    if (value === undefined || value === '') return;
     if (subject) onScoreChange(learnerId, subject.id, value);
+    // Remove draft after committing — the row will disappear from pending once scores prop updates
+    setPendingDrafts(prev => {
+      const next = { ...prev };
+      delete next[learnerId];
+      return next;
+    });
+  };
+
+  const handlePendingKeyDown = (e: React.KeyboardEvent, learnerId: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPendingScore(learnerId);
+    }
   };
 
   return (
@@ -323,7 +341,7 @@ export default function MarksEntrySubjectWorkspace({
         <Progress value={dash.pct} className="h-2" />
       </CardContent></Card>
 
-      {/* Pending entry table — the single score-entry surface */}
+      {/* Pending entry table */}
       <Card><CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
@@ -332,34 +350,50 @@ export default function MarksEntrySubjectWorkspace({
               <TableHead className="text-xs">Admission</TableHead>
               <TableHead className="text-xs">Learner</TableHead>
               <TableHead className="text-xs text-center">Status</TableHead>
-              <TableHead className="text-xs text-center w-[160px]">
+              <TableHead className="text-xs text-center w-[220px]">
                 Enter Score {subject && <span className="text-muted-foreground font-normal">(/{subject.max_score})</span>}
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pending.map((r, i) => (
-              <TableRow key={r.learner.id} className="hover:bg-muted/30">
-                <TableCell className="text-xs text-muted-foreground p-2">{i + 1}</TableCell>
-                <TableCell className="text-xs font-mono p-2">{r.learner.admission_number || '—'}</TableCell>
-                <TableCell className="text-xs font-medium p-2">{r.learner.full_name}</TableCell>
-                <TableCell className="text-center p-2">
-                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">Pending</Badge>
-                </TableCell>
-                <TableCell className="text-center p-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={subject?.max_score}
-                    placeholder="—"
-                    inputMode="numeric"
-                    value={localValues[r.learner.id] ?? ''}
-                    onChange={e => handlePendingInput(r.learner.id, e.target.value)}
-                    className="h-8 w-[100px] mx-auto text-center text-xs"
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
+            {pending.map((r, i) => {
+              const draft = pendingDrafts[r.learner.id] ?? '';
+              const canSave = draft !== '';
+              return (
+                <TableRow key={r.learner.id} className="hover:bg-muted/30">
+                  <TableCell className="text-xs text-muted-foreground p-2">{i + 1}</TableCell>
+                  <TableCell className="text-xs font-mono p-2">{r.learner.admission_number || '—'}</TableCell>
+                  <TableCell className="text-xs font-medium p-2">{r.learner.full_name}</TableCell>
+                  <TableCell className="text-center p-2">
+                    <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">Pending</Badge>
+                  </TableCell>
+                  <TableCell className="text-center p-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={subject?.max_score}
+                        placeholder="—"
+                        inputMode="numeric"
+                        value={draft}
+                        onChange={e => setPendingDrafts(prev => ({ ...prev, [r.learner.id]: e.target.value }))}
+                        onKeyDown={e => handlePendingKeyDown(e, r.learner.id)}
+                        className="h-8 w-[80px] text-center text-xs"
+                      />
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-8 px-2.5 text-xs gap-1"
+                        disabled={!canSave}
+                        onClick={() => commitPendingScore(r.learner.id)}
+                      >
+                        <Check className="h-3.5 w-3.5" /> Save
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {pending.length === 0 && (
               <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-10 text-sm">
                 🎉 All learners assessed for this subject. Use <strong>View Completed Scores</strong> to review or edit.
@@ -369,7 +403,7 @@ export default function MarksEntrySubjectWorkspace({
         </Table>
       </CardContent></Card>
       <p className="text-[11px] text-muted-foreground">
-        Scores auto-save as you type. Once saved, the learner moves to Completed and disappears from this list — grades, ranks, means and reports update instantly.
+        Press <kbd className="px-1 py-0.5 rounded border text-[10px] font-mono bg-muted">Enter</kbd> or click <strong>Save</strong> to record a score. Once saved, the learner moves to Completed — grades, ranks, means and reports update instantly.
       </p>
     </div>
   );
