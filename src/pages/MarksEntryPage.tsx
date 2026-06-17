@@ -430,7 +430,7 @@ export default function MarksEntryPage() {
       } finally {
         setAutoSaving(false);
       }
-    }, 1200);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [dirtyCells, scores, editableSubjectIds, selectedTerm, selectedYear, selectedAssessment, schoolId, queryClient]);
 
