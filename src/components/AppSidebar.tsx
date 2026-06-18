@@ -31,6 +31,7 @@ const superAdminSections: NavSection[] = [
       { title: "Teacher Approvals", url: "/teacher-approvals", icon: GraduationCap },
       { title: "Independent Learners", url: "/independent-learners", icon: GraduationCap },
       { title: "Price Board", url: "/price-board", icon: Wallet },
+      { title: "Academic Years", url: "/academic-years", icon: CalendarDays },
     ],
   },
   {
