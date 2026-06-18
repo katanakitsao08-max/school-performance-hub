@@ -14,8 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_years: {
+        Row: {
+          created_at: string
+          id: string
+          is_current: boolean
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
+          academic_year_id: string | null
           created_at: string
           date: string
           id: string
@@ -28,6 +56,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -40,6 +69,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -52,6 +82,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_learner_id_fkey"
             columns: ["learner_id"]
@@ -581,6 +618,7 @@ export type Database = {
       }
       fee_records: {
         Row: {
+          academic_year_id: string | null
           allocation_mode: string | null
           allocation_parent_id: string | null
           amount_charged: number
@@ -606,6 +644,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          academic_year_id?: string | null
           allocation_mode?: string | null
           allocation_parent_id?: string | null
           amount_charged?: number
@@ -631,6 +670,7 @@ export type Database = {
           year?: number
         }
         Update: {
+          academic_year_id?: string | null
           allocation_mode?: string | null
           allocation_parent_id?: string | null
           amount_charged?: number
@@ -656,6 +696,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fee_records_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fee_records_allocation_parent_id_fkey"
             columns: ["allocation_parent_id"]
@@ -2457,6 +2504,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          academic_year_id: string | null
           created_at: string
           id: string
           is_read: boolean
@@ -2468,6 +2516,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          academic_year_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -2479,6 +2528,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          academic_year_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -2490,6 +2540,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_school_id_fkey"
             columns: ["school_id"]
@@ -3281,6 +3338,7 @@ export type Database = {
       }
       scores: {
         Row: {
+          academic_year_id: string | null
           assessment_type: string
           created_at: string
           edited_at: string | null
@@ -3304,6 +3362,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          academic_year_id?: string | null
           assessment_type?: string
           created_at?: string
           edited_at?: string | null
@@ -3327,6 +3386,7 @@ export type Database = {
           year: number
         }
         Update: {
+          academic_year_id?: string | null
           assessment_type?: string
           created_at?: string
           edited_at?: string | null
@@ -3350,6 +3410,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "scores_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scores_learner_id_fkey"
             columns: ["learner_id"]
@@ -3426,6 +3493,7 @@ export type Database = {
       }
       strand_scores: {
         Row: {
+          academic_year_id: string | null
           assessment_type: string
           competency_level: string
           created_at: string
@@ -3451,6 +3519,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          academic_year_id?: string | null
           assessment_type?: string
           competency_level?: string
           created_at?: string
@@ -3476,6 +3545,7 @@ export type Database = {
           year: number
         }
         Update: {
+          academic_year_id?: string | null
           assessment_type?: string
           competency_level?: string
           created_at?: string
@@ -3501,6 +3571,13 @@ export type Database = {
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "strand_scores_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "strand_scores_learner_id_fkey"
             columns: ["learner_id"]
@@ -4669,6 +4746,7 @@ export type Database = {
         Args: { _amount: number; _school_id: string }
         Returns: boolean
       }
+      ensure_current_academic_year: { Args: never; Returns: undefined }
       expire_old_independent_subscriptions: { Args: never; Returns: number }
       find_system_wa_template: {
         Args: { _name: string; _school_id: string }
