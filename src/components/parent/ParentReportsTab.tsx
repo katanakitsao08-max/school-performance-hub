@@ -8,6 +8,7 @@ import { useState, useMemo } from 'react';
 import { getGradeForLevel, getGradePoints, isKJSEAGradeLevel, generateTeacherComment } from '@/lib/cbc-utils';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { toast } from '@/hooks/use-toast';
+import { useAcademicYears } from '@/hooks/use-academic-years';
 
 interface Props {
   child: { id: string; full_name: string; admission_number: string; grade: string; stream: string; gender: string };
@@ -15,6 +16,7 @@ interface Props {
 
 export default function ParentReportsTab({ child }: Props) {
   const currentYear = new Date().getFullYear();
+  const { data: academicYears = [] } = useAcademicYears();
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedAssessment, setSelectedAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
@@ -371,7 +373,10 @@ export default function ParentReportsTab({ child }: Props) {
             <Select value={selectedYear} onValueChange={setSelectedYear}>
               <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {[currentYear, currentYear - 1, currentYear - 2].map(y => (
+                {(academicYears.length > 0
+                  ? academicYears.map(a => a.year)
+                  : [currentYear, currentYear - 1, currentYear - 2]
+                ).map(y => (
                   <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                 ))}
               </SelectContent>
@@ -389,9 +394,11 @@ export default function ParentReportsTab({ child }: Props) {
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No {assessmentLabel} scores found for Term {selectedTerm}, {selectedYear}.
-            </p>
+            <div className="text-center py-6 px-4 rounded-lg bg-muted/40 border border-dashed">
+              <p className="text-sm text-muted-foreground">
+                📄 Results for Term {selectedTerm} {assessmentLabel} {selectedYear} are not yet available.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -23,6 +23,7 @@ import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
 import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
+import { useAcademicYears } from '@/hooks/use-academic-years';
 import MarksEntrySubjectWorkspace from '@/components/MarksEntrySubjectWorkspace';
 import { addToOfflineQueue, isOnline } from '@/lib/offline-queue';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
@@ -39,6 +40,7 @@ export default function MarksEntryPage() {
   const queryClient = useQueryClient();
   const { role, profile, schoolId, user } = useAuth();
   const currentYear = new Date().getFullYear();
+  const { data: academicYears = [] } = useAcademicYears();
   const dynamicGrades = useSchoolGrades();
 
   const isTeacher = role === 'teacher';
@@ -582,7 +584,17 @@ export default function MarksEntryPage() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Year</Label>
-            <Input type="number" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="w-[90px] h-9" />
+            <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[110px] h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(academicYears.length > 0
+                  ? academicYears.map(a => a.year)
+                  : [currentYear, currentYear - 1, currentYear - 2]
+                ).map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Combined Subjects</Label>
