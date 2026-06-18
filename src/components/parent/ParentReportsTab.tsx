@@ -8,6 +8,7 @@ import { useState, useMemo } from 'react';
 import { getGradeForLevel, getGradePoints, isKJSEAGradeLevel, generateTeacherComment } from '@/lib/cbc-utils';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { toast } from '@/hooks/use-toast';
+import { useAcademicYears } from '@/hooks/use-academic-years';
 
 interface Props {
   child: { id: string; full_name: string; admission_number: string; grade: string; stream: string; gender: string };
@@ -15,6 +16,7 @@ interface Props {
 
 export default function ParentReportsTab({ child }: Props) {
   const currentYear = new Date().getFullYear();
+  const { data: academicYears = [] } = useAcademicYears();
   const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   const [selectedAssessment, setSelectedAssessment] = useState<'opener' | 'mid_term' | 'end_term'>('end_term');
