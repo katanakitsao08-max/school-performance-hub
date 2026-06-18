@@ -34,9 +34,14 @@ export function useAcademicYears() {
   useEffect(() => {
     if (ensured) return;
     ensured = true;
-    supabase.rpc('ensure_current_academic_year' as any).then(() => {
-      query.refetch();
-    }).catch(() => { ensured = false; });
+    (async () => {
+      try {
+        await supabase.rpc('ensure_current_academic_year' as any);
+        query.refetch();
+      } catch {
+        ensured = false;
+      }
+    })();
   }, []);
 
   return query;

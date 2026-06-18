@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, ChevronDown, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, NotebookPen, CalendarClock, KeyRound, Library, BookMarked, Sparkles
+  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, ChevronDown, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, NotebookPen, CalendarClock, KeyRound, Library, BookMarked, Sparkles, CalendarDays
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useMemo } from "react";
