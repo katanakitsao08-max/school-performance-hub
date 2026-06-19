@@ -637,13 +637,13 @@ export default function MarksEntryPage() {
 
           <TabsContent value="subjects" className="space-y-3">
             <MarksEntrySubjectWorkspace
-              subjects={subjects as any}
-              editableSubjectIds={editableSubjectIds}
+              subjects={workspaceSubjects as any}
+              editableSubjectIds={workspaceEditableIds}
               learners={learners as any}
               selectedGrade={selectedGrade}
-              scores={scores}
-              existingScores={existingScores as any}
-              onScoreChange={handleScoreChange}
+              scores={workspaceScores}
+              existingScores={workspaceExistingScores as any}
+              onScoreChange={workspaceHandleScoreChange}
             />
           </TabsContent>
 
