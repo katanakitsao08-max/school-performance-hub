@@ -274,6 +274,74 @@ export default function MarksEntryPage() {
     });
   }, []);
 
+  // ── Merged-column workspace adapters ──
+  // When the merge toggle is ON we expose synthetic "merged" subjects to the
+  // workspace (e.g. SS+CRE, Sci+Agri). Writes are fan-out to all members.
+  const MERGED_PREFIX = 'merged:';
+  const workspaceSubjects = useMemo(() => {
+    return subjectColumns.map(col => col.kind === 'single'
+      ? { id: col.subject.id, name: col.subject.name, max_score: col.subject.max_score }
+      : { id: MERGED_PREFIX + col.members.map(m => m.id).join('+'), name: col.label, max_score: col.max_score });
+  }, [subjectColumns]);
+  const workspaceEditableIds = useMemo(() => {
+    const s = new Set<string>();
+    subjectColumns.forEach(col => {
+      if (col.kind === 'single') {
+        if (editableSubjectIds.has(col.subject.id)) s.add(col.subject.id);
+      } else if (col.members.every(m => editableSubjectIds.has(m.id))) {
+        s.add(MERGED_PREFIX + col.members.map(m => m.id).join('+'));
+      }
+    });
+    return s;
+  }, [subjectColumns, editableSubjectIds]);
+  const workspaceScores = useMemo(() => {
+    if (!mergeCombined) return scores;
+    const out: Record<string, Record<string, string>> = {};
+    Object.entries(scores).forEach(([lid, sm]) => { out[lid] = { ...sm }; });
+    subjectColumns.forEach(col => {
+      if (col.kind !== 'merged') return;
+      const mid = MERGED_PREFIX + col.members.map(m => m.id).join('+');
+      Object.keys(scores).forEach(lid => {
+        const vals = col.members.map(m => scores[lid]?.[m.id])
+          .filter(v => v !== undefined && v !== '' && !isNaN(Number(v))).map(Number);
+        if (vals.length === col.members.length) {
+          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+          out[lid] = { ...(out[lid] || {}), [mid]: String(Math.round(avg)) };
+        }
+      });
+    });
+    return out;
+  }, [scores, subjectColumns, mergeCombined]);
+  const workspaceExistingScores = useMemo(() => {
+    if (!mergeCombined) return existingScores;
+    const extras: any[] = [];
+    subjectColumns.forEach(col => {
+      if (col.kind !== 'merged') return;
+      const mid = MERGED_PREFIX + col.members.map(m => m.id).join('+');
+      const byLearner: Record<string, any[]> = {};
+      (existingScores as any[]).forEach((s: any) => {
+        if (col.members.some(m => m.id === s.learning_area_id)) {
+          (byLearner[s.learner_id] ||= []).push(s);
+        }
+      });
+      Object.entries(byLearner).forEach(([lid, arr]) => {
+        if (arr.length === col.members.length) {
+          const avg = arr.reduce((a, b) => a + Number(b.score), 0) / arr.length;
+          extras.push({ ...arr[0], id: `${mid}|${lid}`, learner_id: lid, learning_area_id: mid, score: Math.round(avg) });
+        }
+      });
+    });
+    return [...(existingScores as any[]), ...extras];
+  }, [existingScores, subjectColumns, mergeCombined]);
+  const workspaceHandleScoreChange = useCallback((learnerId: string, subjectId: string, value: string) => {
+    if (subjectId.startsWith(MERGED_PREFIX)) {
+      const memberIds = subjectId.slice(MERGED_PREFIX.length).split('+');
+      memberIds.forEach(mid => handleScoreChange(learnerId, mid, value));
+    } else {
+      handleScoreChange(learnerId, subjectId, value);
+    }
+  }, [handleScoreChange]);
+
   // Save - only save editable subjects
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -637,13 +705,13 @@ export default function MarksEntryPage() {
 
           <TabsContent value="subjects" className="space-y-3">
             <MarksEntrySubjectWorkspace
-              subjects={subjects as any}
-              editableSubjectIds={editableSubjectIds}
+              subjects={workspaceSubjects as any}
+              editableSubjectIds={workspaceEditableIds}
               learners={learners as any}
               selectedGrade={selectedGrade}
-              scores={scores}
-              existingScores={existingScores as any}
-              onScoreChange={handleScoreChange}
+              scores={workspaceScores}
+              existingScores={workspaceExistingScores as any}
+              onScoreChange={workspaceHandleScoreChange}
             />
           </TabsContent>
 
