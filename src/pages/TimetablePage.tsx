@@ -325,15 +325,33 @@ export default function TimetablePage() {
     (async () => {
       const { data } = await supabase.from('timetable_settings').select('*').eq('school_id', schoolId).maybeSingle();
       if (data) {
-        const dl = Array.isArray((data as any).day_labels) ? (data as any).day_labels : DAYS;
-        setDaysList(dl.slice(0, (data as any).num_days || dl.length));
-        setWeekendDays(Array.isArray((data as any).weekend) ? (data as any).weekend : ['Saturday', 'Sunday']);
-        setPeriodsPerDay((data as any).periods_per_day || DEFAULT_PERIODS_PER_DAY);
-        setZeroPeriod(!!(data as any).zero_period);
-        const bp = Array.isArray((data as any).break_periods) ? (data as any).break_periods : [];
-        if (bp.length) setBreakInput(bp.join(','));
-        const bl = Array.isArray((data as any).break_labels) ? (data as any).break_labels : [];
-        if (bl.length) setBreakLabelsInput(bl.join(','));
+        const d: any = data;
+        const dl = Array.isArray(d.day_labels) ? d.day_labels : DAYS;
+        setDaysList(dl.slice(0, d.num_days || dl.length));
+        setWeekendDays(Array.isArray(d.weekend) ? d.weekend : ['Saturday', 'Sunday']);
+        setPeriodsPerDay(d.periods_per_day || DEFAULT_PERIODS_PER_DAY);
+        setZeroPeriod(!!d.zero_period);
+        // Prefer new break_slots; fall back to legacy break_periods+labels
+        if (Array.isArray(d.break_slots) && d.break_slots.length) {
+          setVisualBreaks(d.break_slots as BreakSlot[]);
+        } else if (Array.isArray(d.break_periods) && d.break_periods.length) {
+          const labels = Array.isArray(d.break_labels) ? d.break_labels : [];
+          setVisualBreaks(d.break_periods.map((slot: number, i: number) => {
+            const lbl = labels[i] || 'BREAK';
+            const type: BreakSlot['type'] = /lunch/i.test(lbl) ? 'lunch' : /long/i.test(lbl) ? 'long' : 'short';
+            return { slot, type, label: lbl };
+          }));
+        }
+        if (d.start_time) setStartTime(String(d.start_time).slice(0, 5));
+        if (d.lesson_duration_min) setLessonDurationMin(d.lesson_duration_min);
+        if (d.short_break_min != null) setShortBreakMin(d.short_break_min);
+        if (d.long_break_min != null) setLongBreakMin(d.long_break_min);
+        if (d.lunch_min != null) setLunchMin(d.lunch_min);
+        if (d.scheduling_rules) setSchedulingRules({ ...DEFAULT_RULES, ...d.scheduling_rules });
+        if (d.template_name) {
+          const t = TIMETABLE_TEMPLATES.find(t => t.name === d.template_name);
+          if (t) setActiveTemplateId(t.id);
+        }
       }
     })();
   }, [schoolId]);
