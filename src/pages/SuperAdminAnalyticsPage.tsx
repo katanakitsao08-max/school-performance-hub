@@ -21,6 +21,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchAllPaged } from '@/lib/fetch-all';
+import { SystemUptimeCard } from '@/components/SystemUptimeCard';
 
 // ---------- helpers ----------
 const COLORS = ['hsl(142 64% 28%)', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#ec4899'];
@@ -427,10 +428,7 @@ export default function SuperAdminAnalyticsPage() {
               ))}
             </div>
 
-            <Card><CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">System Uptime</p>
-              <p className="text-xs mt-1">Infrastructure metrics (uptime, API latency, DB performance) are not yet instrumented. Connect an APM provider to enable.</p>
-            </CardContent></Card>
+            <SystemUptimeCard />
           </TabsContent>
 
           {/* SCHOOLS */}
