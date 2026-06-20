@@ -1230,17 +1230,27 @@ export default function TimetablePage() {
           )}
         </div>
 
-        {result && (result.conflicts.length > 0 || result.unfilled.length > 0) && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Scheduling warnings</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-5 text-xs space-y-0.5">
-                {result.conflicts.map((c, i) => <li key={`c${i}`}>{c}</li>)}
-                {result.unfilled.map((u, i) => <li key={`u${i}`}>{u}</li>)}
-              </ul>
-            </AlertDescription>
-          </Alert>
+        {result && (
+          <>
+            <CollisionDashboard
+              conflicts={result.conflicts}
+              unfilled={result.unfilled}
+              teacherLessonCounts={Object.fromEntries(
+                Object.entries(result.teacherGrids).map(([id, t]) => [id, { name: t.teacherName, count: t.lessonCount }])
+              )}
+              maxRecommended={schedulingRules.limitTeacherLoadPerDay > 0
+                ? schedulingRules.limitTeacherLoadPerDay * scheduleDays.length
+                : 30}
+              onAutoFix={() => (batchMode ? generateAllClasses() : generate())}
+            />
+            <TimetableAnalytics
+              grids={result.grids}
+              teacherGrids={result.teacherGrids}
+              periodsPerDay={periodsPerDay}
+              days={scheduleDays}
+              breakSlots={visualBreaks.length}
+            />
+          </>
         )}
 
         {result && (
