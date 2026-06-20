@@ -3808,6 +3808,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health_pings: {
+        Row: {
+          created_at: string
+          db_ok: boolean
+          id: string
+          latency_ms: number
+        }
+        Insert: {
+          created_at?: string
+          db_ok: boolean
+          id?: string
+          latency_ms: number
+        }
+        Update: {
+          created_at?: string
+          db_ok?: boolean
+          id?: string
+          latency_ms?: number
+        }
+        Relationships: []
+      }
       teacher_assignments: {
         Row: {
           created_at: string
