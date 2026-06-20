@@ -372,7 +372,7 @@ export default function TimetablePage() {
   const saveSettings = async () => {
     if (!schoolId) return;
     setSavingSettings(true);
-    const payload = {
+    const payload: any = {
       school_id: schoolId,
       num_days: scheduleDays.length,
       day_labels: daysList,
@@ -381,6 +381,17 @@ export default function TimetablePage() {
       zero_period: zeroPeriod,
       break_periods: breakPeriods,
       break_labels: breakLabels,
+      // new schema
+      start_time: startTime,
+      lesson_duration_min: lessonDurationMin,
+      short_break_min: shortBreakMin,
+      long_break_min: longBreakMin,
+      lunch_min: lunchMin,
+      break_slots: visualBreaks,
+      scheduling_rules: schedulingRules,
+      template_name: activeTemplateId
+        ? (TIMETABLE_TEMPLATES.find(t => t.id === activeTemplateId)?.name ?? null)
+        : null,
     };
     const { error } = await supabase.from('timetable_settings').upsert(payload, { onConflict: 'school_id' });
     setSavingSettings(false);
