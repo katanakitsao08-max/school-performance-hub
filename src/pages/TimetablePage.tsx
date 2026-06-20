@@ -12,8 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers, FileSpreadsheet, Search, Plus, X, BookOpen, Settings as SettingsIcon } from 'lucide-react';
+import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers, FileSpreadsheet, Search, Plus, X, BookOpen, Settings as SettingsIcon, ChevronDown } from 'lucide-react';
 import { LessonsForClassDialog } from '@/components/timetable/LessonsForClassDialog';
+import { VisualBreakBuilder } from '@/components/timetable/VisualBreakBuilder';
+import { TimeBasedScheduling } from '@/components/timetable/TimeBasedScheduling';
+import { SchedulingRulesPanel } from '@/components/timetable/SchedulingRulesPanel';
+import { TimetableTemplates } from '@/components/timetable/TimetableTemplates';
+import { LiveTimetablePreview } from '@/components/timetable/LiveTimetablePreview';
+import { CollisionDashboard } from '@/components/timetable/CollisionDashboard';
+import { TimetableAnalytics } from '@/components/timetable/TimetableAnalytics';
+import {
+  TIMETABLE_TEMPLATES, DEFAULT_RULES, computePeriodTimes,
+  type BreakSlot, type SchedulingRules, type TimetableTemplate,
+} from '@/lib/timetable-templates';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { getGradeLevel, type SchoolLevel } from '@/lib/grade-levels';
