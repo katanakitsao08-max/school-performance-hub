@@ -24,7 +24,8 @@ export function VisualBreakBuilder({ periodsPerDay, breaks, onChange, onPeriodsC
   const cycleSlot = (slot: number) => {
     const existing = breakBySlot.get(slot);
     if (!existing) {
-      onChange([...breaks, { slot, type: 'short', label: TYPE_META.short.label }].sort((a,b)=>a.slot-b.slot));
+      const next: BreakSlot = { slot, type: 'short', label: TYPE_META.short.label };
+      onChange([...breaks, next].sort((a,b)=>a.slot-b.slot));
       return;
     }
     if (existing.type === 'short') {
