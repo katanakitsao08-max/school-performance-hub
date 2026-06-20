@@ -539,11 +539,10 @@ export default function TimetablePage() {
       requirementsByClass: reqMap,
       assignments: merged.assigns,
       maxPeriodByClass: { [`${grade}|${stream}`]: maxSlotForGrade(grade) },
-      ...(advancedRulesOn ? {
-        maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
-        allowDoubleLessons,
-        teacherUnavailable,
-      } : {}),
+      // Always honor visual scheduling rules; legacy advanced UI overrides when on
+      maxLessonsPerDayPerSubject: advancedRulesOn && maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+      allowDoubleLessons: advancedRulesOn ? allowDoubleLessons : (schedulingRules.allowDoubleLessons && !schedulingRules.preventSameSubjectConsecutive),
+      teacherUnavailable: advancedRulesOn ? teacherUnavailable : (schedulingRules.respectTeacherAvailability ? teacherUnavailable : []),
     });
     setResult(r);
     setGenerating(false);
