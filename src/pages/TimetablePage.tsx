@@ -854,66 +854,106 @@ export default function TimetablePage() {
           </div>
         </div>
 
-        {/* School-wide day & period settings */}
+        {/* ===== Visual Setup ===== */}
+        <TimetableTemplates active={activeTemplateId} onApply={applyTemplate} />
+
+        <VisualBreakBuilder
+          periodsPerDay={periodsPerDay}
+          breaks={visualBreaks}
+          onChange={setVisualBreaks}
+          onPeriodsChange={setPeriodsPerDay}
+        />
+
+        <TimeBasedScheduling
+          startTime={startTime}
+          lessonDurationMin={lessonDurationMin}
+          shortBreakMin={shortBreakMin}
+          longBreakMin={longBreakMin}
+          lunchMin={lunchMin}
+          onChange={patch => {
+            if (patch.startTime !== undefined) setStartTime(patch.startTime);
+            if (patch.lessonDurationMin !== undefined) setLessonDurationMin(patch.lessonDurationMin);
+            if (patch.shortBreakMin !== undefined) setShortBreakMin(patch.shortBreakMin);
+            if (patch.longBreakMin !== undefined) setLongBreakMin(patch.longBreakMin);
+            if (patch.lunchMin !== undefined) setLunchMin(patch.lunchMin);
+          }}
+        />
+
+        <SchedulingRulesPanel rules={schedulingRules} onChange={setSchedulingRules} />
+
+        {/* Live preview */}
+        <LiveTimetablePreview
+          days={scheduleDays}
+          periodsPerDay={periodsPerDay}
+          breaks={visualBreaks}
+          periodTimes={periodTimes}
+          gamesEnabled={gamesEnabled}
+        />
+
+        {/* Advanced: days / weekend */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Day & period settings</CardTitle>
-            <CardDescription>School-wide. Saved per school.</CardDescription>
+          <CardHeader className="pb-2 cursor-pointer" onClick={() => setAdvancedOpen(v => !v)}>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Advanced day settings</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-4">
-            <div>
-              <Label className="text-xs">Periods per day</Label>
-              <Input type="number" min={4} max={14} value={periodsPerDay}
-                onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={zeroPeriod} onChange={e => setZeroPeriod(e.target.checked)} className="h-4 w-4" />
-                <span>Work with zero period</span>
-              </label>
-            </div>
-            <div>
-              <Label className="text-xs">Number of days</Label>
-              <Input type="number" min={1} max={7} value={daysList.length}
-                onChange={e => {
-                  const n = Math.max(1, Math.min(7, Number(e.target.value) || 5));
-                  setDaysList(prev => {
-                    const base = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-                    const next = [...prev];
-                    while (next.length < n) next.push(base[next.length] || `Day ${next.length+1}`);
-                    return next.slice(0, n);
-                  });
-                }} />
-            </div>
-            <div className="md:col-span-3">
-              <Label className="text-xs">Day labels (comma-separated, in order)</Label>
-              <Input value={daysList.join(', ')}
-                onChange={e => setDaysList(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} />
-            </div>
-            <div>
-              <Label className="text-xs">Weekend</Label>
-              <Select value={weekendDays.length ? weekendDays.join('|') : '__none__'} onValueChange={v => setWeekendDays(v === '__none__' ? [] : v.split('|').filter(Boolean))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
-                  <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
-                  <SelectItem value="Sunday">Sunday only</SelectItem>
-                  <SelectItem value="__none__">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-4">
-              <Button size="sm" onClick={saveSettings} disabled={savingSettings}>
-                {savingSettings ? 'Saving…' : 'Save settings'}
-              </Button>
-            </div>
-          </CardContent>
+          {advancedOpen && (
+            <CardContent className="grid gap-3 md:grid-cols-3">
+              <div>
+                <Label className="text-xs">Number of days</Label>
+                <Input type="number" min={1} max={7} value={daysList.length}
+                  onChange={e => {
+                    const n = Math.max(1, Math.min(7, Number(e.target.value) || 5));
+                    setDaysList(prev => {
+                      const base = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                      const next = [...prev];
+                      while (next.length < n) next.push(base[next.length] || `Day ${next.length+1}`);
+                      return next.slice(0, n);
+                    });
+                  }} />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Day labels (comma-separated)</Label>
+                <Input value={daysList.join(', ')}
+                  onChange={e => setDaysList(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} />
+              </div>
+              <div>
+                <Label className="text-xs">Weekend</Label>
+                <Select value={weekendDays.length ? weekendDays.join('|') : '__none__'} onValueChange={v => setWeekendDays(v === '__none__' ? [] : v.split('|').filter(Boolean))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
+                    <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
+                    <SelectItem value="Sunday">Sunday only</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={zeroPeriod} onChange={e => setZeroPeriod(e.target.checked)} className="h-4 w-4" />
+                  <span>Work with zero period</span>
+                </label>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
+        <div className="flex justify-end">
+          <Button size="sm" onClick={saveSettings} disabled={savingSettings}>
+            {savingSettings ? 'Saving…' : 'Save settings'}
+          </Button>
+        </div>
+
+        {/* Class picker */}
         <Card>
-          <CardContent className="grid gap-4 md:grid-cols-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Choose class to generate</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             <div>
-              <Label>Block</Label>
+              <Label className="text-xs">Block</Label>
               <Select value={blockFilter} onValueChange={setBlockFilter}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -922,7 +962,7 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Grade</Label>
+              <Label className="text-xs">Grade</Label>
               <Select value={grade} onValueChange={setGrade}>
                 <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
                 <SelectContent>
@@ -933,41 +973,16 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Stream</Label>
+              <Label className="text-xs">Stream</Label>
               <Select value={stream} onValueChange={setStream}>
                 <SelectTrigger><SelectValue placeholder="Stream" /></SelectTrigger>
                 <SelectContent>{streams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Slots / day</Label>
-              <Input type="number" min={4} max={14} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
-              <p className="text-[10px] text-muted-foreground mt-1">Total slots incl. breaks</p>
-            </div>
-            <div>
-              <Label>Break slot #s</Label>
-              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,6,9" />
-              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated</p>
-            </div>
-            <div className="md:col-span-3">
-              <Label>Break labels (in order)</Label>
-              <Input value={breakLabelsInput} onChange={e => setBreakLabelsInput(e.target.value)} placeholder="SHORT BREAK, LONG BREAK, LUNCH" />
-            </div>
-            <div className="md:col-span-2 flex items-end gap-2 flex-wrap">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={gamesEnabled}
-                  onChange={e => setGamesEnabled(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <span>Auto-lock last 2 slots as <strong>GAMES</strong> (P7 & P8)</span>
-              </label>
-              <Button
-                size="sm" variant="outline"
+            <div className="flex items-end">
+              <Button size="sm" variant="outline" className="w-full"
                 disabled={!grade || !stream}
-                onClick={() => setLessonsDialogOpen(true)}
-              >
+                onClick={() => setLessonsDialogOpen(true)}>
                 <BookOpen className="h-4 w-4 mr-1" /> Lessons for class
                 {savedLessons.length > 0 && <Badge variant="secondary" className="ml-1.5 text-[10px]">{savedLessons.length}</Badge>}
               </Button>
@@ -987,55 +1002,6 @@ export default function TimetablePage() {
           />
         )}
 
-        {/* Session times editor */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Session times</CardTitle>
-            <CardDescription>Enter start/end time for every slot (including breaks). Times print in PDFs.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {periodTimes.map((t, i) => {
-                const isBreak = breakPeriods.includes(i + 1);
-                const breakIdx = breakPeriods.indexOf(i + 1);
-                const slotLabel = isBreak
-                  ? (breakLabels[breakIdx] || 'BREAK')
-                  : (() => {
-                      const teaching = i + 1 - breakPeriods.filter(b => b <= i + 1).length;
-                      const isGames = gamesEnabled && periodsPerDay >= 11 && (i + 1 === 10 || i + 1 === 11);
-                      return isGames ? `P${teaching} (GAMES)` : `P${teaching}`;
-                    })();
-                return (
-                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded border ${isBreak ? 'bg-muted/50' : ''}`}>
-                    <span className="text-[10px] font-semibold w-16 shrink-0">{slotLabel}</span>
-                    <Input
-                      type="time"
-                      value={t.start}
-                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, start: e.target.value } : p))}
-                      className="h-8 text-xs"
-                    />
-                    <span className="text-xs">–</span>
-                    <Input
-                      type="time"
-                      value={t.end}
-                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, end: e.target.value } : p))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={() => setPeriodTimes(defaultPeriodTimes())}
-            >
-              Reset to defaults
-            </Button>
-          </CardContent>
-        </Card>
 
         {/* Locked / Fixed periods */}
         <Card>
