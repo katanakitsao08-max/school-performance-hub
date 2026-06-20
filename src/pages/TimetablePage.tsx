@@ -639,11 +639,9 @@ export default function TimetablePage() {
         requirementsByClass: reqMap,
         assignments: mergedAssignments,
         maxPeriodByClass: Object.fromEntries(classList.map(c => [`${c.grade}|${c.stream}`, maxSlotForGrade(c.grade)])),
-        ...(advancedRulesOn ? {
-          maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
-          allowDoubleLessons,
-          teacherUnavailable,
-        } : {}),
+        maxLessonsPerDayPerSubject: advancedRulesOn && maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+        allowDoubleLessons: advancedRulesOn ? allowDoubleLessons : (schedulingRules.allowDoubleLessons && !schedulingRules.preventSameSubjectConsecutive),
+        teacherUnavailable: advancedRulesOn ? teacherUnavailable : (schedulingRules.respectTeacherAvailability ? teacherUnavailable : []),
       });
       setResult(r);
       setBatchClasses(classList);
