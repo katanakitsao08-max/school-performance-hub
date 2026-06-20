@@ -139,6 +139,54 @@ export default function TimetablePage() {
     teacher_id: '', day: 'Monday', period: 1,
   });
 
+  // ===== New visual setup state =====
+  const [visualBreaks, setVisualBreaks] = useState<BreakSlot[]>([
+    { slot: 3, type: 'short', label: 'SHORT BREAK' },
+    { slot: 6, type: 'long',  label: 'LONG BREAK' },
+    { slot: 9, type: 'lunch', label: 'LUNCH' },
+  ]);
+  const [startTime, setStartTime] = useState('07:30');
+  const [lessonDurationMin, setLessonDurationMin] = useState(35);
+  const [shortBreakMin, setShortBreakMin] = useState(20);
+  const [longBreakMin, setLongBreakMin] = useState(20);
+  const [lunchMin, setLunchMin] = useState(40);
+  const [schedulingRules, setSchedulingRules] = useState<SchedulingRules>(DEFAULT_RULES);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Sync legacy break inputs (used by engine + GridTable) from visual builder
+  useEffect(() => {
+    setBreakInput(visualBreaks.map(b => b.slot).join(','));
+    setBreakLabelsInput(visualBreaks.map(b => b.label).join(','));
+  }, [visualBreaks]);
+
+  // Auto-compute period times from durations
+  useEffect(() => {
+    const times = computePeriodTimes({
+      startTime, periodsPerDay, lessonDurationMin,
+      shortBreakMin, longBreakMin, lunchMin, breaks: visualBreaks,
+    });
+    setPeriodTimes(times);
+  }, [startTime, periodsPerDay, lessonDurationMin, shortBreakMin, longBreakMin, lunchMin, visualBreaks]);
+
+  // Reflect "reserveGames" rule into existing gamesEnabled flag
+  useEffect(() => {
+    setGamesEnabled(schedulingRules.reserveGames);
+  }, [schedulingRules.reserveGames]);
+
+  const applyTemplate = (t: TimetableTemplate) => {
+    setActiveTemplateId(t.id);
+    setStartTime(t.startTime);
+    setLessonDurationMin(t.lessonDurationMin);
+    setShortBreakMin(t.shortBreakMin);
+    setLongBreakMin(t.longBreakMin);
+    setLunchMin(t.lunchMin);
+    setPeriodsPerDay(t.periodsPerDay);
+    setVisualBreaks(t.breaks);
+    setSchedulingRules(t.rules);
+    toast({ title: `Applied: ${t.name}`, description: 'Settings updated. Click Save settings to persist.' });
+  };
+
   const breakPeriods = useMemo(() => {
     return breakInput
       .split(',')
