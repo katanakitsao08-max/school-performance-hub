@@ -12,8 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers, FileSpreadsheet, Search, Plus, X, BookOpen, Settings as SettingsIcon } from 'lucide-react';
+import { Lock, Unlock, Sparkles, Download, AlertTriangle, Layers, FileSpreadsheet, Search, Plus, X, BookOpen, Settings as SettingsIcon, ChevronDown } from 'lucide-react';
 import { LessonsForClassDialog } from '@/components/timetable/LessonsForClassDialog';
+import { VisualBreakBuilder } from '@/components/timetable/VisualBreakBuilder';
+import { TimeBasedScheduling } from '@/components/timetable/TimeBasedScheduling';
+import { SchedulingRulesPanel } from '@/components/timetable/SchedulingRulesPanel';
+import { TimetableTemplates } from '@/components/timetable/TimetableTemplates';
+import { LiveTimetablePreview } from '@/components/timetable/LiveTimetablePreview';
+import { CollisionDashboard } from '@/components/timetable/CollisionDashboard';
+import { TimetableAnalytics } from '@/components/timetable/TimetableAnalytics';
+import {
+  TIMETABLE_TEMPLATES, DEFAULT_RULES, computePeriodTimes,
+  type BreakSlot, type SchedulingRules, type TimetableTemplate,
+} from '@/lib/timetable-templates';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 import { getGradeLevel, type SchoolLevel } from '@/lib/grade-levels';
@@ -127,6 +138,54 @@ export default function TimetablePage() {
   const [newUnavail, setNewUnavail] = useState<{ teacher_id: string; day: string; period: number }>({
     teacher_id: '', day: 'Monday', period: 1,
   });
+
+  // ===== New visual setup state =====
+  const [visualBreaks, setVisualBreaks] = useState<BreakSlot[]>([
+    { slot: 3, type: 'short', label: 'SHORT BREAK' },
+    { slot: 6, type: 'long',  label: 'LONG BREAK' },
+    { slot: 9, type: 'lunch', label: 'LUNCH' },
+  ]);
+  const [startTime, setStartTime] = useState('07:30');
+  const [lessonDurationMin, setLessonDurationMin] = useState(35);
+  const [shortBreakMin, setShortBreakMin] = useState(20);
+  const [longBreakMin, setLongBreakMin] = useState(20);
+  const [lunchMin, setLunchMin] = useState(40);
+  const [schedulingRules, setSchedulingRules] = useState<SchedulingRules>(DEFAULT_RULES);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Sync legacy break inputs (used by engine + GridTable) from visual builder
+  useEffect(() => {
+    setBreakInput(visualBreaks.map(b => b.slot).join(','));
+    setBreakLabelsInput(visualBreaks.map(b => b.label).join(','));
+  }, [visualBreaks]);
+
+  // Auto-compute period times from durations
+  useEffect(() => {
+    const times = computePeriodTimes({
+      startTime, periodsPerDay, lessonDurationMin,
+      shortBreakMin, longBreakMin, lunchMin, breaks: visualBreaks,
+    });
+    setPeriodTimes(times);
+  }, [startTime, periodsPerDay, lessonDurationMin, shortBreakMin, longBreakMin, lunchMin, visualBreaks]);
+
+  // Reflect "reserveGames" rule into existing gamesEnabled flag
+  useEffect(() => {
+    setGamesEnabled(schedulingRules.reserveGames);
+  }, [schedulingRules.reserveGames]);
+
+  const applyTemplate = (t: TimetableTemplate) => {
+    setActiveTemplateId(t.id);
+    setStartTime(t.startTime);
+    setLessonDurationMin(t.lessonDurationMin);
+    setShortBreakMin(t.shortBreakMin);
+    setLongBreakMin(t.longBreakMin);
+    setLunchMin(t.lunchMin);
+    setPeriodsPerDay(t.periodsPerDay);
+    setVisualBreaks(t.breaks);
+    setSchedulingRules(t.rules);
+    toast({ title: `Applied: ${t.name}`, description: 'Settings updated. Click Save settings to persist.' });
+  };
 
   const breakPeriods = useMemo(() => {
     return breakInput
@@ -266,15 +325,33 @@ export default function TimetablePage() {
     (async () => {
       const { data } = await supabase.from('timetable_settings').select('*').eq('school_id', schoolId).maybeSingle();
       if (data) {
-        const dl = Array.isArray((data as any).day_labels) ? (data as any).day_labels : DAYS;
-        setDaysList(dl.slice(0, (data as any).num_days || dl.length));
-        setWeekendDays(Array.isArray((data as any).weekend) ? (data as any).weekend : ['Saturday', 'Sunday']);
-        setPeriodsPerDay((data as any).periods_per_day || DEFAULT_PERIODS_PER_DAY);
-        setZeroPeriod(!!(data as any).zero_period);
-        const bp = Array.isArray((data as any).break_periods) ? (data as any).break_periods : [];
-        if (bp.length) setBreakInput(bp.join(','));
-        const bl = Array.isArray((data as any).break_labels) ? (data as any).break_labels : [];
-        if (bl.length) setBreakLabelsInput(bl.join(','));
+        const d: any = data;
+        const dl = Array.isArray(d.day_labels) ? d.day_labels : DAYS;
+        setDaysList(dl.slice(0, d.num_days || dl.length));
+        setWeekendDays(Array.isArray(d.weekend) ? d.weekend : ['Saturday', 'Sunday']);
+        setPeriodsPerDay(d.periods_per_day || DEFAULT_PERIODS_PER_DAY);
+        setZeroPeriod(!!d.zero_period);
+        // Prefer new break_slots; fall back to legacy break_periods+labels
+        if (Array.isArray(d.break_slots) && d.break_slots.length) {
+          setVisualBreaks(d.break_slots as BreakSlot[]);
+        } else if (Array.isArray(d.break_periods) && d.break_periods.length) {
+          const labels = Array.isArray(d.break_labels) ? d.break_labels : [];
+          setVisualBreaks(d.break_periods.map((slot: number, i: number) => {
+            const lbl = labels[i] || 'BREAK';
+            const type: BreakSlot['type'] = /lunch/i.test(lbl) ? 'lunch' : /long/i.test(lbl) ? 'long' : 'short';
+            return { slot, type, label: lbl };
+          }));
+        }
+        if (d.start_time) setStartTime(String(d.start_time).slice(0, 5));
+        if (d.lesson_duration_min) setLessonDurationMin(d.lesson_duration_min);
+        if (d.short_break_min != null) setShortBreakMin(d.short_break_min);
+        if (d.long_break_min != null) setLongBreakMin(d.long_break_min);
+        if (d.lunch_min != null) setLunchMin(d.lunch_min);
+        if (d.scheduling_rules) setSchedulingRules({ ...DEFAULT_RULES, ...d.scheduling_rules });
+        if (d.template_name) {
+          const t = TIMETABLE_TEMPLATES.find(t => t.name === d.template_name);
+          if (t) setActiveTemplateId(t.id);
+        }
       }
     })();
   }, [schoolId]);
@@ -295,7 +372,7 @@ export default function TimetablePage() {
   const saveSettings = async () => {
     if (!schoolId) return;
     setSavingSettings(true);
-    const payload = {
+    const payload: any = {
       school_id: schoolId,
       num_days: scheduleDays.length,
       day_labels: daysList,
@@ -304,6 +381,17 @@ export default function TimetablePage() {
       zero_period: zeroPeriod,
       break_periods: breakPeriods,
       break_labels: breakLabels,
+      // new schema
+      start_time: startTime,
+      lesson_duration_min: lessonDurationMin,
+      short_break_min: shortBreakMin,
+      long_break_min: longBreakMin,
+      lunch_min: lunchMin,
+      break_slots: visualBreaks,
+      scheduling_rules: schedulingRules,
+      template_name: activeTemplateId
+        ? (TIMETABLE_TEMPLATES.find(t => t.id === activeTemplateId)?.name ?? null)
+        : null,
     };
     const { error } = await supabase.from('timetable_settings').upsert(payload, { onConflict: 'school_id' });
     setSavingSettings(false);
@@ -451,11 +539,10 @@ export default function TimetablePage() {
       requirementsByClass: reqMap,
       assignments: merged.assigns,
       maxPeriodByClass: { [`${grade}|${stream}`]: maxSlotForGrade(grade) },
-      ...(advancedRulesOn ? {
-        maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
-        allowDoubleLessons,
-        teacherUnavailable,
-      } : {}),
+      // Always honor visual scheduling rules; legacy advanced UI overrides when on
+      maxLessonsPerDayPerSubject: advancedRulesOn && maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+      allowDoubleLessons: advancedRulesOn ? allowDoubleLessons : (schedulingRules.allowDoubleLessons && !schedulingRules.preventSameSubjectConsecutive),
+      teacherUnavailable: advancedRulesOn ? teacherUnavailable : (schedulingRules.respectTeacherAvailability ? teacherUnavailable : []),
     });
     setResult(r);
     setGenerating(false);
@@ -552,11 +639,9 @@ export default function TimetablePage() {
         requirementsByClass: reqMap,
         assignments: mergedAssignments,
         maxPeriodByClass: Object.fromEntries(classList.map(c => [`${c.grade}|${c.stream}`, maxSlotForGrade(c.grade)])),
-        ...(advancedRulesOn ? {
-          maxLessonsPerDayPerSubject: maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
-          allowDoubleLessons,
-          teacherUnavailable,
-        } : {}),
+        maxLessonsPerDayPerSubject: advancedRulesOn && maxLessonsPerDay > 0 ? maxLessonsPerDay : undefined,
+        allowDoubleLessons: advancedRulesOn ? allowDoubleLessons : (schedulingRules.allowDoubleLessons && !schedulingRules.preventSameSubjectConsecutive),
+        teacherUnavailable: advancedRulesOn ? teacherUnavailable : (schedulingRules.respectTeacherAvailability ? teacherUnavailable : []),
       });
       setResult(r);
       setBatchClasses(classList);
@@ -766,66 +851,106 @@ export default function TimetablePage() {
           </div>
         </div>
 
-        {/* School-wide day & period settings */}
+        {/* ===== Visual Setup ===== */}
+        <TimetableTemplates active={activeTemplateId} onApply={applyTemplate} />
+
+        <VisualBreakBuilder
+          periodsPerDay={periodsPerDay}
+          breaks={visualBreaks}
+          onChange={setVisualBreaks}
+          onPeriodsChange={setPeriodsPerDay}
+        />
+
+        <TimeBasedScheduling
+          startTime={startTime}
+          lessonDurationMin={lessonDurationMin}
+          shortBreakMin={shortBreakMin}
+          longBreakMin={longBreakMin}
+          lunchMin={lunchMin}
+          onChange={patch => {
+            if (patch.startTime !== undefined) setStartTime(patch.startTime);
+            if (patch.lessonDurationMin !== undefined) setLessonDurationMin(patch.lessonDurationMin);
+            if (patch.shortBreakMin !== undefined) setShortBreakMin(patch.shortBreakMin);
+            if (patch.longBreakMin !== undefined) setLongBreakMin(patch.longBreakMin);
+            if (patch.lunchMin !== undefined) setLunchMin(patch.lunchMin);
+          }}
+        />
+
+        <SchedulingRulesPanel rules={schedulingRules} onChange={setSchedulingRules} />
+
+        {/* Live preview */}
+        <LiveTimetablePreview
+          days={scheduleDays}
+          periodsPerDay={periodsPerDay}
+          breaks={visualBreaks}
+          periodTimes={periodTimes}
+          gamesEnabled={gamesEnabled}
+        />
+
+        {/* Advanced: days / weekend */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Day & period settings</CardTitle>
-            <CardDescription>School-wide. Saved per school.</CardDescription>
+          <CardHeader className="pb-2 cursor-pointer" onClick={() => setAdvancedOpen(v => !v)}>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Advanced day settings</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-4">
-            <div>
-              <Label className="text-xs">Periods per day</Label>
-              <Input type="number" min={4} max={14} value={periodsPerDay}
-                onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={zeroPeriod} onChange={e => setZeroPeriod(e.target.checked)} className="h-4 w-4" />
-                <span>Work with zero period</span>
-              </label>
-            </div>
-            <div>
-              <Label className="text-xs">Number of days</Label>
-              <Input type="number" min={1} max={7} value={daysList.length}
-                onChange={e => {
-                  const n = Math.max(1, Math.min(7, Number(e.target.value) || 5));
-                  setDaysList(prev => {
-                    const base = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-                    const next = [...prev];
-                    while (next.length < n) next.push(base[next.length] || `Day ${next.length+1}`);
-                    return next.slice(0, n);
-                  });
-                }} />
-            </div>
-            <div className="md:col-span-3">
-              <Label className="text-xs">Day labels (comma-separated, in order)</Label>
-              <Input value={daysList.join(', ')}
-                onChange={e => setDaysList(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} />
-            </div>
-            <div>
-              <Label className="text-xs">Weekend</Label>
-              <Select value={weekendDays.length ? weekendDays.join('|') : '__none__'} onValueChange={v => setWeekendDays(v === '__none__' ? [] : v.split('|').filter(Boolean))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
-                  <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
-                  <SelectItem value="Sunday">Sunday only</SelectItem>
-                  <SelectItem value="__none__">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-4">
-              <Button size="sm" onClick={saveSettings} disabled={savingSettings}>
-                {savingSettings ? 'Saving…' : 'Save settings'}
-              </Button>
-            </div>
-          </CardContent>
+          {advancedOpen && (
+            <CardContent className="grid gap-3 md:grid-cols-3">
+              <div>
+                <Label className="text-xs">Number of days</Label>
+                <Input type="number" min={1} max={7} value={daysList.length}
+                  onChange={e => {
+                    const n = Math.max(1, Math.min(7, Number(e.target.value) || 5));
+                    setDaysList(prev => {
+                      const base = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                      const next = [...prev];
+                      while (next.length < n) next.push(base[next.length] || `Day ${next.length+1}`);
+                      return next.slice(0, n);
+                    });
+                  }} />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Day labels (comma-separated)</Label>
+                <Input value={daysList.join(', ')}
+                  onChange={e => setDaysList(e.target.value.split(',').map(s => s.trim()).filter(Boolean))} />
+              </div>
+              <div>
+                <Label className="text-xs">Weekend</Label>
+                <Select value={weekendDays.length ? weekendDays.join('|') : '__none__'} onValueChange={v => setWeekendDays(v === '__none__' ? [] : v.split('|').filter(Boolean))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Saturday|Sunday">Saturday – Sunday</SelectItem>
+                    <SelectItem value="Friday|Saturday">Friday – Saturday</SelectItem>
+                    <SelectItem value="Sunday">Sunday only</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={zeroPeriod} onChange={e => setZeroPeriod(e.target.checked)} className="h-4 w-4" />
+                  <span>Work with zero period</span>
+                </label>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
+        <div className="flex justify-end">
+          <Button size="sm" onClick={saveSettings} disabled={savingSettings}>
+            {savingSettings ? 'Saving…' : 'Save settings'}
+          </Button>
+        </div>
+
+        {/* Class picker */}
         <Card>
-          <CardContent className="grid gap-4 md:grid-cols-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Choose class to generate</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             <div>
-              <Label>Block</Label>
+              <Label className="text-xs">Block</Label>
               <Select value={blockFilter} onValueChange={setBlockFilter}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -834,7 +959,7 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Grade</Label>
+              <Label className="text-xs">Grade</Label>
               <Select value={grade} onValueChange={setGrade}>
                 <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
                 <SelectContent>
@@ -845,41 +970,16 @@ export default function TimetablePage() {
               </Select>
             </div>
             <div>
-              <Label>Stream</Label>
+              <Label className="text-xs">Stream</Label>
               <Select value={stream} onValueChange={setStream}>
                 <SelectTrigger><SelectValue placeholder="Stream" /></SelectTrigger>
                 <SelectContent>{streams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Slots / day</Label>
-              <Input type="number" min={4} max={14} value={periodsPerDay} onChange={e => setPeriodsPerDay(Math.max(4, Math.min(14, Number(e.target.value) || 11)))} />
-              <p className="text-[10px] text-muted-foreground mt-1">Total slots incl. breaks</p>
-            </div>
-            <div>
-              <Label>Break slot #s</Label>
-              <Input value={breakInput} onChange={e => setBreakInput(e.target.value)} placeholder="e.g. 3,6,9" />
-              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated</p>
-            </div>
-            <div className="md:col-span-3">
-              <Label>Break labels (in order)</Label>
-              <Input value={breakLabelsInput} onChange={e => setBreakLabelsInput(e.target.value)} placeholder="SHORT BREAK, LONG BREAK, LUNCH" />
-            </div>
-            <div className="md:col-span-2 flex items-end gap-2 flex-wrap">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={gamesEnabled}
-                  onChange={e => setGamesEnabled(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <span>Auto-lock last 2 slots as <strong>GAMES</strong> (P7 & P8)</span>
-              </label>
-              <Button
-                size="sm" variant="outline"
+            <div className="flex items-end">
+              <Button size="sm" variant="outline" className="w-full"
                 disabled={!grade || !stream}
-                onClick={() => setLessonsDialogOpen(true)}
-              >
+                onClick={() => setLessonsDialogOpen(true)}>
                 <BookOpen className="h-4 w-4 mr-1" /> Lessons for class
                 {savedLessons.length > 0 && <Badge variant="secondary" className="ml-1.5 text-[10px]">{savedLessons.length}</Badge>}
               </Button>
@@ -899,55 +999,6 @@ export default function TimetablePage() {
           />
         )}
 
-        {/* Session times editor */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Session times</CardTitle>
-            <CardDescription>Enter start/end time for every slot (including breaks). Times print in PDFs.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {periodTimes.map((t, i) => {
-                const isBreak = breakPeriods.includes(i + 1);
-                const breakIdx = breakPeriods.indexOf(i + 1);
-                const slotLabel = isBreak
-                  ? (breakLabels[breakIdx] || 'BREAK')
-                  : (() => {
-                      const teaching = i + 1 - breakPeriods.filter(b => b <= i + 1).length;
-                      const isGames = gamesEnabled && periodsPerDay >= 11 && (i + 1 === 10 || i + 1 === 11);
-                      return isGames ? `P${teaching} (GAMES)` : `P${teaching}`;
-                    })();
-                return (
-                  <div key={i} className={`flex items-center gap-1.5 p-2 rounded border ${isBreak ? 'bg-muted/50' : ''}`}>
-                    <span className="text-[10px] font-semibold w-16 shrink-0">{slotLabel}</span>
-                    <Input
-                      type="time"
-                      value={t.start}
-                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, start: e.target.value } : p))}
-                      className="h-8 text-xs"
-                    />
-                    <span className="text-xs">–</span>
-                    <Input
-                      type="time"
-                      value={t.end}
-                      onChange={e => setPeriodTimes(prev => prev.map((p, idx) => idx === i ? { ...p, end: e.target.value } : p))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={() => setPeriodTimes(defaultPeriodTimes())}
-            >
-              Reset to defaults
-            </Button>
-          </CardContent>
-        </Card>
 
         {/* Locked / Fixed periods */}
         <Card>
@@ -1176,17 +1227,27 @@ export default function TimetablePage() {
           )}
         </div>
 
-        {result && (result.conflicts.length > 0 || result.unfilled.length > 0) && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Scheduling warnings</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-5 text-xs space-y-0.5">
-                {result.conflicts.map((c, i) => <li key={`c${i}`}>{c}</li>)}
-                {result.unfilled.map((u, i) => <li key={`u${i}`}>{u}</li>)}
-              </ul>
-            </AlertDescription>
-          </Alert>
+        {result && (
+          <>
+            <CollisionDashboard
+              conflicts={result.conflicts}
+              unfilled={result.unfilled}
+              teacherLessonCounts={Object.fromEntries(
+                Object.entries(result.teacherGrids).map(([id, t]) => [id, { name: t.teacherName, count: t.lessonCount }])
+              )}
+              maxRecommended={schedulingRules.limitTeacherLoadPerDay > 0
+                ? schedulingRules.limitTeacherLoadPerDay * scheduleDays.length
+                : 30}
+              onAutoFix={() => (batchMode ? generateAllClasses() : generate())}
+            />
+            <TimetableAnalytics
+              grids={result.grids}
+              teacherGrids={result.teacherGrids}
+              periodsPerDay={periodsPerDay}
+              days={scheduleDays}
+              breakSlots={visualBreaks.length}
+            />
+          </>
         )}
 
         {result && (

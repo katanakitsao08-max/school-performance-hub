@@ -4318,12 +4318,20 @@ export type Database = {
         Row: {
           break_labels: Json
           break_periods: Json
+          break_slots: Json
           created_at: string
           day_labels: Json
           id: string
+          lesson_duration_min: number
+          long_break_min: number
+          lunch_min: number
           num_days: number
           periods_per_day: number
+          scheduling_rules: Json
           school_id: string
+          short_break_min: number
+          start_time: string
+          template_name: string | null
           updated_at: string
           weekend: Json
           zero_period: boolean
@@ -4331,12 +4339,20 @@ export type Database = {
         Insert: {
           break_labels?: Json
           break_periods?: Json
+          break_slots?: Json
           created_at?: string
           day_labels?: Json
           id?: string
+          lesson_duration_min?: number
+          long_break_min?: number
+          lunch_min?: number
           num_days?: number
           periods_per_day?: number
+          scheduling_rules?: Json
           school_id: string
+          short_break_min?: number
+          start_time?: string
+          template_name?: string | null
           updated_at?: string
           weekend?: Json
           zero_period?: boolean
@@ -4344,12 +4360,20 @@ export type Database = {
         Update: {
           break_labels?: Json
           break_periods?: Json
+          break_slots?: Json
           created_at?: string
           day_labels?: Json
           id?: string
+          lesson_duration_min?: number
+          long_break_min?: number
+          lunch_min?: number
           num_days?: number
           periods_per_day?: number
+          scheduling_rules?: Json
           school_id?: string
+          short_break_min?: number
+          start_time?: string
+          template_name?: string | null
           updated_at?: string
           weekend?: Json
           zero_period?: boolean
