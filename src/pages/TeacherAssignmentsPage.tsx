@@ -12,8 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
-import { Plus, Trash2, BookOpen, UserCheck } from 'lucide-react';
+import { Plus, Trash2, BookOpen, UserCheck, Wand2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useSearchParams, Link } from 'react-router-dom';
 
 export default function TeacherAssignmentsPage() {
   const { toast } = useToast();
