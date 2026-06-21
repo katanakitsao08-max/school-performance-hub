@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, Users, BookX, Wand2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Users, BookX, Wand2, ExternalLink, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface Props {
   conflicts: string[];
@@ -12,16 +12,49 @@ interface Props {
   onAutoFix?: () => void;
 }
 
-export function CollisionDashboard({ conflicts, unfilled, teacherLessonCounts, maxRecommended = 30, onAutoFix }: Props) {
+// Parse conflict "Teacher {name} double-booked at {day} P{p}"
+function parseConflict(s: string): { teacher?: string } {
+  const m = /Teacher\s+(.+?)\s+double-booked/i.exec(s);
+  return { teacher: m?.[1]?.trim() };
+}
+// Parse unfilled "{grade}|{stream} — {subject}: ..."
+function parseUnfilled(s: string): { grade?: string; stream?: string; subject?: string } {
+  const m = /^(.+?)\|(.+?)\s+—\s+(.+?):/i.exec(s);
+  if (!m) return {};
+  return { grade: m[1].trim(), stream: m[2].trim(), subject: m[3].trim() };
+}
+
+function conflictLink(s: string): string {
+  const { teacher } = parseConflict(s);
+  const q = teacher ? `?q=${encodeURIComponent(teacher)}` : '';
+  return `/teacher-assignments${q}`;
+}
+function unfilledLink(s: string): string {
+  const { grade, stream, subject } = parseUnfilled(s);
+  const params = new URLSearchParams();
+  if (grade) params.set('grade', grade);
+  if (stream) params.set('stream', stream);
+  if (subject) params.set('subject', subject);
+  const qs = params.toString();
+  return `/class-subjects-teachers${qs ? '?' + qs : ''}`;
+}
+
+export function CollisionDashboard({
+  conflicts, unfilled, teacherLessonCounts, maxRecommended = 30, onAutoFix,
+}: Props) {
   const [showAll, setShowAll] = useState(false);
   const overloaded = Object.values(teacherLessonCounts).filter(t => t.count > maxRecommended);
   const totalIssues = conflicts.length + unfilled.length + overloaded.length;
   const tone = totalIssues === 0 ? 'success' : totalIssues < 5 ? 'warn' : 'bad';
 
+  const visibleConflicts = showAll ? conflicts : conflicts.slice(0, 3);
+  const visibleUnfilled = showAll ? unfilled : unfilled.slice(0, 3);
+  const visibleOverloaded = showAll ? overloaded : overloaded.slice(0, 3);
+
   return (
     <Card className={
       tone === 'success' ? 'border-emerald-500/40' :
-      tone === 'warn'    ? 'border-amber-500/40' : 'border-destructive/40'
+      tone === 'warn' ? 'border-amber-500/40' : 'border-destructive/40'
     }>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -31,7 +64,9 @@ export function CollisionDashboard({ conflicts, unfilled, teacherLessonCounts, m
               Collision Detection
             </CardTitle>
             <CardDescription className="text-xs">
-              {tone === 'success' ? 'Conflict-free schedule generated.' : `${totalIssues} issue${totalIssues!==1?'s':''} to review.`}
+              {tone === 'success'
+                ? 'Conflict-free schedule generated.'
+                : `${totalIssues} issue${totalIssues !== 1 ? 's' : ''} — tap any issue to jump in and fix it.`}
             </CardDescription>
           </div>
           {onAutoFix && totalIssues > 0 && (
@@ -46,21 +81,28 @@ export function CollisionDashboard({ conflicts, unfilled, teacherLessonCounts, m
           <Stat icon={Users} label="Overloaded teachers" value={overloaded.length} tone={overloaded.length ? 'warn' : 'ok'} />
         </div>
 
-        {(conflicts.length > 0 || unfilled.length > 0 || overloaded.length > 0) && (
-          <div className="border rounded-lg p-2.5 bg-muted/30 text-xs">
-            <ul className="space-y-0.5 list-disc pl-4">
-              {(showAll ? conflicts : conflicts.slice(0, 3)).map((c, i) => <li key={`c${i}`} className="text-destructive">{c}</li>)}
-              {(showAll ? unfilled : unfilled.slice(0, 3)).map((u, i) => <li key={`u${i}`} className="text-amber-700 dark:text-amber-400">{u}</li>)}
-              {overloaded.slice(0, showAll ? overloaded.length : 3).map(t => (
-                <li key={t.name} className="text-amber-700 dark:text-amber-400">
-                  {t.name}: {t.count} lessons/wk (over {maxRecommended})
-                </li>
-              ))}
-            </ul>
-            {(conflicts.length + unfilled.length + overloaded.length) > 9 && (
-              <Button size="sm" variant="link" className="h-auto p-0 mt-1.5 text-xs"
+        {totalIssues > 0 && (
+          <div className="border rounded-lg p-2 bg-muted/30 text-xs space-y-1">
+            {visibleConflicts.map((c, i) => (
+              <IssueRow key={`c${i}`} tone="bad" label={c}
+                to={conflictLink(c)}
+                action="Open Teacher Assignments" />
+            ))}
+            {visibleUnfilled.map((u, i) => (
+              <IssueRow key={`u${i}`} tone="warn" label={u}
+                to={unfilledLink(u)}
+                action="Open Class Subjects" />
+            ))}
+            {visibleOverloaded.map(t => (
+              <IssueRow key={t.name} tone="warn"
+                label={`${t.name}: ${t.count} lessons/wk (over ${maxRecommended})`}
+                to={`/teacher-assignments?q=${encodeURIComponent(t.name)}`}
+                action="Rebalance" />
+            ))}
+            {totalIssues > 9 && (
+              <Button size="sm" variant="link" className="h-auto p-0 mt-1 text-xs"
                 onClick={() => setShowAll(v => !v)}>
-                {showAll ? 'Show less' : `Show all ${conflicts.length + unfilled.length + overloaded.length} issues`}
+                {showAll ? 'Show less' : `Show all ${totalIssues} issues`}
               </Button>
             )}
           </div>
@@ -70,9 +112,24 @@ export function CollisionDashboard({ conflicts, unfilled, teacherLessonCounts, m
   );
 }
 
-function Stat({ icon: Icon, label, value, tone }: { icon: any; label: string; value: number; tone: 'ok'|'warn'|'bad' }) {
+function IssueRow({ label, to, action, tone }: { label: string; to: string; action: string; tone: 'bad' | 'warn' }) {
+  const textCls = tone === 'bad' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400';
+  return (
+    <Link
+      to={to}
+      className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-background border border-transparent hover:border-border transition"
+    >
+      <span className={`flex-1 truncate ${textCls}`}>• {label}</span>
+      <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-primary">
+        {action} <ArrowUpRight className="h-3 w-3" />
+      </span>
+    </Link>
+  );
+}
+
+function Stat({ icon: Icon, label, value, tone }: { icon: any; label: string; value: number; tone: 'ok' | 'warn' | 'bad' }) {
   const cls =
-    tone === 'ok'   ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300' :
+    tone === 'ok' ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300' :
     tone === 'warn' ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300' :
                       'bg-destructive/10 border-destructive/30 text-destructive';
   return (
