@@ -184,6 +184,12 @@ export default function TeacherAssignmentsPage() {
     }));
   }, [assignments, teachers]);
 
+  const [searchParams] = useSearchParams();
+  const highlightTeacher = searchParams.get('q') || '';
+  const highlightGrade = searchParams.get('grade') || '';
+  const highlightSubject = searchParams.get('subject') || '';
+  const hasIssueContext = !!(highlightTeacher || highlightGrade || highlightSubject);
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -191,6 +197,21 @@ export default function TeacherAssignmentsPage() {
           <h1 className="text-2xl font-display font-bold">Teacher Assignments</h1>
           <p className="text-muted-foreground">Assign teachers to specific subjects, classes, and class teacher roles</p>
         </div>
+
+        {hasIssueContext && (
+          <Card className="border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+              <Wand2 className="h-4 w-4 text-amber-600 shrink-0" />
+              <div className="text-sm flex-1 min-w-0">
+                <span className="font-semibold">Resolving timetable issue:</span>{' '}
+                {highlightTeacher && <Badge variant="secondary" className="mr-1">Teacher: {highlightTeacher}</Badge>}
+                {highlightGrade && <Badge variant="secondary" className="mr-1">Grade: {highlightGrade}</Badge>}
+                {highlightSubject && <Badge variant="secondary" className="mr-1">Subject: {highlightSubject}</Badge>}
+              </div>
+              <Button asChild size="sm" variant="outline"><Link to="/timetable">Back to timetable</Link></Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="subjects">
           <TabsList>
