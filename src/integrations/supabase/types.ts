@@ -2502,6 +2502,48 @@ export type Database = {
           },
         ]
       }
+      login_events: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device: string | null
+          email_attempt: string | null
+          failure_reason: string | null
+          id: string
+          ip_address: string | null
+          school_id: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          email_attempt?: string | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          school_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          email_attempt?: string | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          school_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           academic_year_id: string | null
@@ -4496,6 +4538,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device: string | null
+          id: string
+          ip_address: string | null
+          last_activity: string
+          login_time: string
+          logout_time: string | null
+          role: string | null
+          school_id: string | null
+          session_status: string
+          session_token: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip_address?: string | null
+          last_activity?: string
+          login_time?: string
+          logout_time?: string | null
+          role?: string | null
+          school_id?: string | null
+          session_status?: string
+          session_token?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device?: string | null
+          id?: string
+          ip_address?: string | null
+          last_activity?: string
+          login_time?: string
+          logout_time?: string | null
+          role?: string | null
+          school_id?: string | null
+          session_status?: string
+          session_token?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_queue: {
         Row: {
           attempt_count: number
@@ -4801,6 +4897,7 @@ export type Database = {
       generate_independent_learner_code: { Args: never; Returns: string }
       generate_receipt_number: { Args: { _school_id: string }; Returns: string }
       generate_school_code: { Args: never; Returns: string }
+      get_live_user_stats: { Args: { _window_minutes?: number }; Returns: Json }
       get_school_plan_features: { Args: { _school_id: string }; Returns: Json }
       get_user_assigned_grades: {
         Args: { _user_id: string }
