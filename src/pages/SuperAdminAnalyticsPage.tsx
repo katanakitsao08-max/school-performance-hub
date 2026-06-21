@@ -22,6 +22,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchAllPaged } from '@/lib/fetch-all';
 import { SystemUptimeCard } from '@/components/SystemUptimeCard';
+import LiveMonitoringSection from '@/components/superadmin/LiveMonitoringSection';
 
 // ---------- helpers ----------
 const COLORS = ['hsl(142 64% 28%)', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#ec4899'];
@@ -380,6 +381,7 @@ export default function SuperAdminAnalyticsPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="monitor">Live Monitor</TabsTrigger>
             <TabsTrigger value="schools">Schools</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="live">Live Feed</TabsTrigger>
@@ -389,6 +391,9 @@ export default function SuperAdminAnalyticsPage() {
             <TabsTrigger value="insights">Insights</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="monitor"><LiveMonitoringSection /></TabsContent>
+
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-4">

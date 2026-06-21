@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/components/ui/table';
-import { Link } from 'react-router-dom';
-import { Search, ArrowLeft, BookOpen } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, ArrowLeft, BookOpen, Wand2 } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 
@@ -40,6 +40,19 @@ export default function ClassSubjectsTeachersPage() {
   const [classTeachers, setClassTeachers] = useState<CTRow[]>([]);
   const [allocs, setAllocs] = useState<Array<{ grade: string; learning_area_id: string; lessons_per_week: number }>>([]);
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const issueGrade = searchParams.get('grade') || '';
+  const issueStream = searchParams.get('stream') || '';
+  const issueSubject = searchParams.get('subject') || '';
+  const hasIssueContext = !!(issueGrade || issueStream || issueSubject);
+
+  useEffect(() => {
+    if (hasIssueContext && !search) {
+      const term = [issueGrade, issueStream, issueSubject].filter(Boolean).join(' ');
+      setSearch(term);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasIssueContext]);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -139,6 +152,21 @@ export default function ClassSubjectsTeachersPage() {
             </div>
           </CardContent>
         </Card>
+
+        {hasIssueContext && (
+          <Card className="border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-3 flex items-center gap-3 flex-wrap text-sm">
+              <Wand2 className="h-4 w-4 text-amber-600" />
+              <span className="font-semibold">Resolving timetable issue:</span>
+              {issueGrade && <Badge variant="secondary">Grade {issueGrade}</Badge>}
+              {issueStream && <Badge variant="secondary">{issueStream}</Badge>}
+              {issueSubject && <Badge variant="secondary">{issueSubject}</Badge>}
+              <Button asChild size="sm" variant="outline" className="ml-auto">
+                <Link to="/teacher-assignments">Assign teacher</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <p className="text-sm text-muted-foreground py-12 text-center">Loading…</p>
