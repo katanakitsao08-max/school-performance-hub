@@ -40,6 +40,19 @@ export default function ClassSubjectsTeachersPage() {
   const [classTeachers, setClassTeachers] = useState<CTRow[]>([]);
   const [allocs, setAllocs] = useState<Array<{ grade: string; learning_area_id: string; lessons_per_week: number }>>([]);
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const issueGrade = searchParams.get('grade') || '';
+  const issueStream = searchParams.get('stream') || '';
+  const issueSubject = searchParams.get('subject') || '';
+  const hasIssueContext = !!(issueGrade || issueStream || issueSubject);
+
+  useEffect(() => {
+    if (hasIssueContext && !search) {
+      const term = [issueGrade, issueStream, issueSubject].filter(Boolean).join(' ');
+      setSearch(term);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasIssueContext]);
 
   useEffect(() => {
     if (!schoolId) return;
