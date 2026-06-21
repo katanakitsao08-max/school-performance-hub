@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useSessionHeartbeat, sendLogoutBeacon } from '@/hooks/use-session-heartbeat';
 
 type AppRole = 'admin' | 'teacher' | 'headteacher' | 'super_admin' | 'parent' | 'independent_learner' | 'pending_teacher';
 
