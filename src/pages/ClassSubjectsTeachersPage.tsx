@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/components/ui/table';
-import { Link } from 'react-router-dom';
-import { Search, ArrowLeft, BookOpen } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, ArrowLeft, BookOpen, Wand2 } from 'lucide-react';
 import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useSchoolStreams } from '@/hooks/use-school-streams';
 
