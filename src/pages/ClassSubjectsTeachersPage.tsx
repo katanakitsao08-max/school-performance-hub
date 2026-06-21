@@ -153,7 +153,20 @@ export default function ClassSubjectsTeachersPage() {
           </CardContent>
         </Card>
 
-        {loading ? (
+        {hasIssueContext && (
+          <Card className="border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-3 flex items-center gap-3 flex-wrap text-sm">
+              <Wand2 className="h-4 w-4 text-amber-600" />
+              <span className="font-semibold">Resolving timetable issue:</span>
+              {issueGrade && <Badge variant="secondary">Grade {issueGrade}</Badge>}
+              {issueStream && <Badge variant="secondary">{issueStream}</Badge>}
+              {issueSubject && <Badge variant="secondary">{issueSubject}</Badge>}
+              <Button asChild size="sm" variant="outline" className="ml-auto">
+                <Link to="/teacher-assignments">Assign teacher</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
           <p className="text-sm text-muted-foreground py-12 text-center">Loading…</p>
         ) : filteredClasses.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">
