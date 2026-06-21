@@ -105,7 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) {
+      // log failed attempt
+      try {
+        await supabase.from('login_events').insert({
+          email_attempt: email,
+          success: false,
+          failure_reason: error.message,
+          user_agent: navigator.userAgent.slice(0, 500),
+          device: /mobile/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+        });
+      } catch {}
+      throw error;
+    }
     // Fire-and-forget activity log for analytics (login event)
     try {
       const { data: { user: u } } = await supabase.auth.getUser();
@@ -128,11 +140,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    try { await sendLogoutBeacon(); } catch {}
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
     setSchoolStatus(null);
   };
+
+  // Presence heartbeat — captures IP/device on the edge and powers Live Users dashboard
+  useSessionHeartbeat(user?.id ?? null);
 
   return (
     <AuthContext.Provider value={{ user, session, profile, role, schoolId, schoolStatus, isSchoolFrozen, loading, signIn, signOut }}>
