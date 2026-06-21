@@ -22,6 +22,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { fetchAllPaged } from '@/lib/fetch-all';
 import { SystemUptimeCard } from '@/components/SystemUptimeCard';
+import LiveMonitoringSection from '@/components/superadmin/LiveMonitoringSection';
 
 // ---------- helpers ----------
 const COLORS = ['hsl(142 64% 28%)', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#ec4899'];
