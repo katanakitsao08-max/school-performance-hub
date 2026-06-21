@@ -167,6 +167,8 @@ export default function ClassSubjectsTeachersPage() {
             </CardContent>
           </Card>
         )}
+
+        {loading ? (
           <p className="text-sm text-muted-foreground py-12 text-center">Loading…</p>
         ) : filteredClasses.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">
