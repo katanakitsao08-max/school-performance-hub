@@ -381,6 +381,7 @@ export default function SuperAdminAnalyticsPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex flex-wrap h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="monitor">Live Monitor</TabsTrigger>
             <TabsTrigger value="schools">Schools</TabsTrigger>
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="live">Live Feed</TabsTrigger>
@@ -390,6 +391,9 @@ export default function SuperAdminAnalyticsPage() {
             <TabsTrigger value="insights">Insights</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="monitor"><LiveMonitoringSection /></TabsContent>
+
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-4">
