@@ -19,11 +19,12 @@ function getOrCreateToken(): string {
 async function ping(event: 'heartbeat' | 'login' | 'logout' = 'heartbeat') {
   try {
     const token = getOrCreateToken();
-    await supabase.functions.invoke('session-heartbeat', {
+    const { error } = await supabase.functions.invoke('session-heartbeat', {
       body: { session_token: token, event },
     });
-  } catch {
-    // ignore
+    if (error) console.warn('[session-heartbeat]', event, error.message);
+  } catch (e) {
+    console.warn('[session-heartbeat] failed', e);
   }
 }
 

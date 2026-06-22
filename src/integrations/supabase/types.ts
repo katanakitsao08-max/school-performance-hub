@@ -4872,6 +4872,7 @@ export type Database = {
       }
       check_attendance_alerts: { Args: never; Returns: undefined }
       check_performance_drops: { Args: never; Returns: undefined }
+      cleanup_stale_sessions: { Args: never; Returns: number }
       create_notification: {
         Args: {
           _message: string
