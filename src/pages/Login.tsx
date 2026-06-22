@@ -15,7 +15,9 @@ export default function Login() {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--app-bg', 'hsl(var(--primary))');
-    return () => document.documentElement.style.removeProperty('--app-bg');
+    return () => {
+      document.documentElement.style.removeProperty('--app-bg');
+    };
   }, []);
 
   if (!loading && user) return <Navigate to="/" replace />;
