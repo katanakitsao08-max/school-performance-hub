@@ -23,6 +23,7 @@ import { sortSubjectsByOrder, buildSubjectColumns } from '@/lib/subject-order';
 import { Switch } from '@/components/ui/switch';
 import { getMergePref, setMergePref } from '@/lib/merge-state';
 import BulkScoresUploadDialog from '@/components/BulkScoresUploadDialog';
+import BulkMarksManagerDialog from '@/components/BulkMarksManagerDialog';
 import { useAcademicYears } from '@/hooks/use-academic-years';
 import MarksEntrySubjectWorkspace from '@/components/MarksEntrySubjectWorkspace';
 import { addToOfflineQueue, isOnline } from '@/lib/offline-queue';
