@@ -555,16 +555,30 @@ export default function MarksEntryPage() {
           </div>
           <div className="flex gap-2">
             {selectedGrade && selectedStream && (
-              <BulkScoresUploadDialog
-                schoolId={schoolId!}
-                grade={selectedGrade}
-                stream={selectedStream}
-                term={selectedTerm}
-                year={selectedYear}
-                assessment={selectedAssessment}
-                subjects={subjects.filter(s => editableSubjectIds.has(s.id)).map(s => ({ id: s.id, name: s.name, max_score: s.max_score }))}
-                learners={learners as any[]}
-              />
+              <>
+                <BulkScoresUploadDialog
+                  schoolId={schoolId!}
+                  grade={selectedGrade}
+                  stream={selectedStream}
+                  term={selectedTerm}
+                  year={selectedYear}
+                  assessment={selectedAssessment}
+                  subjects={subjects.filter(s => editableSubjectIds.has(s.id)).map(s => ({ id: s.id, name: s.name, max_score: s.max_score }))}
+                  learners={learners as any[]}
+                />
+                <BulkMarksManagerDialog
+                  schoolId={schoolId!}
+                  grade={selectedGrade}
+                  stream={selectedStream}
+                  term={selectedTerm}
+                  year={selectedYear}
+                  assessment={selectedAssessment}
+                  learners={learners as any[]}
+                  subjects={subjects as any[]}
+                  existingScores={existingScores}
+                  editableSubjectIds={editableSubjectIds}
+                />
+              </>
             )}
             <div className="flex items-center text-xs text-muted-foreground gap-1.5 mr-1">
               {autoSaving ? (
