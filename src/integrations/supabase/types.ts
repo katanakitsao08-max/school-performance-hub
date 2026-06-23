@@ -3383,6 +3383,9 @@ export type Database = {
           academic_year_id: string | null
           assessment_type: string
           created_at: string
+          delete_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           edited_at: string | null
           edited_by: string | null
           id: string
@@ -3407,6 +3410,9 @@ export type Database = {
           academic_year_id?: string | null
           assessment_type?: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           edited_at?: string | null
           edited_by?: string | null
           id?: string
@@ -3431,6 +3437,9 @@ export type Database = {
           academic_year_id?: string | null
           assessment_type?: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           edited_at?: string | null
           edited_by?: string | null
           id?: string
@@ -3539,6 +3548,9 @@ export type Database = {
           assessment_type: string
           competency_level: string
           created_at: string
+          delete_reason: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           edited_at: string | null
           edited_by: string | null
           id: string
@@ -3565,6 +3577,9 @@ export type Database = {
           assessment_type?: string
           competency_level?: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           edited_at?: string | null
           edited_by?: string | null
           id?: string
@@ -3591,6 +3606,9 @@ export type Database = {
           assessment_type?: string
           competency_level?: string
           created_at?: string
+          delete_reason?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           edited_at?: string | null
           edited_by?: string | null
           id?: string
@@ -4870,6 +4888,14 @@ export type Database = {
         Args: { _payment_id: string }
         Returns: string
       }
+      bulk_soft_delete_scores: {
+        Args: { _reason?: string; _score_ids: string[] }
+        Returns: {
+          deleted_count: number
+          skipped_count: number
+          skipped_reasons: Json
+        }[]
+      }
       check_attendance_alerts: { Args: never; Returns: undefined }
       check_performance_drops: { Args: never; Returns: undefined }
       cleanup_stale_sessions: { Args: never; Returns: number }
@@ -4948,9 +4974,23 @@ export type Database = {
         Args: { _learner_ref: string }
         Returns: boolean
       }
+      restore_soft_deleted_scores: {
+        Args: { _audit_ids: string[] }
+        Returns: {
+          restored_count: number
+          skipped_count: number
+          skipped_reasons: Json
+        }[]
+      }
       seed_whatsapp_defaults_for_school: {
         Args: { _school_id: string }
         Returns: undefined
+      }
+      undo_last_score_upload: {
+        Args: { _minutes?: number }
+        Returns: {
+          deleted_count: number
+        }[]
       }
     }
     Enums: {
