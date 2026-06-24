@@ -41,8 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const schoolId = profile?.school_id || null;
 
-  // School is frozen if subscription is expired/suspended/disabled and user is NOT super_admin
-  const isSchoolFrozen = !!schoolStatus && ['expired','suspended','disabled'].includes(schoolStatus) && role !== 'super_admin';
+  // School is frozen if subscription is expired/suspended/disabled/deleted OR the user has been individually disabled, and user is NOT super_admin
+  const isSchoolFrozen = (
+    (!!schoolStatus && ['expired','suspended','disabled','deleted'].includes(schoolStatus))
+    || profile?.school_access_status === 'disabled'
+  ) && role !== 'super_admin';
 
   const fetchUserData = async (userId: string) => {
     try {
