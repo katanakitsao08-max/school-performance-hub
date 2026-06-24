@@ -13,6 +13,7 @@ interface Profile {
   assigned_grades: string[] | null;
   assigned_streams: string[] | null;
   assigned_learning_areas: string[] | null;
+  school_access_status?: string | null;
 }
 
 interface AuthContextType {
