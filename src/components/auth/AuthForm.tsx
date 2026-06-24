@@ -102,11 +102,6 @@ export function AuthForm() {
         )}
       </Button>
 
-      <div className="text-center">
-        <Link to="/forgot-password" className="text-sm text-primary font-medium hover:underline">
-          Forgot Password?
-        </Link>
-      </div>
     </form>
   );
 }
