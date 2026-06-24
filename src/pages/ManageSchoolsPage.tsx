@@ -336,6 +336,31 @@ export default function ManageSchoolsPage() {
     onError: (e: any) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
   });
 
+  // Soft-disable: cascades to revoke logins for all school users (30-day restore window)
+  const disableSchoolMut = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { error } = await supabase.rpc('disable_school', { _school_id: schoolId, _reason: 'super_admin disable' } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'School disabled', description: 'All users have been signed out. Restore available for 30 days.' });
+    },
+    onError: (e: any) => toast({ title: 'Disable failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const restoreSchoolMut = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { error } = await supabase.rpc('restore_school', { _school_id: schoolId } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'School restored' });
+    },
+    onError: (e: any) => toast({ title: 'Restore failed', description: e.message, variant: 'destructive' }),
+  });
+
   // Assign / update plan + expiry (Super Admin only)
   const updatePlan = useMutation({
     mutationFn: async () => {
