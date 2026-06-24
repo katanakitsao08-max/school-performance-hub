@@ -105,6 +105,71 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          affected_count: number | null
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          device_info: string | null
+          id: string
+          ip_address: string | null
+          module: string
+          reason: string | null
+          record_id: string | null
+          record_type: string | null
+          role: string | null
+          school_id: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          affected_count?: number | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          module: string
+          reason?: string | null
+          record_id?: string | null
+          record_type?: string | null
+          role?: string | null
+          school_id?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          affected_count?: number | null
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          ip_address?: string | null
+          module?: string
+          reason?: string | null
+          record_id?: string | null
+          record_type?: string | null
+          role?: string | null
+          school_id?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_audit_log: {
         Row: {
           action: string
@@ -2801,8 +2866,10 @@ export type Database = {
           assigned_learning_areas: string[] | null
           assigned_streams: string[] | null
           created_at: string
+          disabled_at: string | null
           full_name: string
           id: string
+          school_access_status: string
           school_id: string | null
           updated_at: string
           user_id: string
@@ -2813,8 +2880,10 @@ export type Database = {
           assigned_learning_areas?: string[] | null
           assigned_streams?: string[] | null
           created_at?: string
+          disabled_at?: string | null
           full_name: string
           id?: string
+          school_access_status?: string
           school_id?: string | null
           updated_at?: string
           user_id: string
@@ -2825,8 +2894,10 @@ export type Database = {
           assigned_learning_areas?: string[] | null
           assigned_streams?: string[] | null
           created_at?: string
+          disabled_at?: string | null
           full_name?: string
           id?: string
+          school_access_status?: string
           school_id?: string | null
           updated_at?: string
           user_id?: string
@@ -3283,6 +3354,8 @@ export type Database = {
           contact_phone: string
           county: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           plan_expires_at: string | null
           plan_id: string | null
@@ -3297,6 +3370,8 @@ export type Database = {
           contact_phone?: string
           county?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           plan_expires_at?: string | null
           plan_id?: string | null
@@ -3311,6 +3386,8 @@ export type Database = {
           contact_phone?: string
           county?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           plan_expires_at?: string | null
           plan_id?: string | null
@@ -3763,6 +3840,41 @@ export type Database = {
             columns: ["strand_id"]
             isOneToOne: false
             referencedRelation: "strands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_combination_settings: {
+        Row: {
+          combine_enabled: boolean
+          created_at: string
+          id: string
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          combine_enabled?: boolean
+          created_at?: string
+          id?: string
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          combine_enabled?: boolean
+          created_at?: string
+          id?: string
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_combination_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -4914,6 +5026,10 @@ export type Database = {
         Args: { _amount: number; _school_id: string }
         Returns: boolean
       }
+      disable_school: {
+        Args: { _reason?: string; _school_id: string }
+        Returns: Json
+      }
       ensure_current_academic_year: { Args: never; Returns: undefined }
       expire_old_independent_subscriptions: { Args: never; Returns: number }
       find_system_wa_template: {
@@ -4974,6 +5090,23 @@ export type Database = {
         Args: { _learner_ref: string }
         Returns: boolean
       }
+      log_audit: {
+        Args: {
+          _action: string
+          _affected?: number
+          _after?: Json
+          _before?: Json
+          _device?: string
+          _ip?: string
+          _module: string
+          _reason?: string
+          _record_id?: string
+          _record_type?: string
+          _school_id?: string
+        }
+        Returns: string
+      }
+      restore_school: { Args: { _school_id: string }; Returns: Json }
       restore_soft_deleted_scores: {
         Args: { _audit_ids: string[] }
         Returns: {
