@@ -1133,7 +1133,7 @@ export default function ReportsPage() {
           }}
           mergedReportsOn={mergedReportsOn}
           schoolName={schoolName}
-          showCombineToggle={!isSchoolWide && selectedGrades.length <= 1}
+          showCombineToggle={!isSchoolWide && selectedGrades.length <= 1 && (role === 'admin' || role === 'super_admin')}
           learnerCount={learners.length}
           isAdminOrHead={role === 'admin' || role === 'headteacher'}
         />

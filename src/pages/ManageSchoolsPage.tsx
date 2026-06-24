@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown, Trash2 } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown, Trash2, PowerOff, RotateCcw } from 'lucide-react';
 import CredentialsRevealDialog from '@/components/CredentialsRevealDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -334,6 +334,31 @@ export default function ManageSchoolsPage() {
       setDeleteConfirmText('');
     },
     onError: (e: any) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
+  });
+
+  // Soft-disable: cascades to revoke logins for all school users (30-day restore window)
+  const disableSchoolMut = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { error } = await supabase.rpc('disable_school', { _school_id: schoolId, _reason: 'super_admin disable' } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'School disabled', description: 'All users have been signed out. Restore available for 30 days.' });
+    },
+    onError: (e: any) => toast({ title: 'Disable failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const restoreSchoolMut = useMutation({
+    mutationFn: async (schoolId: string) => {
+      const { error } = await supabase.rpc('restore_school', { _school_id: schoolId } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-schools'] });
+      toast({ title: 'School restored' });
+    },
+    onError: (e: any) => toast({ title: 'Restore failed', description: e.message, variant: 'destructive' }),
   });
 
   // Assign / update plan + expiry (Super Admin only)
@@ -720,6 +745,15 @@ export default function ManageSchoolsPage() {
                               title="Revoke license"
                             >
                               <Ban className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                          {school.subscription_status === 'disabled' || school.deleted_at ? (
+                            <Button variant="ghost" size="icon" onClick={() => restoreSchoolMut.mutate(school.id)} disabled={restoreSchoolMut.isPending} title="Restore school access">
+                              <RotateCcw className="h-4 w-4 text-success" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm(`Disable ${school.school_name}? All users will be signed out immediately. You can restore within 30 days.`)) disableSchoolMut.mutate(school.id); }} disabled={disableSchoolMut.isPending} title="Disable school (soft, recoverable 30 days)">
+                              <PowerOff className="h-4 w-4 text-warning" />
                             </Button>
                           )}
                           <Button

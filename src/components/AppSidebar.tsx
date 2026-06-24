@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
-  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, ChevronDown, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, NotebookPen, CalendarClock, KeyRound, Library, BookMarked, Sparkles, CalendarDays
+  FileText, BarChart3, MessageSquare, MessageCircle, ArrowUpCircle, LogOut, Settings, Columns, ChevronRight, ChevronDown, CalendarCheck, Building2, UserCog, PieChart, Activity, Layers, Wallet, NotebookPen, CalendarClock, KeyRound, Library, BookMarked, Sparkles, CalendarDays, ShieldCheck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useMemo } from "react";
@@ -46,6 +46,7 @@ const superAdminSections: NavSection[] = [
     label: "Insights",
     items: [
       { title: "Platform Analytics", url: "/super-admin/analytics", icon: BarChart3 },
+      { title: "Audit Trail", url: "/audit", icon: ShieldCheck },
     ],
   },
 ];
@@ -86,6 +87,7 @@ const adminSections: NavSection[] = [
       { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
+      { title: "Audit Trail", url: "/audit", icon: ShieldCheck },
     ],
   },
   {
