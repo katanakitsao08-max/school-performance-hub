@@ -73,6 +73,7 @@ const SuperAdminAnalyticsPage = lazy(() => import("./pages/SuperAdminAnalyticsPa
 const SchoolBillingPage = lazy(() => import("./pages/SchoolBillingPage"));
 const SuperAdminBillingPage = lazy(() => import("./pages/SuperAdminBillingPage"));
 const ScoreAuditPage = lazy(() => import("./pages/ScoreAuditPage"));
+const AuditLogsPage = lazy(() => import("./pages/AuditLogsPage"));
 
 const RegisterSchool = lazy(() => import("./pages/RegisterSchool"));
 const SchoolSignupsPage = lazy(() => import("./pages/SchoolSignupsPage"));
