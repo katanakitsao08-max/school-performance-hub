@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown, Trash2 } from 'lucide-react';
+import { Plus, Edit, Building2, Users, GraduationCap, Search, UserPlus, Shield, RefreshCw, Ban, CheckCircle, Crown, Trash2, PowerOff, RotateCcw } from 'lucide-react';
 import CredentialsRevealDialog from '@/components/CredentialsRevealDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
