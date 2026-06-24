@@ -679,21 +679,23 @@ export default function MarksEntryPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Combined Subjects</Label>
-            <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
-              <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} disabled={!allowMerge} />
-              <span className="text-xs text-muted-foreground">
-                {(() => {
-                  const n = parseInt(selectedGrade, 10);
-                  if (n >= 1 && n <= 3) return 'Merge RE + Env + Creative';
-                  if (n >= 4 && n <= 6) return 'Merge SS+CRE & Sci+Agri';
-                  if (n >= 7) return 'No merging in Junior School';
-                  return 'Select a grade';
-                })()}
-              </span>
+          {(role === 'admin' || role === 'super_admin') && (
+            <div className="space-y-1">
+              <Label className="text-xs">Combined Subjects</Label>
+              <div className="h-9 flex items-center gap-2 px-2 rounded border bg-card">
+                <Switch checked={mergeCombined} onCheckedChange={handleMergeChange} disabled={!allowMerge} />
+                <span className="text-xs text-muted-foreground">
+                  {(() => {
+                    const n = parseInt(selectedGrade, 10);
+                    if (n >= 1 && n <= 3) return 'Merge RE + Env + Creative';
+                    if (n >= 4 && n <= 6) return 'Merge SS+CRE & Sci+Agri';
+                    if (n >= 7) return 'No merging in Junior School';
+                    return 'Select a grade';
+                  })()}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Assigned subjects indicator for teachers */}
