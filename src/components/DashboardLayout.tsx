@@ -30,12 +30,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="space-y-2">
             <h1 className="text-2xl font-display font-bold text-foreground">
-              {schoolStatus === 'disabled' ? 'School Account Disabled' : schoolStatus === 'suspended' ? 'School Account Suspended' : 'Subscription Expired'}
+              {schoolStatus === 'deleted' ? 'School Account Deleted'
+                : schoolStatus === 'disabled' ? 'School Account Disabled'
+                : schoolStatus === 'suspended' ? 'School Account Suspended'
+                : 'Subscription Expired'}
             </h1>
             <p className="text-muted-foreground">
-              {schoolStatus === 'expired'
-                ? 'Your subscription has lapsed. Renew now to keep using PerformTrack.'
-                : 'Marks entry, reports and SMS are disabled until the subscription is renewed.'}
+              {schoolStatus === 'deleted' || schoolStatus === 'disabled'
+                ? 'Your school account has been deactivated. Please contact the platform administrator.'
+                : schoolStatus === 'expired'
+                  ? 'Your subscription has lapsed. Renew now to keep using PerformTrack.'
+                  : 'Marks entry, reports and SMS are disabled until the subscription is renewed.'}
             </p>
           </div>
           <div className="flex flex-col gap-2">
