@@ -46,6 +46,7 @@ const superAdminSections: NavSection[] = [
     label: "Insights",
     items: [
       { title: "Platform Analytics", url: "/super-admin/analytics", icon: BarChart3 },
+      { title: "Audit Trail", url: "/audit", icon: ShieldCheck },
     ],
   },
 ];
