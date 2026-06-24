@@ -205,6 +205,7 @@ const App = () => (
                 <Route path="/register-school" element={<RegisterSchool />} />
                 <Route path="/billing" element={<ProtectedRoute allowedRoles={['admin', 'headteacher']}><ErrorBoundary inline label="Subscription"><SchoolBillingPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/audit/scores" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'super_admin']}><ErrorBoundary inline label="Performance Audit"><ScoreAuditPage /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/audit" element={<ProtectedRoute allowedRoles={['admin', 'headteacher', 'super_admin']}><ErrorBoundary inline label="Audit Trail"><AuditLogsPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/timetable-keys" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Timetable Keys"><TimetableKeysPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/curriculum-manager" element={<ProtectedRoute allowedRoles={['super_admin']}><ErrorBoundary inline label="Curriculum Design Manager"><CurriculumDesignManagerPage /></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/curriculum-library" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'headteacher']}><ErrorBoundary inline label="Curriculum Library"><CurriculumLibraryPage /></ErrorBoundary></ProtectedRoute>} />
