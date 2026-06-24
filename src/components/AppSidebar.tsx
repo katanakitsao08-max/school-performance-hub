@@ -87,6 +87,7 @@ const adminSections: NavSection[] = [
       { title: "Grade Analysis", url: "/grade-analysis", icon: PieChart },
       { title: "Performance Tracking", url: "/performance-tracking", icon: Activity },
       { title: "Analytics", url: "/analytics", icon: BarChart3 },
+      { title: "Audit Trail", url: "/audit", icon: ShieldCheck },
     ],
   },
   {
