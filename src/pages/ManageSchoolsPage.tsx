@@ -747,6 +747,15 @@ export default function ManageSchoolsPage() {
                               <Ban className="h-4 w-4 text-destructive" />
                             </Button>
                           )}
+                          {school.subscription_status === 'disabled' || school.deleted_at ? (
+                            <Button variant="ghost" size="icon" onClick={() => restoreSchoolMut.mutate(school.id)} disabled={restoreSchoolMut.isPending} title="Restore school access">
+                              <RotateCcw className="h-4 w-4 text-success" />
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="icon" onClick={() => { if (confirm(`Disable ${school.school_name}? All users will be signed out immediately. You can restore within 30 days.`)) disableSchoolMut.mutate(school.id); }} disabled={disableSchoolMut.isPending} title="Disable school (soft, recoverable 30 days)">
+                              <PowerOff className="h-4 w-4 text-warning" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
