@@ -53,18 +53,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
+      const userRole = roleRes.data?.role as AppRole | undefined;
+      if (roleRes.data) setRole(userRole ?? null);
+
       if (profileRes.data) {
         setProfile(profileRes.data as Profile);
+        let schoolDeleted = false;
+        let schoolSub: string | null = null;
         if (profileRes.data.school_id) {
           const { data: schoolData } = await supabase
             .from('schools')
-            .select('subscription_status')
+            .select('subscription_status, deleted_at')
             .eq('id', profileRes.data.school_id)
             .maybeSingle();
-          setSchoolStatus(schoolData?.subscription_status || null);
+          schoolSub = schoolData?.subscription_status || null;
+          schoolDeleted = !!schoolData?.deleted_at || ['deleted','disabled'].includes(schoolSub || '');
+          setSchoolStatus(schoolDeleted && !schoolSub ? 'deleted' : schoolSub);
+        }
+
+        // Hard enforcement: revoke session if account or school is disabled (super_admin exempt)
+        if (userRole !== 'super_admin') {
+          const accountDisabled = profileRes.data.school_access_status === 'disabled';
+          if (accountDisabled || schoolDeleted) {
+            try { await sendLogoutBeacon(); } catch {}
+            await supabase.auth.signOut();
+            try {
+              sessionStorage.setItem(
+                'pt_access_denied',
+                'Access denied. Your school account is no longer active.'
+              );
+            } catch {}
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+              window.location.replace('/login');
+            }
+            return;
+          }
         }
       }
-      if (roleRes.data) setRole(roleRes.data.role as AppRole);
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
