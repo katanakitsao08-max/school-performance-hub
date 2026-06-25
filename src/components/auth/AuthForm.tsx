@@ -22,6 +22,16 @@ export function AuthForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('pt_access_denied');
+      if (msg) {
+        sessionStorage.removeItem('pt_access_denied');
+        toast({ title: 'Access denied', description: msg, variant: 'destructive' });
+      }
+    } catch {}
+  }, [toast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
