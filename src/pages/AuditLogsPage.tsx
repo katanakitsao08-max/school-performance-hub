@@ -164,7 +164,11 @@ export default function AuditLogsPage() {
           <CardContent className="p-0">
             <div className="divide-y">
               {logs.map((l) => (
-                <div key={l.id} className="p-3 hover:bg-muted/40">
+                <button
+                  key={l.id}
+                  onClick={() => setSelected(l)}
+                  className="w-full text-left p-3 hover:bg-muted/40 focus:outline-none focus:bg-muted/60 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
@@ -186,9 +190,10 @@ export default function AuditLogsPage() {
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
                       <Clock className="h-3 w-3" />
                       {format(new Date(l.created_at), 'd MMM yyyy · HH:mm')}
+                      <ChevronRight className="h-3 w-3 ml-1 opacity-60" />
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
               {!isLoading && logs.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">No audit events match these filters.</div>}
             </div>
