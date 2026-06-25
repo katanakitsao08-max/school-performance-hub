@@ -64,6 +64,8 @@ export default function AuditLogsPage() {
   const [action, setAction] = useState('all');
   const [module, setModule] = useState('all');
   const [q, setQ] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [selected, setSelected] = useState<AuditLog | null>(null);
 
   const { data: logs = [], isLoading } = useQuery<AuditLog[]>({
