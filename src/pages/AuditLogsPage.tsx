@@ -7,9 +7,52 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Search, ShieldCheck, Clock } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Download, Search, ShieldCheck, Clock, ChevronRight, Monitor, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+
+type AuditLog = {
+  id: string; created_at: string; user_name?: string | null; role?: string | null;
+  action: string; module: string; record_type?: string | null; record_id?: string | null;
+  affected_count: number; reason?: string | null; ip_address?: string | null;
+  device_info?: string | null; before_state?: any; after_state?: any; school_id?: string | null;
+};
+
+function JsonBlock({ data }: { data: any }) {
+  if (data === null || data === undefined) {
+    return <div className="text-xs italic text-muted-foreground">No data captured</div>;
+  }
+  return (
+    <pre className="text-[11px] leading-relaxed bg-muted/50 rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-80">
+      {JSON.stringify(data, null, 2)}
+    </pre>
+  );
+}
+
+function DiffSummary({ before, after }: { before: any; after: any }) {
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return null;
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+  const changed = keys.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  if (changed.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold">Changed fields ({changed.length})</div>
+      <div className="divide-y border rounded-md">
+        {changed.map(k => (
+          <div key={k} className="p-2 text-[11px] grid grid-cols-[100px_1fr] gap-2">
+            <div className="font-medium truncate" title={k}>{k}</div>
+            <div className="min-w-0">
+              <div className="text-destructive break-all"><span className="opacity-60">−</span> {JSON.stringify(before?.[k])}</div>
+              <div className="text-emerald-600 break-all"><span className="opacity-60">+</span> {JSON.stringify(after?.[k])}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ACTIONS = ['all','delete','edit','restore','archive','bulk_upload','replace','disable','login','create'];
 const MODULES = ['all','assessment','fees','users','settings','school','sms','attendance'];
