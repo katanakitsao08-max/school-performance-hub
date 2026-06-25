@@ -7,9 +7,52 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Search, ShieldCheck, Clock } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Download, Search, ShieldCheck, Clock, ChevronRight, Monitor, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+
+type AuditLog = {
+  id: string; created_at: string; user_name?: string | null; role?: string | null;
+  action: string; module: string; record_type?: string | null; record_id?: string | null;
+  affected_count: number; reason?: string | null; ip_address?: string | null;
+  device_info?: string | null; before_state?: any; after_state?: any; school_id?: string | null;
+};
+
+function JsonBlock({ data }: { data: any }) {
+  if (data === null || data === undefined) {
+    return <div className="text-xs italic text-muted-foreground">No data captured</div>;
+  }
+  return (
+    <pre className="text-[11px] leading-relaxed bg-muted/50 rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all max-h-80">
+      {JSON.stringify(data, null, 2)}
+    </pre>
+  );
+}
+
+function DiffSummary({ before, after }: { before: any; after: any }) {
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return null;
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+  const changed = keys.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+  if (changed.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold">Changed fields ({changed.length})</div>
+      <div className="divide-y border rounded-md">
+        {changed.map(k => (
+          <div key={k} className="p-2 text-[11px] grid grid-cols-[100px_1fr] gap-2">
+            <div className="font-medium truncate" title={k}>{k}</div>
+            <div className="min-w-0">
+              <div className="text-destructive break-all"><span className="opacity-60">−</span> {JSON.stringify(before?.[k])}</div>
+              <div className="text-emerald-600 break-all"><span className="opacity-60">+</span> {JSON.stringify(after?.[k])}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ACTIONS = ['all','delete','edit','restore','archive','bulk_upload','replace','disable','login','create'];
 const MODULES = ['all','assessment','fees','users','settings','school','sms','attendance'];
@@ -23,8 +66,9 @@ export default function AuditLogsPage() {
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [selected, setSelected] = useState<AuditLog | null>(null);
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery<AuditLog[]>({
     queryKey: ['audit-logs', action, module, q, from, to, schoolId, isSuper],
     queryFn: async () => {
       let qb = supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500);
@@ -120,7 +164,11 @@ export default function AuditLogsPage() {
           <CardContent className="p-0">
             <div className="divide-y">
               {logs.map((l) => (
-                <div key={l.id} className="p-3 hover:bg-muted/40">
+                <button
+                  key={l.id}
+                  onClick={() => setSelected(l)}
+                  className="w-full text-left p-3 hover:bg-muted/40 focus:outline-none focus:bg-muted/60 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
@@ -142,15 +190,90 @@ export default function AuditLogsPage() {
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
                       <Clock className="h-3 w-3" />
                       {format(new Date(l.created_at), 'd MMM yyyy · HH:mm')}
+                      <ChevronRight className="h-3 w-3 ml-1 opacity-60" />
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
               {!isLoading && logs.length === 0 && <div className="p-8 text-center text-sm text-muted-foreground">No audit events match these filters.</div>}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-hidden flex flex-col">
+          {selected && (
+            <>
+              <SheetHeader className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="capitalize">{selected.action}</Badge>
+                  <Badge variant="outline" className="capitalize">{selected.module}</Badge>
+                  {selected.record_type && <Badge variant="secondary">{selected.record_type}</Badge>}
+                </div>
+                <SheetTitle className="text-base">
+                  {selected.user_name || 'Unknown'} <span className="text-xs text-muted-foreground font-normal">({selected.role})</span>
+                </SheetTitle>
+                <SheetDescription className="text-xs">
+                  {format(new Date(selected.created_at), 'EEE d MMM yyyy · HH:mm:ss')}
+                </SheetDescription>
+              </SheetHeader>
+
+              <ScrollArea className="flex-1 -mx-6 px-6 mt-3">
+                <div className="space-y-4 pb-6">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="border rounded-md p-2">
+                      <div className="text-muted-foreground text-[10px] uppercase">Affected records</div>
+                      <div className="text-lg font-bold">{selected.affected_count}</div>
+                    </div>
+                    <div className="border rounded-md p-2">
+                      <div className="text-muted-foreground text-[10px] uppercase">Record ID</div>
+                      <div className="font-mono text-[10px] truncate" title={selected.record_id || ''}>{selected.record_id || '—'}</div>
+                    </div>
+                    <div className="border rounded-md p-2 flex items-start gap-2">
+                      <Globe className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="text-muted-foreground text-[10px] uppercase">IP address</div>
+                        <div className="font-mono text-[11px] truncate">{selected.ip_address || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="border rounded-md p-2 flex items-start gap-2">
+                      <Monitor className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="text-muted-foreground text-[10px] uppercase">Device</div>
+                        <div className="text-[11px] truncate" title={selected.device_info || ''}>{selected.device_info || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selected.reason && (
+                    <div>
+                      <div className="text-xs font-semibold mb-1">Reason</div>
+                      <div className="text-xs italic bg-muted/50 rounded-md p-2">"{selected.reason}"</div>
+                    </div>
+                  )}
+
+                  <DiffSummary before={selected.before_state} after={selected.after_state} />
+
+                  <div>
+                    <div className="text-xs font-semibold mb-1">Before state</div>
+                    <JsonBlock data={selected.before_state} />
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold mb-1">After state</div>
+                    <JsonBlock data={selected.after_state} />
+                  </div>
+
+                  <div className="text-[10px] text-muted-foreground pt-2 border-t">
+                    Audit event ID: <span className="font-mono">{selected.id}</span>
+                  </div>
+                </div>
+              </ScrollArea>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 }
