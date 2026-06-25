@@ -64,10 +64,9 @@ export default function AuditLogsPage() {
   const [action, setAction] = useState('all');
   const [module, setModule] = useState('all');
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [selected, setSelected] = useState<AuditLog | null>(null);
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading } = useQuery<AuditLog[]>({
     queryKey: ['audit-logs', action, module, q, from, to, schoolId, isSuper],
     queryFn: async () => {
       let qb = supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500);
