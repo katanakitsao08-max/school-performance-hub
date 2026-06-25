@@ -200,6 +200,80 @@ export default function AuditLogsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-hidden flex flex-col">
+          {selected && (
+            <>
+              <SheetHeader className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="capitalize">{selected.action}</Badge>
+                  <Badge variant="outline" className="capitalize">{selected.module}</Badge>
+                  {selected.record_type && <Badge variant="secondary">{selected.record_type}</Badge>}
+                </div>
+                <SheetTitle className="text-base">
+                  {selected.user_name || 'Unknown'} <span className="text-xs text-muted-foreground font-normal">({selected.role})</span>
+                </SheetTitle>
+                <SheetDescription className="text-xs">
+                  {format(new Date(selected.created_at), 'EEE d MMM yyyy · HH:mm:ss')}
+                </SheetDescription>
+              </SheetHeader>
+
+              <ScrollArea className="flex-1 -mx-6 px-6 mt-3">
+                <div className="space-y-4 pb-6">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="border rounded-md p-2">
+                      <div className="text-muted-foreground text-[10px] uppercase">Affected records</div>
+                      <div className="text-lg font-bold">{selected.affected_count}</div>
+                    </div>
+                    <div className="border rounded-md p-2">
+                      <div className="text-muted-foreground text-[10px] uppercase">Record ID</div>
+                      <div className="font-mono text-[10px] truncate" title={selected.record_id || ''}>{selected.record_id || '—'}</div>
+                    </div>
+                    <div className="border rounded-md p-2 flex items-start gap-2">
+                      <Globe className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="text-muted-foreground text-[10px] uppercase">IP address</div>
+                        <div className="font-mono text-[11px] truncate">{selected.ip_address || '—'}</div>
+                      </div>
+                    </div>
+                    <div className="border rounded-md p-2 flex items-start gap-2">
+                      <Monitor className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="text-muted-foreground text-[10px] uppercase">Device</div>
+                        <div className="text-[11px] truncate" title={selected.device_info || ''}>{selected.device_info || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selected.reason && (
+                    <div>
+                      <div className="text-xs font-semibold mb-1">Reason</div>
+                      <div className="text-xs italic bg-muted/50 rounded-md p-2">"{selected.reason}"</div>
+                    </div>
+                  )}
+
+                  <DiffSummary before={selected.before_state} after={selected.after_state} />
+
+                  <div>
+                    <div className="text-xs font-semibold mb-1">Before state</div>
+                    <JsonBlock data={selected.before_state} />
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold mb-1">After state</div>
+                    <JsonBlock data={selected.after_state} />
+                  </div>
+
+                  <div className="text-[10px] text-muted-foreground pt-2 border-t">
+                    Audit event ID: <span className="font-mono">{selected.id}</span>
+                  </div>
+                </div>
+              </ScrollArea>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 }
