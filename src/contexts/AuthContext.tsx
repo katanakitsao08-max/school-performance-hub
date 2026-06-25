@@ -53,18 +53,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
       ]);
+      const userRole = roleRes.data?.role as AppRole | undefined;
+      if (roleRes.data) setRole(userRole ?? null);
+
       if (profileRes.data) {
         setProfile(profileRes.data as Profile);
+        let schoolDeleted = false;
+        let schoolSub: string | null = null;
         if (profileRes.data.school_id) {
           const { data: schoolData } = await supabase
             .from('schools')
-            .select('subscription_status')
+            .select('subscription_status, deleted_at')
             .eq('id', profileRes.data.school_id)
             .maybeSingle();
-          setSchoolStatus(schoolData?.subscription_status || null);
+          schoolSub = schoolData?.subscription_status || null;
+          schoolDeleted = !!schoolData?.deleted_at || ['deleted','disabled'].includes(schoolSub || '');
+          setSchoolStatus(schoolDeleted && !schoolSub ? 'deleted' : schoolSub);
+        }
+
+        // Hard enforcement: revoke session if account or school is disabled (super_admin exempt)
+        if (userRole !== 'super_admin') {
+          const accountDisabled = profileRes.data.school_access_status === 'disabled';
+          if (accountDisabled || schoolDeleted) {
+            try { await sendLogoutBeacon(); } catch {}
+            await supabase.auth.signOut();
+            try {
+              sessionStorage.setItem(
+                'pt_access_denied',
+                'Access denied. Your school account is no longer active.'
+              );
+            } catch {}
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+              window.location.replace('/login');
+            }
+            return;
+          }
         }
       }
-      if (roleRes.data) setRole(roleRes.data.role as AppRole);
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
@@ -110,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // log failed attempt
       try {
         await supabase.from('login_events').insert({
           email_attempt: email,
@@ -122,14 +146,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
       throw error;
     }
-    // Fire-and-forget activity log for analytics (login event)
+
+    // Post-login access validation: school + account must be active
     try {
       const { data: { user: u } } = await supabase.auth.getUser();
       if (u) {
         const [{ data: p }, { data: r }] = await Promise.all([
-          supabase.from('profiles').select('school_id').eq('user_id', u.id).maybeSingle(),
+          supabase.from('profiles').select('school_id, school_access_status').eq('user_id', u.id).maybeSingle(),
           supabase.from('user_roles').select('role').eq('user_id', u.id).maybeSingle(),
         ]);
+        const isSuper = r?.role === 'super_admin';
+        let denyReason: string | null = null;
+
+        if (!isSuper) {
+          if (p?.school_access_status === 'disabled') {
+            denyReason = 'Access denied. Your school account is no longer active.';
+          } else if (p?.school_id) {
+            const { data: school } = await supabase
+              .from('schools')
+              .select('subscription_status, deleted_at')
+              .eq('id', p.school_id)
+              .maybeSingle();
+            if (!school) {
+              denyReason = 'Access denied. Your school account is no longer active.';
+            } else if (
+              school.deleted_at ||
+              ['deleted','disabled','suspended'].includes(school.subscription_status || '')
+            ) {
+              denyReason = 'Access denied. Your school account is no longer active.';
+            }
+          }
+        }
+
+        if (denyReason) {
+          try { await sendLogoutBeacon(); } catch {}
+          await supabase.auth.signOut();
+          throw new Error(denyReason);
+        }
+
+        // Activity log
         supabase.from('user_activity_log').insert({
           user_id: u.id,
           school_id: p?.school_id ?? null,
@@ -140,7 +195,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user_agent: navigator.userAgent.slice(0, 500),
         }).then(() => {}, () => {});
       }
-    } catch {}
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith('Access denied')) throw e;
+    }
   };
 
   const signOut = async () => {

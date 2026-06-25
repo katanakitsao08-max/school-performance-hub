@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,16 @@ export function AuthForm() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem('pt_access_denied');
+      if (msg) {
+        sessionStorage.removeItem('pt_access_denied');
+        toast({ title: 'Access denied', description: msg, variant: 'destructive' });
+      }
+    } catch {}
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
