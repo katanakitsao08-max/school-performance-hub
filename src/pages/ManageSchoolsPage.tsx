@@ -354,8 +354,10 @@ export default function ManageSchoolsPage() {
 
   const restoreSchoolMut = useMutation({
     mutationFn: async (schoolId: string) => {
-      const { error } = await supabase.rpc('restore_school', { _school_id: schoolId } as any);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('restore-school', {
+        body: { school_id: schoolId },
+      });
+      if (error || !data?.success) throw new Error(data?.error || error?.message || 'Failed to restore school');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });

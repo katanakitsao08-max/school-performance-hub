@@ -88,6 +88,7 @@ serve(async (req) => {
           const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
             password,
             email_confirm: true,
+            ban_duration: 'none',
             user_metadata: { ...(existingUser.user_metadata || {}), full_name },
           });
           if (updateError) throw updateError;
