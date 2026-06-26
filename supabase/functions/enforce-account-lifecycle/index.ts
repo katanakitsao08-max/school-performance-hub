@@ -43,14 +43,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: profiles, error } = await admin
-      .from('profiles')
-      .select('user_id, school_id, school_access_status, user_roles!inner(role), schools(subscription_status, deleted_at)')
-      .not('user_roles.role', 'in', '(super_admin,independent_learner)');
-    if (error) throw error;
+    const [{ data: profiles, error: profilesErr }, { data: roles, error: rolesErr }, { data: schools, error: schoolsErr }] = await Promise.all([
+      admin.from('profiles').select('user_id, school_id, school_access_status'),
+      admin.from('user_roles').select('user_id, role'),
+      admin.from('schools').select('id, subscription_status, deleted_at'),
+    ]);
+    if (profilesErr) throw profilesErr;
+    if (rolesErr) throw rolesErr;
+    if (schoolsErr) throw schoolsErr;
 
+    const roleByUser = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+    const schoolById = new Map((schools || []).map((s: any) => [s.id, s]));
     const blocked = (profiles || []).filter((p: any) => {
-      const school = Array.isArray(p.schools) ? p.schools[0] : p.schools;
+      const role = roleByUser.get(p.user_id);
+      if (role === 'super_admin' || role === 'independent_learner') return false;
+      const school = p.school_id ? schoolById.get(p.school_id) : null;
       return p.school_access_status !== 'active'
         || !p.school_id
         || !school
