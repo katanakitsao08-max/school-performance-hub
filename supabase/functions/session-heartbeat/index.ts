@@ -79,12 +79,14 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
 
     if (blocked) {
-      if (prof?.school_id) {
+      if (prof) {
         await admin.from('profiles').update({
           school_access_status: 'disabled',
           disabled_at: nowIso,
         }).eq('user_id', userId);
       }
+
+      await admin.auth.admin.signOut(token).catch(() => null);
 
       if (sessionToken) {
         await admin.from('user_sessions').update({
