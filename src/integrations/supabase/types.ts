@@ -5066,6 +5066,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_platform_account_active: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       is_school_billing_active: {
         Args: { _school_id: string }
         Returns: boolean
