@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
         }).eq('user_id', userId);
       }
 
+      await admin.auth.admin.updateUserById(userId, { ban_duration: '876000h' }).catch(() => null);
       await admin.auth.admin.signOut(token).catch(() => null);
 
       if (sessionToken) {

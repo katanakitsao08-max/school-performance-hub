@@ -33,7 +33,21 @@ async function ping(event: 'heartbeat' | 'login' | 'logout' = 'heartbeat') {
       }
       return;
     }
-    if (error) console.warn('[session-heartbeat]', event, error.message);
+    if (error) {
+      const status = (error as any)?.context?.status;
+      if (status === 403 && event !== 'logout') {
+        try {
+          sessionStorage.setItem('pt_access_denied', 'Access denied. Your school account is no longer active.');
+          sessionStorage.removeItem(STORAGE_KEY);
+        } catch {}
+        await supabase.auth.signOut();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.replace('/login');
+        }
+        return;
+      }
+      console.warn('[session-heartbeat]', event, error.message);
+    }
   } catch (e) {
     console.warn('[session-heartbeat] failed', e);
   }

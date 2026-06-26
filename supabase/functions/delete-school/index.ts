@@ -58,6 +58,11 @@ Deno.serve(async (req) => {
 
     const nowIso = new Date().toISOString();
 
+    const { data: linkedProfiles } = await admin
+      .from('profiles')
+      .select('user_id')
+      .eq('school_id', school_id);
+
     const { error: schoolErr } = await admin.from('schools').update({
       subscription_status: 'deleted',
       deleted_at: schoolBefore.deleted_at || nowIso,
@@ -81,6 +86,14 @@ Deno.serve(async (req) => {
       .eq('school_id', school_id)
       .is('logout_time', null);
 
+    const bannedUsers: string[] = [];
+    for (const profile of linkedProfiles || []) {
+      const { error: banErr } = await admin.auth.admin.updateUserById(profile.user_id, {
+        ban_duration: '876000h',
+      });
+      if (!banErr) bannedUsers.push(profile.user_id);
+    }
+
     await admin.from('audit_logs').insert({
       school_id,
       user_id: user.id,
@@ -91,7 +104,7 @@ Deno.serve(async (req) => {
       record_type: 'school',
       record_id: school_id,
       before_state: schoolBefore,
-      after_state: { status: 'deleted', disabled_users: disabledUsers ?? 0, ended_sessions: endedSessions ?? 0 },
+      after_state: { status: 'deleted', disabled_users: disabledUsers ?? 0, ended_sessions: endedSessions ?? 0, banned_auth_users: bannedUsers.length },
       affected_count: disabledUsers ?? 0,
       reason: 'soft delete school and block linked accounts',
     });
@@ -101,6 +114,7 @@ Deno.serve(async (req) => {
       soft_deleted: true,
       disabled_users: disabledUsers ?? 0,
       ended_sessions: endedSessions ?? 0,
+      banned_auth_users: bannedUsers.length,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
