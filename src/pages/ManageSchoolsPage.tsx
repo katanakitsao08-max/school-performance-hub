@@ -187,7 +187,10 @@ export default function ManageSchoolsPage() {
         });
         if (userError || !userData?.success) {
           const errMsg = userData?.error || userError?.message || 'Failed to create admin';
-          await supabase.from('schools').delete().eq('id', school.id);
+          await supabase.from('schools').update({
+            subscription_status: 'deleted',
+            deleted_at: new Date().toISOString(),
+          } as any).eq('id', school.id);
           throw new Error(`School admin error: ${errMsg}`);
         }
         return { school, creds: { loginEmail: userData.login_email || adminEmail, username: normalizedUsername || adminEmail, password: adminPassword, fullName: adminForm.full_name.trim() } };
