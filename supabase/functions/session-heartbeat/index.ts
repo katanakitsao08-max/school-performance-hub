@@ -49,9 +49,24 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
     const [{ data: prof }, { data: rrow }] = await Promise.all([
-      admin.from('profiles').select('school_id').eq('user_id', userId).maybeSingle(),
+      admin.from('profiles').select('school_id, school_access_status').eq('user_id', userId).maybeSingle(),
       admin.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
     ]);
+
+    const role = rrow?.role ?? null;
+    let blocked = false;
+    if (role !== 'super_admin' && role !== 'independent_learner') {
+      if (!prof || prof.school_access_status !== 'active' || !prof.school_id) {
+        blocked = true;
+      } else {
+        const { data: school } = await admin
+          .from('schools')
+          .select('subscription_status, deleted_at')
+          .eq('id', prof.school_id)
+          .maybeSingle();
+        blocked = !school || !!school.deleted_at || ['deleted', 'disabled', 'suspended'].includes(school.subscription_status || '');
+      }
+    }
 
     const ua = req.headers.get('user-agent') ?? '';
     const { device, browser } = parseUA(ua);
@@ -62,6 +77,49 @@ Deno.serve(async (req) => {
       null;
 
     const nowIso = new Date().toISOString();
+
+    if (blocked) {
+      if (prof) {
+        await admin.from('profiles').update({
+          school_access_status: 'disabled',
+          disabled_at: nowIso,
+        }).eq('user_id', userId);
+      }
+
+      await admin.auth.admin.updateUserById(userId, { ban_duration: '876000h' }).catch(() => null);
+      await admin.auth.admin.signOut(token).catch(() => null);
+
+      if (sessionToken) {
+        await admin.from('user_sessions').update({
+          logout_time: nowIso,
+          session_status: 'offline',
+          last_activity: nowIso,
+        }).eq('session_token', sessionToken).eq('user_id', userId);
+      }
+
+      await admin.from('audit_logs').insert({
+        school_id: prof?.school_id ?? null,
+        user_id: userId,
+        user_name: 'system',
+        role: role ?? 'unknown',
+        action: 'block',
+        module: 'authentication',
+        record_type: 'session',
+        affected_count: 1,
+        reason: 'blocked deleted-school or orphaned account during session heartbeat',
+        device_info: ua.slice(0, 500),
+        ip_address: ip,
+      });
+
+      return new Response(JSON.stringify({
+        ok: false,
+        blocked: true,
+        error: 'Access denied. Your school account is no longer active.',
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (event === 'logout' && sessionToken) {
       await admin.from('user_sessions').update({
@@ -83,7 +141,7 @@ Deno.serve(async (req) => {
           last_activity: nowIso,
           session_status: 'active',
           school_id: prof?.school_id ?? null,
-          role: rrow?.role ?? null,
+          role,
           ip_address: ip,
           device, browser,
           user_agent: ua.slice(0, 500),
@@ -92,7 +150,7 @@ Deno.serve(async (req) => {
         await admin.from('user_sessions').insert({
           user_id: userId,
           school_id: prof?.school_id ?? null,
-          role: rrow?.role ?? null,
+          role,
           login_time: nowIso,
           last_activity: nowIso,
           session_status: 'active',

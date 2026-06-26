@@ -187,7 +187,10 @@ export default function ManageSchoolsPage() {
         });
         if (userError || !userData?.success) {
           const errMsg = userData?.error || userError?.message || 'Failed to create admin';
-          await supabase.from('schools').delete().eq('id', school.id);
+          await supabase.from('schools').update({
+            subscription_status: 'deleted',
+            deleted_at: new Date().toISOString(),
+          } as any).eq('id', school.id);
           throw new Error(`School admin error: ${errMsg}`);
         }
         return { school, creds: { loginEmail: userData.login_email || adminEmail, username: normalizedUsername || adminEmail, password: adminPassword, fullName: adminForm.full_name.trim() } };
@@ -314,7 +317,7 @@ export default function ManageSchoolsPage() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // Hard-delete a school and all tenant data (super_admin only, via Edge Function)
+    // Soft-delete a school and immediately block all tenant users (super_admin only, via Edge Function)
   const deleteSchool = useMutation({
     mutationFn: async (schoolId: string) => {
       const { data, error } = await supabase.functions.invoke('delete-school', {
@@ -329,7 +332,7 @@ export default function ManageSchoolsPage() {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
       queryClient.invalidateQueries({ queryKey: ['school-stats'] });
       queryClient.invalidateQueries({ queryKey: ['school-admins'] });
-      toast({ title: 'School deleted', description: 'All tenant data was permanently removed.' });
+      toast({ title: 'School deleted', description: 'All linked users were blocked and active sessions were ended.' });
       setDeleteTarget(null);
       setDeleteConfirmText('');
     },
@@ -339,20 +342,22 @@ export default function ManageSchoolsPage() {
   // Soft-disable: cascades to revoke logins for all school users (30-day restore window)
   const disableSchoolMut = useMutation({
     mutationFn: async (schoolId: string) => {
-      const { error } = await supabase.rpc('disable_school', { _school_id: schoolId, _reason: 'super_admin disable' } as any);
+          const { error } = await supabase.rpc('disable_school', { _school_id: schoolId, _reason: 'super_admin delete/disable' } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
-      toast({ title: 'School disabled', description: 'All users have been signed out. Restore available for 30 days.' });
+      toast({ title: 'School deleted', description: 'All users have been signed out. Restore available for 30 days.' });
     },
     onError: (e: any) => toast({ title: 'Disable failed', description: e.message, variant: 'destructive' }),
   });
 
   const restoreSchoolMut = useMutation({
     mutationFn: async (schoolId: string) => {
-      const { error } = await supabase.rpc('restore_school', { _school_id: schoolId } as any);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('restore-school', {
+        body: { school_id: schoolId },
+      });
+      if (error || !data?.success) throw new Error(data?.error || error?.message || 'Failed to restore school');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-schools'] });
@@ -752,7 +757,7 @@ export default function ManageSchoolsPage() {
                               <RotateCcw className="h-4 w-4 text-success" />
                             </Button>
                           ) : (
-                            <Button variant="ghost" size="icon" onClick={() => { if (confirm(`Disable ${school.school_name}? All users will be signed out immediately. You can restore within 30 days.`)) disableSchoolMut.mutate(school.id); }} disabled={disableSchoolMut.isPending} title="Disable school (soft, recoverable 30 days)">
+                              <Button variant="ghost" size="icon" onClick={() => { if (confirm(`Delete ${school.school_name}? All users will be signed out immediately. You can restore within 30 days.`)) disableSchoolMut.mutate(school.id); }} disabled={disableSchoolMut.isPending} title="Delete school (soft, recoverable 30 days)">
                               <PowerOff className="h-4 w-4 text-warning" />
                             </Button>
                           )}
@@ -760,7 +765,7 @@ export default function ManageSchoolsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => { setDeleteTarget(school); setDeleteConfirmText(''); }}
-                            title="Delete school permanently"
+                            title="Delete school and block access"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -796,13 +801,12 @@ export default function ManageSchoolsPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) { setDeleteTarget(null); setDeleteConfirmText(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Permanently delete this school?</AlertDialogTitle>
+            <AlertDialogTitle className="text-destructive">Delete this school?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  This will permanently remove <strong>{deleteTarget?.school_name}</strong> and ALL its data:
-                  learners, scores, attendance, fees, SMS logs, timetables, settings, parent links, and more.
-                  This action cannot be undone.
+                  This will mark <strong>{deleteTarget?.school_name}</strong> as deleted, block every linked account,
+                  end active sessions, and preserve audit history. Restore is available within 30 days.
                 </p>
                 <p className="text-xs">
                   Type the school name <code className="bg-muted px-1 py-0.5 rounded">{deleteTarget?.school_name}</code> to confirm.
@@ -823,7 +827,7 @@ export default function ManageSchoolsPage() {
               onClick={() => deleteTarget && deleteSchool.mutate(deleteTarget.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteSchool.isPending ? 'Deleting…' : 'Delete permanently'}
+              {deleteSchool.isPending ? 'Deleting…' : 'Delete school'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

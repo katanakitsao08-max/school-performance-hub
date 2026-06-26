@@ -45,7 +45,11 @@ serve(async (req) => {
     }
 
     const buildProfileUpdate = async () => {
-      const profileUpdate: any = { school_id: resolvedSchoolId };
+      const profileUpdate: any = {
+        school_id: resolvedSchoolId,
+        school_access_status: role === 'super_admin' ? 'active' : (resolvedSchoolId ? 'active' : 'disabled'),
+        disabled_at: resolvedSchoolId || role === 'super_admin' ? null : new Date().toISOString(),
+      };
       if (role === 'admin') {
         // Admin gets all grades dynamically - fetch from school settings
         const { data: gradeSetting } = await supabaseAdmin.from('school_settings')
@@ -84,6 +88,7 @@ serve(async (req) => {
           const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
             password,
             email_confirm: true,
+            ban_duration: 'none',
             user_metadata: { ...(existingUser.user_metadata || {}), full_name },
           });
           if (updateError) throw updateError;

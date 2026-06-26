@@ -1,59 +1,10 @@
-// Super-admin only: cascade-delete a school and all its tenant data.
+// Super-admin only: soft-delete a school, block its accounts, and preserve audit history.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-
-// Tables that reference a school_id and should be purged before deleting the
-// school row. Order matters where there are dependent rows between tables.
-const SCHOOL_SCOPED_TABLES = [
-  'subscription_payments',
-  'school_billing',
-  'strand_scores',
-  'scores',
-  'teacher_scores',
-  'attendance',
-  'teacher_attendance',
-  'fee_audit_log',
-  'fee_records',
-  'fee_structures',
-  'sms_logs',
-  'whatsapp_queue',
-  'whatsapp_schedules',
-  'whatsapp_templates',
-  'whatsapp_settings',
-  'school_sms_credits',
-  'notifications',
-  'user_activity_log',
-  'report_delivery_log',
-  'report_share_links',
-  'parent_portal_links',
-  'parent_learners',
-  'promotion_log',
-  'principal_comment_bands',
-  'teacher_assignments',
-  'class_teachers',
-  'teacher_learners',
-  'teacher_subjects',
-  'teacher_classes',
-  'teacher_registrations',
-  'learner_face_descriptors',
-  'learners',
-  'learning_areas',
-  'strands',
-  'sub_strands',
-  'streams',
-  'school_settings',
-  'documents',
-  'document_templates',
-  'timetable_activation_keys',
-  'timetable_class_lessons',
-  'timetable_settings',
-  'timetables',
-  'grade_subject_lessons',
-];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -94,30 +45,77 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) Delete tenant-scoped rows (silently ignore missing tables)
-    const purged: Record<string, number | string> = {};
-    for (const table of SCHOOL_SCOPED_TABLES) {
-      try {
-        const { error, count } = await admin
-          .from(table).delete({ count: 'exact' }).eq('school_id', school_id);
-        purged[table] = error ? `err:${error.message}` : (count ?? 0);
-      } catch (e) {
-        purged[table] = `exc:${String(e)}`;
-      }
+    const { data: schoolBefore, error: schoolLookupErr } = await admin
+      .from('schools')
+      .select('*')
+      .eq('id', school_id)
+      .maybeSingle();
+    if (schoolLookupErr || !schoolBefore) {
+      return new Response(JSON.stringify({ error: schoolLookupErr?.message || 'school not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // 2) Detach user profiles from school (keep users so super_admin can reuse them)
-    await admin.from('profiles').update({ school_id: null }).eq('school_id', school_id);
+    const nowIso = new Date().toISOString();
 
-    // 3) Finally delete the school row
-    const { error: schoolErr } = await admin.from('schools').delete().eq('id', school_id);
+    const { data: linkedProfiles } = await admin
+      .from('profiles')
+      .select('user_id')
+      .eq('school_id', school_id);
+
+    const { error: schoolErr } = await admin.from('schools').update({
+      subscription_status: 'deleted',
+      deleted_at: schoolBefore.deleted_at || nowIso,
+      deleted_by: schoolBefore.deleted_by || user.id,
+      updated_at: nowIso,
+    }).eq('id', school_id);
     if (schoolErr) {
-      return new Response(JSON.stringify({ error: schoolErr.message, purged }), {
+      return new Response(JSON.stringify({ error: schoolErr.message }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ success: true, purged }), {
+    const { count: disabledUsers } = await admin
+      .from('profiles')
+      .update({ school_access_status: 'disabled', disabled_at: nowIso, updated_at: nowIso }, { count: 'exact' })
+      .eq('school_id', school_id);
+
+    const { count: endedSessions } = await admin
+      .from('user_sessions')
+      .update({ session_status: 'offline', logout_time: nowIso, updated_at: nowIso }, { count: 'exact' })
+      .eq('school_id', school_id)
+      .is('logout_time', null);
+
+    const bannedUsers: string[] = [];
+    for (const profile of linkedProfiles || []) {
+      const { error: banErr } = await admin.auth.admin.updateUserById(profile.user_id, {
+        ban_duration: '876000h',
+      });
+      if (!banErr) bannedUsers.push(profile.user_id);
+    }
+
+    await admin.from('audit_logs').insert({
+      school_id,
+      user_id: user.id,
+      user_name: user.email || 'super_admin',
+      role: 'super_admin',
+      action: 'delete',
+      module: 'school',
+      record_type: 'school',
+      record_id: school_id,
+      before_state: schoolBefore,
+      after_state: { status: 'deleted', disabled_users: disabledUsers ?? 0, ended_sessions: endedSessions ?? 0, banned_auth_users: bannedUsers.length },
+      affected_count: disabledUsers ?? 0,
+      reason: 'soft delete school and block linked accounts',
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      soft_deleted: true,
+      disabled_users: disabledUsers ?? 0,
+      ended_sessions: endedSessions ?? 0,
+      banned_auth_users: bannedUsers.length,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

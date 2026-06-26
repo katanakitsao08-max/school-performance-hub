@@ -47,6 +47,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     || profile?.school_access_status === 'disabled'
   ) && role !== 'super_admin';
 
+  const inactiveMessage = 'Access denied. Your school account is no longer active.';
+
+  const rejectInactiveSession = async () => {
+    try { await sendLogoutBeacon(); } catch {}
+    await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setRole(null);
+    setSchoolStatus(null);
+    try { sessionStorage.setItem('pt_access_denied', inactiveMessage); } catch {}
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.replace('/login');
+    }
+  };
+
   const fetchUserData = async (userId: string) => {
     try {
       const [profileRes, roleRes] = await Promise.all([
@@ -59,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profileRes.data) {
         setProfile(profileRes.data as Profile);
         let schoolDeleted = false;
+        let missingRequiredSchool = false;
         let schoolSub: string | null = null;
         if (profileRes.data.school_id) {
           const { data: schoolData } = await supabase
@@ -67,28 +84,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('id', profileRes.data.school_id)
             .maybeSingle();
           schoolSub = schoolData?.subscription_status || null;
-          schoolDeleted = !!schoolData?.deleted_at || ['deleted','disabled'].includes(schoolSub || '');
+          schoolDeleted = !schoolData || !!schoolData?.deleted_at || ['deleted','disabled','suspended'].includes(schoolSub || '');
           setSchoolStatus(schoolDeleted && !schoolSub ? 'deleted' : schoolSub);
+        } else if (userRole && !['super_admin', 'independent_learner'].includes(userRole)) {
+          missingRequiredSchool = true;
+          setSchoolStatus('deleted');
         }
 
-        // Hard enforcement: revoke session if account or school is disabled (super_admin exempt)
+        // Hard enforcement: revoke session if account or school is disabled/orphaned (super_admin exempt)
         if (userRole !== 'super_admin') {
           const accountDisabled = profileRes.data.school_access_status === 'disabled';
-          if (accountDisabled || schoolDeleted) {
-            try { await sendLogoutBeacon(); } catch {}
-            await supabase.auth.signOut();
-            try {
-              sessionStorage.setItem(
-                'pt_access_denied',
-                'Access denied. Your school account is no longer active.'
-              );
-            } catch {}
-            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-              window.location.replace('/login');
-            }
+          if (accountDisabled || schoolDeleted || missingRequiredSchool) {
+            await rejectInactiveSession();
             return;
           }
         }
+      } else if (userRole !== 'super_admin') {
+        await rejectInactiveSession();
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -160,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!isSuper) {
           if (p?.school_access_status === 'disabled') {
-            denyReason = 'Access denied. Your school account is no longer active.';
+            denyReason = inactiveMessage;
           } else if (p?.school_id) {
             const { data: school } = await supabase
               .from('schools')
@@ -168,13 +180,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .eq('id', p.school_id)
               .maybeSingle();
             if (!school) {
-              denyReason = 'Access denied. Your school account is no longer active.';
+              denyReason = inactiveMessage;
             } else if (
               school.deleted_at ||
               ['deleted','disabled','suspended'].includes(school.subscription_status || '')
             ) {
-              denyReason = 'Access denied. Your school account is no longer active.';
+              denyReason = inactiveMessage;
             }
+          } else if (r?.role !== 'independent_learner') {
+            denyReason = inactiveMessage;
           }
         }
 

@@ -155,7 +155,12 @@ serve(async (req) => {
     });
     if (cErr || !created.user) {
       // rollback school
-      await admin.from('schools').delete().eq('id', newSchool.id);
+      await admin.from('schools').update({
+        subscription_status: 'deleted',
+        deleted_at: new Date().toISOString(),
+        deleted_by: caller.id,
+        updated_at: new Date().toISOString(),
+      }).eq('id', newSchool.id);
       throw cErr || new Error('Admin user creation failed');
     }
     const uid = created.user.id;
