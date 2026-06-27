@@ -62,7 +62,7 @@ export function AuthForm() {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="e.g. jdoe or 0712345678"
+            placeholder=""
             className="h-12 pl-10 rounded-xl bg-muted/40 border-muted"
             autoComplete="username"
             required
