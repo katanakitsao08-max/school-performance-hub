@@ -1126,11 +1126,7 @@ export default function ReportsPage() {
           selectedGenderFilter={selectedGenderFilter}
           setSelectedGenderFilter={setSelectedGenderFilter}
           mergeCombinedSubjects={mergeCombinedSubjects}
-          setMergeCombinedSubjects={(v) => {
-            setMergeCombinedSubjects(v);
-            const at = isMerged ? 'end_term' : selectedAssessment;
-            if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
-          }}
+          setMergeCombinedSubjects={(v) => setMergeCombinedSubjects(v)}
           mergedReportsOn={mergedReportsOn}
           schoolName={schoolName}
           showCombineToggle={!isSchoolWide && selectedGrades.length <= 1 && (role === 'admin' || role === 'super_admin')}
