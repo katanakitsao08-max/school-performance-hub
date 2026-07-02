@@ -389,7 +389,7 @@ export default function ReportsPage() {
     
     const mapped = filteredLearners.map(l => {
       const raw = relevantSubjects.filter(s => s.grade === l.grade);
-      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects);
+      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects ? mergesForGrade(l.grade) : []);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerSubjectColumns.map(col => {
         if (col.kind === 'single') {
