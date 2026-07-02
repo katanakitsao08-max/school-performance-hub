@@ -2609,6 +2609,89 @@ export type Database = {
         }
         Relationships: []
       }
+      merged_subject_items: {
+        Row: {
+          created_at: string
+          id: string
+          learning_area_id: string
+          merged_subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          learning_area_id: string
+          merged_subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          learning_area_id?: string
+          merged_subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merged_subject_items_learning_area_id_fkey"
+            columns: ["learning_area_id"]
+            isOneToOne: false
+            referencedRelation: "learning_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merged_subject_items_merged_subject_id_fkey"
+            columns: ["merged_subject_id"]
+            isOneToOne: false
+            referencedRelation: "merged_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merged_subjects: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          grade: string
+          id: string
+          is_active: boolean
+          max_score: number
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          grade: string
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          grade?: string
+          id?: string
+          is_active?: boolean
+          max_score?: number
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merged_subjects_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           academic_year_id: string | null

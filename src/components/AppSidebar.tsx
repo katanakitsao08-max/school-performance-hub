@@ -63,6 +63,7 @@ const adminSections: NavSection[] = [
       { title: "Grades", url: "/grades", icon: GraduationCap },
       { title: "Streams", url: "/streams", icon: Columns },
       { title: "Strands", url: "/strands", icon: Layers },
+      { title: "Subject Merges", url: "/subject-merges", icon: Layers },
       { title: "Learners", url: "/learners", icon: GraduationCap },
     ],
   },

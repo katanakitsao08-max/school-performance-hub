@@ -22,7 +22,8 @@ import { useSchoolGrades } from '@/hooks/use-school-grades';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchoolFeatureToggles } from '@/hooks/use-school-feature-toggles';
 import { buildSubjectColumns, sortSubjectsByOrder } from '@/lib/subject-order';
-import { getMergePref, setMergePref } from '@/lib/merge-state';
+import { useMergedSubjects } from '@/hooks/use-merged-subjects';
+import { computeMergedScore } from '@/lib/reporting/merges';
 import { getGradeLevel } from '@/lib/grade-levels';
 import { generatePremiumReportCard, type ReportCardData } from '@/lib/report-card-pdf';
 import { fetchAllPaged } from '@/lib/fetch-all';
@@ -75,14 +76,13 @@ export default function ReportsPage() {
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
-  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(false);
-  // Auto-pick merge preference saved by Marks Entry for the current selection.
-  useEffect(() => {
-    const grade = selectedGrades[0];
-    if (!schoolId || !grade) return;
-    const at = isMerged ? 'end_term' : selectedAssessment;
-    setMergeCombinedSubjects(getMergePref(schoolId, grade, selectedTerm, selectedYear, at));
-  }, [schoolId, selectedGrades, selectedTerm, selectedYear, selectedAssessment, isMerged]);
+  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(true);
+  // Admin-defined merges for the current selection (report-time only).
+  const { forGrade: mergesForGrade } = useMergedSubjects();
+  const adminMergesForSelected = useMemo(
+    () => mergesForGrade(selectedGrades[0]),
+    [mergesForGrade, selectedGrades]
+  );
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
@@ -374,7 +374,7 @@ export default function ReportsPage() {
 
   const reportDisplaySubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return [] as any[];
-    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects).map(col => (
+    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects ? adminMergesForSelected : []).map(col => (
       col.kind === 'single'
         ? col.subject
         : { id: col.members.map(m => m.id).join('+'), name: col.label, max_score: col.max_score, grade: selectedGrade }
@@ -389,7 +389,7 @@ export default function ReportsPage() {
     
     const mapped = filteredLearners.map(l => {
       const raw = relevantSubjects.filter(s => s.grade === l.grade);
-      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects);
+      const learnerSubjectColumns = buildSubjectColumns(raw as any[], l.grade, mergeCombinedSubjects ? mergesForGrade(l.grade) : []);
       const learnerScores = allScores.filter(s => s.learner_id === l.id);
       const subjectData = learnerSubjectColumns.map(col => {
         if (col.kind === 'single') {
@@ -690,7 +690,8 @@ export default function ReportsPage() {
     doc.text(title, cx, y, { align: 'center' });
     y += 6;
     doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text(`Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
+    const assessmentLabel = isMerged ? 'Combined (Opener + Mid + End)' : ASSESSMENT_TYPE_LABELS[effectiveAssessment];
+    doc.text(`${assessmentLabel} — Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
@@ -1126,11 +1127,7 @@ export default function ReportsPage() {
           selectedGenderFilter={selectedGenderFilter}
           setSelectedGenderFilter={setSelectedGenderFilter}
           mergeCombinedSubjects={mergeCombinedSubjects}
-          setMergeCombinedSubjects={(v) => {
-            setMergeCombinedSubjects(v);
-            const at = isMerged ? 'end_term' : selectedAssessment;
-            if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, at, v);
-          }}
+          setMergeCombinedSubjects={(v) => setMergeCombinedSubjects(v)}
           mergedReportsOn={mergedReportsOn}
           schoolName={schoolName}
           showCombineToggle={!isSchoolWide && selectedGrades.length <= 1 && (role === 'admin' || role === 'super_admin')}

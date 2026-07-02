@@ -55,92 +55,64 @@ export function sortSubjectsByOrder<T extends { name: string }>(items: T[], grad
   });
 }
 
-// Pairs that can be merged into a single combined column for entry/reporting.
-export const MERGE_PAIRS: Array<{ label: string; members: string[] }> = [
-  { label: 'SOCIAL STUDIES & RELIGIOUS EDUCATION', members: ['SOCIAL STUDIES', 'RELIGIOUS EDUCATION', 'CRE', 'IRE'] },
-  { label: 'SCIENCE & AGRICULTURE', members: ['SCIENCE', 'SCIENCE AND TECHNOLOGY', 'INTEGRATED SCIENCE', 'AGRICULTURE'] },
-];
-
-// Lower-primary (Grade 1-3) only: merge Religious + Environmental + Creative Activities.
-export const LOWER_PRIMARY_MERGE_PAIRS: Array<{ label: string; members: string[] }> = [
-  {
-    label: 'RELIGIOUS + ENVIRONMENTAL + CREATIVE ACTIVITIES',
-    members: [
-      'RELIGIOUS EDUCATION ACTIVITIES',
-      'CHRISTIAN RELIGIOUS EDUCATION ACTIVITIES',
-      'ISLAMIC RELIGIOUS EDUCATION ACTIVITIES',
-      'CRE ACTIVITIES',
-      'IRE ACTIVITIES',
-      'ENVIRONMENTAL ACTIVITIES',
-      'CREATIVE ACTIVITIES',
-      'CREATIVE ARTS ACTIVITIES',
-      'PSYCHOMOTOR AND CREATIVE ACTIVITIES',
-    ],
-  },
-];
-
-export function isLowerPrimary(grade: string): boolean {
-  const n = parseInt(grade, 10);
-  return n >= 1 && n <= 3;
-}
-
-export function getMergePairsForGrade(grade: string) {
-  if (isLowerPrimary(grade)) return LOWER_PRIMARY_MERGE_PAIRS;
-  return MERGE_PAIRS;
-}
-
 export type SubjectColumn<T extends { id: string; name: string; max_score: number }> =
   | { kind: 'single'; subject: T }
-  | { kind: 'merged'; label: string; members: T[]; max_score: number };
+  | { kind: 'merged'; label: string; code?: string; members: T[]; max_score: number };
 
-// Strip noise so "Religious Education" matches "RELIGIOUS EDUCATION ACTIVITIES"
-const canon = (s: string) =>
-  norm(s)
-    .replace(/\bACTIVITIES\b/g, '')
-    .replace(/\bAND\b/g, '&')
-    .replace(/[^A-Z&]+/g, ' ')
-    .trim();
-
-const memberMatches = (subjectName: string, memberCanonical: string) => {
-  const a = canon(subjectName);
-  const b = memberCanonical;
-  if (!a || !b) return false;
-  if (a === b) return true;
-  // Whole-word containment only — prevents "CRE" from matching "CREATIVE ARTS".
-  const aTokens = a.split(/\s+/).filter(Boolean);
-  const bTokens = b.split(/\s+/).filter(Boolean);
-  const containsAll = (hay: string[], needle: string[]) =>
-    needle.every(t => hay.includes(t));
-  return containsAll(aTokens, bTokens) || containsAll(bTokens, aTokens);
-};
+/**
+ * Admin-defined merge (from the merged_subjects table) used to build columns.
+ * Auto-merge heuristics were removed — only admin-configured merges apply.
+ */
+export interface AdminMergeInput {
+  name: string;
+  code?: string;
+  max_score: number;
+  member_ids: string[];
+}
 
 export function buildSubjectColumns<T extends { id: string; name: string; max_score: number }>(
   subjects: T[],
   grade: string,
-  mergeOn: boolean,
+  adminMerges: AdminMergeInput[] = [],
 ): SubjectColumn<T>[] {
   const sorted = sortSubjectsByOrder(subjects, grade);
-  if (!mergeOn) return sorted.map(s => ({ kind: 'single' as const, subject: s }));
+  if (!adminMerges || adminMerges.length === 0) {
+    return sorted.map(s => ({ kind: 'single' as const, subject: s }));
+  }
 
-  const pairs = getMergePairsForGrade(grade).map(p => ({
-    ...p,
-    canonMembers: p.members.map(canon),
-  }));
-  const used = new Set<string>();
+  const byId = new Map(sorted.map(s => [s.id, s]));
+  // Assign each subject id to at most one merge (first-wins).
+  const claimed = new Map<string, number>();
+  adminMerges.forEach((m, i) => {
+    m.member_ids.forEach(id => {
+      if (!claimed.has(id) && byId.has(id)) claimed.set(id, i);
+    });
+  });
+
+  const emittedMerge = new Set<number>();
   const cols: SubjectColumn<T>[] = [];
   for (const s of sorted) {
-    if (used.has(s.id)) continue;
-    const pair = pairs.find(p => p.canonMembers.some(cm => memberMatches(s.name, cm)));
-    if (pair) {
-      const members = sorted.filter(x => pair.canonMembers.some(cm => memberMatches(x.name, cm)));
-      if (members.length > 1) {
-        members.forEach(m => used.add(m.id));
-        cols.push({ kind: 'merged', label: pair.label, members, max_score: members[0].max_score });
-        continue;
-      }
+    const mi = claimed.get(s.id);
+    if (mi === undefined) {
+      cols.push({ kind: 'single', subject: s });
+      continue;
     }
-    used.add(s.id);
-    cols.push({ kind: 'single', subject: s });
+    if (emittedMerge.has(mi)) continue;
+    emittedMerge.add(mi);
+    const merge = adminMerges[mi];
+    const members = merge.member_ids.map(id => byId.get(id)).filter(Boolean) as T[];
+    if (members.length < 2) {
+      // Under-configured merge — fall back to individual columns.
+      members.forEach(m => cols.push({ kind: 'single', subject: m }));
+    } else {
+      cols.push({
+        kind: 'merged',
+        label: merge.name,
+        code: merge.code,
+        members,
+        max_score: Number(merge.max_score) || members[0].max_score,
+      });
+    }
   }
   return cols;
 }
