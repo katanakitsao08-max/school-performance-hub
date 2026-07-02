@@ -174,32 +174,13 @@ export default function MarksEntryPage() {
     return sortSubjectsByOrder(list, selectedGrade);
   }, [allSubjects, isPrivileged, myAssignments, myClassTeacher, selectedGrade, selectedStream]);
 
-  // Merge toggle (combine SS+RE and Science+Agriculture into single columns when needed)
-  // Persisted per (school, grade, term, year, assessment) so reports auto-apply it.
-  const [mergeCombined, setMergeCombined] = useState(false);
-  const allowMerge = useMemo(() => {
-    const n = parseInt(selectedGrade, 10);
-    return n >= 1 && n <= 6;
-  }, [selectedGrade]);
-  useEffect(() => {
-    setMergeCombined(getMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment));
-  }, [schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
-  useEffect(() => {
-    if (!allowMerge && mergeCombined) {
-      setMergeCombined(false);
-      if (schoolId && selectedGrade) {
-        setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, false);
-      }
-    }
-  }, [allowMerge, mergeCombined, schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment]);
-  const handleMergeChange = (v: boolean) => {
-    if (!allowMerge) return;
-    setMergeCombined(v);
-    if (schoolId && selectedGrade) setMergePref(schoolId, selectedGrade, selectedTerm, selectedYear, selectedAssessment, v);
-  };
+  // Marks Entry always uses individual (raw) subject columns. Merged subjects
+  // are an admin-controlled *report-time* construct; teachers still enter raw
+  // scores per learning area so the reporting engine can aggregate correctly.
+  const mergeCombined = false;
   const subjectColumns = useMemo(
-    () => buildSubjectColumns((subjects || []) as any[], selectedGrade || '', mergeCombined) || [],
-    [subjects, selectedGrade, mergeCombined]
+    () => buildSubjectColumns((subjects || []) as any[], selectedGrade || '', []) || [],
+    [subjects, selectedGrade]
   );
 
   // Which subject IDs can this teacher actually edit?
