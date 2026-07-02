@@ -374,7 +374,7 @@ export default function ReportsPage() {
 
   const reportDisplaySubjects = useMemo(() => {
     if (isSchoolWide || selectedGrades.length > 1) return [] as any[];
-    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects).map(col => (
+    return buildSubjectColumns(gradeSubjects as any[], selectedGrade, mergeCombinedSubjects ? adminMergesForSelected : []).map(col => (
       col.kind === 'single'
         ? col.subject
         : { id: col.members.map(m => m.id).join('+'), name: col.label, max_score: col.max_score, grade: selectedGrade }
