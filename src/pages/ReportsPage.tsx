@@ -76,14 +76,13 @@ export default function ReportsPage() {
   const [selectedGenderFilter, setSelectedGenderFilter] = useState<'all' | 'Male' | 'Female'>('all');
   const [viewMode, setViewMode] = useState<'class' | 'individual' | 'school'>('class');
   const [selectedLearner, setSelectedLearner] = useState<string | null>(null);
-  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(false);
-  // Auto-pick merge preference saved by Marks Entry for the current selection.
-  useEffect(() => {
-    const grade = selectedGrades[0];
-    if (!schoolId || !grade) return;
-    const at = isMerged ? 'end_term' : selectedAssessment;
-    setMergeCombinedSubjects(getMergePref(schoolId, grade, selectedTerm, selectedYear, at));
-  }, [schoolId, selectedGrades, selectedTerm, selectedYear, selectedAssessment, isMerged]);
+  const [mergeCombinedSubjects, setMergeCombinedSubjects] = useState(true);
+  // Admin-defined merges for the current selection (report-time only).
+  const { forGrade: mergesForGrade } = useMergedSubjects();
+  const adminMergesForSelected = useMemo(
+    () => mergesForGrade(selectedGrades[0]),
+    [mergesForGrade, selectedGrades]
+  );
   const [comments, setComments] = useState<Record<string, string>>({});
   const [principalComments, setPrincipalComments] = useState<Record<string, string>>({});
   const [batchExporting, setBatchExporting] = useState(false);
