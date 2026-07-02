@@ -690,7 +690,8 @@ export default function ReportsPage() {
     doc.text(title, cx, y, { align: 'center' });
     y += 6;
     doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text(`Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
+    const assessmentLabel = isMerged ? 'Combined (Opener + Mid + End)' : ASSESSMENT_TYPE_LABELS[effectiveAssessment];
+    doc.text(`${assessmentLabel} — Term ${selectedTerm}, ${selectedYear}`, cx, y, { align: 'center' });
 
     const showGradeCol = isSchoolWide || selectedGrades.length > 1;
     const displaySubjects = isSchoolWide ? [] : reportDisplaySubjects;
